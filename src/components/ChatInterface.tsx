@@ -199,9 +199,12 @@ export function ChatInterface({
                   <Sparkles className="h-6 w-6 text-[#1a73e8]" />
                 </div>
 
-                <h2 className="text-3xl font-medium tracking-tight text-[#1f1f1f] sm:text-4xl">
-                  Xin chào!
-                </h2>
+                <h1
+                  id="app-name"
+                  className="text-3xl font-medium tracking-tight text-[#1f1f1f] sm:text-4xl"
+                >
+                  Calendai
+                </h1>
                 <p className="mt-1 text-2xl font-normal text-[#5f6368] sm:text-3xl">
                   Tôi có thể giúp bạn lên lịch cuộc họp nào hôm nay?
                 </p>

@@ -44,12 +44,15 @@ export function Header({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xl font-medium tracking-tight text-[#1f1f1f]">
+            <span
+              id="header-app-name"
+              className="text-xl font-medium tracking-tight text-[#1f1f1f]"
+            >
               Calendai
             </span>
             <span className="hidden rounded-full bg-[#e8f0fe] px-2.5 py-0.5 text-[11px] font-medium text-[#1967d2] sm:inline-flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-[#1a73e8]" />
-              Workspace AI
+              Trợ lý AI
             </span>
           </div>
         </Link>
