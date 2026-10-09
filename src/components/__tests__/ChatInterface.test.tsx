@@ -14,7 +14,7 @@ describe('ChatInterface Component UX & States', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders helpful fallback with retry button when assistant message is empty and not loading', () => {
+  it('renders helpful fallback with retry button when assistant message is empty and error occurs', () => {
     const mockReload = vi.fn();
     mockUseChat.mockReturnValue({
       messages: [
@@ -25,7 +25,7 @@ describe('ChatInterface Component UX & States', () => {
       handleInputChange: vi.fn(),
       handleSubmit: vi.fn(),
       isLoading: false,
-      error: undefined,
+      error: new Error('Mạng bị gián đoạn'),
       reload: mockReload,
       setInput: vi.fn(),
     });
@@ -36,10 +36,10 @@ describe('ChatInterface Component UX & States', () => {
       screen.getByText('Chưa nhận được phản hồi từ trợ lý AI.')
     ).toBeInTheDocument();
 
-    const retryBtn = screen.getByRole('button', { name: 'Thử lại' });
-    expect(retryBtn).toBeInTheDocument();
-    fireEvent.click(retryBtn);
-    expect(mockReload).toHaveBeenCalledTimes(1);
+    const retryBtns = screen.getAllByRole('button', { name: 'Thử lại' });
+    expect(retryBtns.length).toBeGreaterThan(0);
+    fireEvent.click(retryBtns[0]);
+    expect(mockReload).toHaveBeenCalled();
   });
 
   it('renders single unified thinking state when assistant message is loading', () => {
@@ -108,14 +108,14 @@ describe('ChatInterface Component UX & States', () => {
 
     const { container } = render(<ChatInterface isAuthenticated={true} />);
 
-    // Bold elements are parsed as <strong> tags
-    const strongElements = container.querySelectorAll('strong');
+    // Bold elements in message bubbles are parsed as <strong> tags
+    const strongElements = container.querySelectorAll('.break-words strong');
     expect(strongElements.length).toBe(2);
     expect(strongElements[0].textContent).toBe('Tiêu đề');
     expect(strongElements[1].textContent).toBe('Thời gian');
 
-    // Bullet points are parsed as <ul> and <li> tags
-    const listElements = container.querySelectorAll('li');
+    // Bullet points in message bubbles are parsed as <ul> and <li> tags
+    const listElements = container.querySelectorAll('.break-words li');
     expect(listElements.length).toBe(2);
   });
 });

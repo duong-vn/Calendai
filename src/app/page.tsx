@@ -12,6 +12,7 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isConfigured, setIsConfigured] = useState(true);
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
+  const [isTipsOpen, setIsTipsOpen] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const fetchAuthStatus = async () => {
@@ -99,12 +100,17 @@ export default function Home() {
         isAuthenticated={isAuthenticated}
         isConfigured={isConfigured}
         onOpenUpcoming={() => setIsUpcomingOpen(true)}
+        onOpenTips={() => setIsTipsOpen((prev) => !prev)}
         onLogout={handleLogout}
       />
 
       {/* Main Chat Interface */}
       <main className="flex-1">
-        <ChatInterface isAuthenticated={isAuthenticated} />
+        <ChatInterface
+          isAuthenticated={isAuthenticated}
+          isTipsOpen={isTipsOpen}
+          onToggleTips={() => setIsTipsOpen((prev) => !prev)}
+        />
       </main>
 
       {/* Upcoming Events Modal Drawer */}

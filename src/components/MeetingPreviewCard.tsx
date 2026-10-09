@@ -76,6 +76,7 @@ export function MeetingPreviewCard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [createMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
 
   const handleConfirm = async () => {
     if (loading || isConfirmed) return;
@@ -94,7 +95,7 @@ export function MeetingPreviewCard({
           endDateTime: proposal.endDateTime,
           timeZone: proposal.timeZone || 'Asia/Ho_Chi_Minh',
           attendees: proposal.attendees || [],
-          createMeet: proposal.createMeet !== false,
+          createMeet: Boolean(createMeet),
           proposalId: proposal.proposalId,
         }),
       });
@@ -186,14 +187,38 @@ export function MeetingPreviewCard({
           )}
         </div>
 
-        {/* Google Meet preview row */}
-        <div className="mt-3 flex items-center justify-between rounded-xl bg-[#e6f4ea] p-3 text-xs sm:text-sm text-[#137333] border border-[#ceead6]">
+        {/* Google Meet toggleable row */}
+        <button
+          type="button"
+          onClick={() => !isConfirmed && !loading && setCreateMeet(!createMeet)}
+          disabled={isConfirmed || loading}
+          className={`mt-3 flex items-center justify-between w-full rounded-xl p-3 text-xs sm:text-sm border transition-all text-left ${
+            createMeet
+              ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6] hover:bg-[#d8eedd]'
+              : 'bg-[#f8fafd] text-[#5f6368] border-[#dadce0] hover:bg-[#f1f3f4]'
+          } ${isConfirmed || loading ? 'cursor-default' : 'cursor-pointer'}`}
+          title="Bấm để bật hoặc tắt tạo link Google Meet"
+        >
           <div className="flex items-center gap-2">
-            <Video className="h-4 w-4 text-[#0f9d58] shrink-0" />
-            <span className="font-medium">Google Meet</span>
+            <Video
+              className={`h-4 w-4 shrink-0 ${
+                createMeet ? 'text-[#0f9d58]' : 'text-[#747775]'
+              }`}
+            />
+            <span className="font-medium">
+              {createMeet ? 'Google Meet (Đang bật)' : 'Google Meet (Đang tắt)'}
+            </span>
           </div>
-          <span className="text-xs text-[#137333]">Sẽ tạo liên kết video call</span>
-        </div>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+              createMeet
+                ? 'bg-[#ceead6] text-[#0d652d]'
+                : 'bg-[#e8eaed] text-[#5f6368]'
+            }`}
+          >
+            {createMeet ? 'Sẽ tạo link Meet' : 'Không tạo Meet'}
+          </span>
+        </button>
 
         {/* Error notification */}
         {error && (

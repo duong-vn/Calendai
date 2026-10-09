@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import {
-  Calendar,
   CheckCircle2,
   FileText,
   Globe,
@@ -18,6 +17,7 @@ interface HeaderProps {
   isAuthenticated: boolean;
   isConfigured: boolean;
   onOpenUpcoming: () => void;
+  onOpenTips?: () => void;
   onLogout: () => void;
 }
 
@@ -26,22 +26,21 @@ export function Header({
   isAuthenticated,
   isConfigured,
   onOpenUpcoming,
+  onOpenTips,
   onLogout,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-4 backdrop-blur-md sm:px-6">
-      {/* Brand logo in Google Style */}
+      {/* Brand logo from public/assets/logo.png */}
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#f0f4f9] text-[#1a73e8] shadow-xs group-hover:bg-[#e8f0fe] transition-colors">
-            <Calendar className="h-5 w-5 text-[#1a73e8]" />
-            {/* Subtle Google 4-color dots in corner */}
-            <div className="absolute -bottom-0.5 -right-0.5 flex gap-0.5 rounded-full bg-white p-0.5 shadow-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#4285f4]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[#ea4335]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[#fbbc04]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[#34a853]" />
-            </div>
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white p-1 border border-[#dadce0] shadow-xs group-hover:border-[#1a73e8] transition-colors overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/assets/logo.png"
+              alt="Calendai Logo"
+              className="h-full w-full object-contain"
+            />
           </div>
 
           <div className="flex items-center gap-2">
@@ -56,7 +55,7 @@ export function Header({
         </Link>
       </div>
 
-      {/* Center info: Timezone & Legal links */}
+      {/* Center info: Timezone */}
       <div className="hidden lg:flex items-center gap-2">
         <div className="flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746]">
           <Globe className="h-3.5 w-3.5 text-[#1a73e8]" />
@@ -66,6 +65,19 @@ export function Header({
 
       {/* Right Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2.5">
+        {/* Button: Mẹo nâng cao (opens Sidenote) */}
+        {onOpenTips && (
+          <button
+            type="button"
+            onClick={onOpenTips}
+            className="flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8]"
+            title="Xem mẹo đặt lịch & các tham số nâng cao"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-[#fbbc04]" />
+            <span className="hidden sm:inline">Mẹo nâng cao</span>
+          </button>
+        )}
+
         {/* Buttons to Privacy and Terms */}
         <Link
           href="/privacy"
@@ -73,7 +85,7 @@ export function Header({
           title="Chính sách quyền riêng tư"
         >
           <Shield className="h-3.5 w-3.5 text-[#1a73e8]" />
-          <span className="hidden sm:inline">Chính sách</span>
+          <span className="hidden md:inline">Chính sách</span>
         </Link>
 
         <Link
@@ -82,7 +94,7 @@ export function Header({
           title="Điều khoản dịch vụ"
         >
           <FileText className="h-3.5 w-3.5 text-[#5f6368]" />
-          <span className="hidden sm:inline">Điều khoản</span>
+          <span className="hidden md:inline">Điều khoản</span>
         </Link>
 
         <button
@@ -92,7 +104,7 @@ export function Header({
           title="Xem lịch trình sắp tới"
         >
           <Video className="h-3.5 w-3.5 text-[#00897b]" />
-          <span className="hidden md:inline">Lịch trình</span>
+          <span className="hidden lg:inline">Lịch trình</span>
         </button>
 
         {isAuthenticated && user ? (

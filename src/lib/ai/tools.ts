@@ -17,7 +17,10 @@ export const ProposeMeetingSchema = z.object({
   endDateTime: z.string().describe('Thời gian kết thúc dạng ISO 8601 (ví dụ: 2026-10-12T10:00:00+07:00)'),
   timeZone: z.string().default('Asia/Ho_Chi_Minh'),
   attendees: z.array(AttendeeSchema).optional().default([]),
-  createMeet: z.boolean().default(true).describe('Tự động tạo Google Meet link'),
+  createMeet: z
+    .boolean()
+    .default(false)
+    .describe('Tạo Google Meet link (chỉ bật khi người dùng yêu cầu họp online/Meet)'),
 });
 
 export type ProposeMeetingInput = z.infer<typeof ProposeMeetingSchema>;
@@ -59,7 +62,7 @@ export function createCalendarTools(
           endDateTime: end.toISOString(),
           timeZone: args.timeZone || 'Asia/Ho_Chi_Minh',
           attendees: args.attendees || [],
-          createMeet: args.createMeet !== false,
+          createMeet: Boolean(args.createMeet),
           status: 'proposed',
           message: 'Đã chuẩn bị thông tin cuộc họp. Vui lòng xác nhận để hoàn tất tạo trên Google Calendar.',
         };
