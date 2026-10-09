@@ -2,7 +2,7 @@ import { streamText } from 'ai';
 import { getChatModel } from '@/lib/ai/provider';
 import { buildSystemPrompt } from '@/lib/ai/system-prompt';
 import { createCalendarTools } from '@/lib/ai/tools';
-import { getServerSession } from '@/lib/auth/server-session';
+import { getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
 import { getServerEnv } from '@/lib/env';
 
 export async function POST(req: Request) {
@@ -28,8 +28,18 @@ export async function POST(req: Request) {
     }
 
     const session = await getServerSession().catch(() => null);
+    let validAccessToken: string | null = null;
+    if (session) {
+      try {
+        const { accessToken } = await getValidAccessToken(session);
+        validAccessToken = accessToken;
+      } catch {
+        // Token hết hạn hoặc không làm mới được trong request scope
+      }
+    }
+
     const systemPrompt = buildSystemPrompt(session?.user?.email);
-    const tools = createCalendarTools();
+    const tools = createCalendarTools(session, validAccessToken);
     const model = getChatModel();
 
     const result = streamText({
@@ -38,9 +48,14 @@ export async function POST(req: Request) {
       messages,
       tools,
       maxSteps: 3, // Bounded multi-step execution
+      onError: ({ error }) => {
+        console.error('Chat stream error:', error);
+      },
     });
 
-    return result.toDataStreamResponse();
+    return result.toDataStreamResponse({
+      getErrorMessage: (err) => (err instanceof Error ? err.message : 'Lỗi xử lý AI'),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Lỗi máy chủ khi xử lý hội thoại AI';
     return new Response(

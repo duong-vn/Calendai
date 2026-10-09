@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
+import type { SessionData } from '@/lib/auth/types';
 import { listGoogleCalendarEvents } from '@/lib/calendar/google-calendar-service';
 import { listMockCalendarEvents } from '@/lib/calendar/mock-calendar-service';
 import { isGoogleConfigured } from '@/lib/env';
@@ -27,7 +27,10 @@ export const ListUpcomingEventsSchema = z.object({
   daysAhead: z.number().int().min(1).max(14).default(7).describe('Khoảng thời gian cần xem tính theo ngày'),
 });
 
-export function createCalendarTools() {
+export function createCalendarTools(
+  session?: SessionData | null,
+  accessToken?: string | null
+) {
   return {
     proposeMeeting: tool({
       description:
@@ -68,10 +71,7 @@ export function createCalendarTools() {
       parameters: ListUpcomingEventsSchema,
       execute: async (args) => {
         try {
-          const session = await getServerSession();
-
-          if (session) {
-            const { accessToken } = await getValidAccessToken(session);
+          if (session && accessToken) {
             const events = await listGoogleCalendarEvents(accessToken, {
               maxResults: args.maxResults,
             });

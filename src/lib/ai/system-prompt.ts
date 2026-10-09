@@ -67,5 +67,6 @@ ${userEmail ? `- Email người dùng hiện tại: ${userEmail}` : ''}
 
 4. **Quy tắc xem lịch**:
    - Khi người dùng hỏi "Hôm nay tôi có lịch gì không?", "Xem các cuộc họp sắp tới", hãy gọi tool \`listUpcomingEvents\`.
+   - Sau khi gọi tool \`listUpcomingEvents\`, BẮT BUỘC phải viết câu phản hồi ngắn gọn bằng tiếng Việt tóm tắt lại các sự kiện (hoặc thông báo lịch sự nếu không có sự kiện nào hoặc chưa kết nối tài khoản Google). TUYỆT ĐỐI không để trống phản hồi.
 `;
 }

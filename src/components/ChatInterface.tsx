@@ -130,8 +130,13 @@ export function ChatInterface({ isAuthenticated }: ChatInterfaceProps) {
           )}
 
           {/* Messages list */}
-          {messages.map((message) => {
+          {messages.map((message, index) => {
             const isUser = message.role === 'user';
+            const isLast = index === messages.length - 1;
+            const isEmptyAssistant =
+              !isUser &&
+              !message.content &&
+              (!message.toolInvocations || message.toolInvocations.length === 0);
 
             return (
               <div
@@ -163,6 +168,36 @@ export function ChatInterface({ isAuthenticated }: ChatInterfaceProps) {
                     <div className="whitespace-pre-wrap leading-relaxed">
                       {message.content}
                     </div>
+                  )}
+
+                  {/* Empty Assistant State: Thinking animation if loading, fallback retry if completed empty */}
+                  {isEmptyAssistant && (
+                    isLoading && isLast ? (
+                      <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368]">
+                        <span className="flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce" />
+                        </span>
+                        <span className="font-medium text-[#444746]">
+                          Calendai đang suy nghĩ...
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 text-xs text-[#5f6368]">
+                        <div className="flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5 text-[#ea4335] shrink-0" />
+                          <span>Chưa nhận được phản hồi từ trợ lý AI.</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => reload()}
+                          className="font-medium text-[#1a73e8] hover:underline shrink-0"
+                        >
+                          Thử lại
+                        </button>
+                      </div>
+                    )
                   )}
 
                   {/* Tool Invocations */}
@@ -305,11 +340,24 @@ export function ChatInterface({ isAuthenticated }: ChatInterfaceProps) {
             );
           })}
 
-          {/* Streaming Loading Indicator */}
-          {isLoading && (
-            <div className="flex items-center gap-2.5 text-xs text-[#5f6368] pl-2">
-              <Sparkles className="h-4 w-4 text-[#1a73e8] animate-spin" />
-              <span>Calendai đang chuẩn bị phản hồi...</span>
+          {/* Pending assistant thinking state right after user submits message */}
+          {isLoading && messages[messages.length - 1]?.role === 'user' && (
+            <div className="flex items-start gap-3 flex-row">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs">
+                <Sparkles className="h-4 w-4 text-[#1a73e8]" />
+              </div>
+              <div className="max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs">
+                <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368]">
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce" />
+                  </span>
+                  <span className="font-medium text-[#444746]">
+                    Calendai đang suy nghĩ...
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 
