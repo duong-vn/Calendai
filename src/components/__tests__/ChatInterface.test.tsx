@@ -87,4 +87,35 @@ describe('ChatInterface Component UX & States', () => {
       screen.queryByText('Calendai đang chuẩn bị phản hồi...')
     ).not.toBeInTheDocument();
   });
+
+  it('renders markdown formatting like bold text and bullet points properly', () => {
+    mockUseChat.mockReturnValue({
+      messages: [
+        {
+          id: '1',
+          role: 'assistant',
+          content: 'Dưới đây là thông tin:\n* **Tiêu đề**: Họp Sprint\n* **Thời gian**: 09:00',
+        },
+      ],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+    });
+
+    const { container } = render(<ChatInterface isAuthenticated={true} />);
+
+    // Bold elements are parsed as <strong> tags
+    const strongElements = container.querySelectorAll('strong');
+    expect(strongElements.length).toBe(2);
+    expect(strongElements[0].textContent).toBe('Tiêu đề');
+    expect(strongElements[1].textContent).toBe('Thời gian');
+
+    // Bullet points are parsed as <ul> and <li> tags
+    const listElements = container.querySelectorAll('li');
+    expect(listElements.length).toBe(2);
+  });
 });

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import {
+  Calendar,
   CheckCircle2,
   FileText,
   Globe,
@@ -29,16 +30,18 @@ export function Header({
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-4 backdrop-blur-md sm:px-6">
-      {/* Brand logo */}
+      {/* Brand logo in Google Style */}
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white p-1 border border-[#dadce0] shadow-xs group-hover:border-[#1a73e8] transition-colors overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/assets/logo.png"
-              alt="Calendai Logo"
-              className="h-full w-full object-contain"
-            />
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#f0f4f9] text-[#1a73e8] shadow-xs group-hover:bg-[#e8f0fe] transition-colors">
+            <Calendar className="h-5 w-5 text-[#1a73e8]" />
+            {/* Subtle Google 4-color dots in corner */}
+            <div className="absolute -bottom-0.5 -right-0.5 flex gap-0.5 rounded-full bg-white p-0.5 shadow-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4285f4]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#ea4335]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#fbbc04]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#34a853]" />
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

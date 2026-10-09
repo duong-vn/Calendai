@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: 'Calendai — Trợ lý AI Đặt Lịch Google Calendar & Google Meet',
   description: 'Trợ lý AI tiếng Việt thông minh giúp đặt lịch hẹn Google Calendar và tự động tạo link Google Meet thông qua ngôn ngữ tự nhiên.',
   icons: {
-    icon: '/assets/logo.png',
-    shortcut: '/assets/logo.png',
-    apple: '/assets/logo.png',
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
   },
 };
 

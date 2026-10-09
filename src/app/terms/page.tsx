@@ -20,12 +20,15 @@ export default function TermsPage() {
             <span>Quay lại Calendai</span>
           </Link>
           <Link href="/" className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/assets/logo.png"
-              alt="Calendai Logo"
-              className="h-7 w-7 object-contain rounded-lg"
-            />
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-[#f0f4f9] text-[#1a73e8]">
+              <Calendar className="h-4 w-4 text-[#1a73e8]" />
+              <div className="absolute -bottom-0.5 -right-0.5 flex gap-0.5 rounded-full bg-white p-0.5 shadow-xs">
+                <span className="h-1 w-1 rounded-full bg-[#4285f4]" />
+                <span className="h-1 w-1 rounded-full bg-[#ea4335]" />
+                <span className="h-1 w-1 rounded-full bg-[#fbbc04]" />
+                <span className="h-1 w-1 rounded-full bg-[#34a853]" />
+              </div>
+            </div>
             <span className="font-semibold text-[#1f1f1f]">Calendai</span>
           </Link>
         </div>
