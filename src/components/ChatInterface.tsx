@@ -413,14 +413,20 @@ export function ChatInterface({ isAuthenticated }: ChatInterfaceProps) {
           </button>
         </form>
 
-        <div className="mx-auto mt-2.5 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#747775] sm:flex-row">
+        <div className="mx-auto mt-2.5 flex max-w-3xl flex-col items-center justify-between gap-1.5 text-[11px] text-[#747775] sm:flex-row">
           <span>Calendai tự động tạo sự kiện Google Calendar & Google Meet</span>
-          <div className="flex items-center gap-3">
-            <Link href="/privacy" className="hover:text-[#1a73e8] hover:underline">
+          <div className="flex items-center gap-1.5">
+            <Link
+              href="/privacy"
+              className="rounded-md px-2 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
+            >
               Chính sách quyền riêng tư
             </Link>
             <span>•</span>
-            <Link href="/terms" className="hover:text-[#1a73e8] hover:underline">
+            <Link
+              href="/terms"
+              className="rounded-md px-2 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
+            >
               Điều khoản dịch vụ
             </Link>
           </div>

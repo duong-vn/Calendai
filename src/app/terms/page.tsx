@@ -19,10 +19,15 @@ export default function TermsPage() {
             <ArrowLeft className="h-4 w-4" />
             <span>Quay lại Calendai</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-[#1a73e8]" />
-            <span className="font-semibold">Calendai</span>
-          </div>
+          <Link href="/" className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/assets/logo.png"
+              alt="Calendai Logo"
+              className="h-7 w-7 object-contain rounded-lg"
+            />
+            <span className="font-semibold text-[#1f1f1f]">Calendai</span>
+          </Link>
         </div>
       </header>
 
