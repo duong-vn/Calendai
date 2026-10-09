@@ -40,7 +40,6 @@ export default function Home() {
         type: 'success',
         message: 'Kết nối tài khoản Google Calendar thành công!',
       });
-      // Clean query params from URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (authError) {
       setToast({
@@ -66,31 +65,31 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      {/* Toast notification banner */}
+    <div className="flex min-h-screen flex-col bg-[#f8fafd]">
+      {/* Toast notification snackbar */}
       {toast && (
-        <div
-          className={`flex items-center justify-between px-4 py-2.5 text-xs sm:text-sm font-medium transition-all ${
-            toast.type === 'success'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-rose-600 text-white'
-          }`}
-        >
-          <div className="flex items-center gap-2">
+        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all">
+          <div
+            className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-xs sm:text-sm font-medium shadow-md border ${
+              toast.type === 'success'
+                ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6]'
+                : 'bg-[#fce8e6] text-[#c5221f] border-[#fad2cf]'
+            }`}
+          >
             {toast.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-[#1e8e3e]" />
             ) : (
-              <AlertCircle className="h-4 w-4 shrink-0" />
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#ea4335]" />
             )}
             <span>{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-2 rounded-full p-1 hover:bg-black/5 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            className="rounded p-0.5 hover:bg-white/20 transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       )}
 

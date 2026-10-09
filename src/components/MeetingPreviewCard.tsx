@@ -6,6 +6,7 @@ import {
   Calendar,
   Check,
   Clock,
+  Edit3,
   Globe,
   Loader2,
   Users,
@@ -35,14 +36,13 @@ function formatVietnameseDate(isoString: string): string {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return isoString;
 
-    const formatter = new Intl.DateTimeFormat('vi-VN', {
+    return new Intl.DateTimeFormat('vi-VN', {
       timeZone: 'Asia/Ho_Chi_Minh',
       weekday: 'long',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-    });
-    return formatter.format(d);
+    }).format(d);
   } catch {
     return isoString;
   }
@@ -121,94 +121,102 @@ export function MeetingPreviewCard({
   );
 
   return (
-    <div className="my-3 overflow-hidden rounded-2xl border-2 border-blue-200 bg-white shadow-md transition-all">
-      {/* Header card */}
-      <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50/60 px-4 py-3 sm:px-5">
+    <div className="my-3 overflow-hidden rounded-2xl border border-[#dadce0] bg-white shadow-xs transition-shadow hover:shadow-sm">
+      {/* Google Calendar Top Strip */}
+      <div className="flex items-center justify-between border-b border-[#f1f3f4] bg-[#f8fafd] px-4 py-2.5 sm:px-5">
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-blue-600" />
-          <span className="text-xs font-bold uppercase tracking-wider text-blue-800">
-            Xác Nhận Lịch Hẹn
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1a73e8] text-white">
+            <Calendar className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-xs font-medium text-[#1a73e8]">
+            Google Calendar • Bản xem trước
           </span>
         </div>
-        <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">
+        <span className="rounded-full bg-[#fef7e0] px-2.5 py-0.5 text-[11px] font-medium text-[#b06000]">
           Chờ xác nhận
         </span>
       </div>
 
-      {/* Body details */}
-      <div className="space-y-3.5 p-4 sm:p-5">
-        <div>
-          <h4 className="text-base font-bold text-slate-900 sm:text-lg">
-            {proposal.summary}
-          </h4>
-          {proposal.description && (
-            <p className="mt-1 text-xs text-slate-600 leading-relaxed sm:text-sm">
-              {proposal.description}
-            </p>
+      {/* Main Event Body */}
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          {/* Calendar blue bar */}
+          <div className="mt-1 h-10 w-1 rounded-full bg-[#1a73e8] shrink-0" />
+          <div className="flex-1">
+            <h4 className="text-base font-medium text-[#1f1f1f] sm:text-lg">
+              {proposal.summary}
+            </h4>
+            {proposal.description && (
+              <p className="mt-1 text-xs text-[#5f6368] sm:text-sm leading-relaxed">
+                {proposal.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Details list */}
+        <div className="mt-4 space-y-2.5 rounded-xl bg-[#f8fafd] p-3.5 border border-[#edf2fa]">
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm font-medium text-[#3c4043]">
+            <Clock className="h-4 w-4 text-[#1a73e8] shrink-0" />
+            <span>
+              {formattedDate} • {formattedTimeRange}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5 text-xs text-[#5f6368]">
+            <Globe className="h-4 w-4 text-[#747775] shrink-0" />
+            <span>Múi giờ: {proposal.timeZone || 'Asia/Ho_Chi_Minh'} (GMT+7)</span>
+          </div>
+
+          {/* Attendees */}
+          {proposal.attendees && proposal.attendees.length > 0 && (
+            <div className="flex items-start gap-2.5 text-xs text-[#5f6368]">
+              <Users className="h-4 w-4 text-[#747775] shrink-0 mt-0.5" />
+              <div className="flex flex-wrap gap-1.5">
+                {proposal.attendees.map((attendee) => (
+                  <span
+                    key={attendee.email}
+                    className="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-xs text-[#3c4043] border border-[#dadce0]"
+                  >
+                    {attendee.email}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Time highlight box */}
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-3.5 space-y-2">
-          <div className="flex items-center gap-2.5 text-xs text-slate-800 sm:text-sm font-medium">
-            <Clock className="h-4 w-4 shrink-0 text-blue-600" />
-            <span>
-              {formattedDate} | {formattedTimeRange}
-            </span>
+        {/* Google Meet preview row */}
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-[#e6f4ea] p-3 text-xs sm:text-sm text-[#137333] border border-[#ceead6]">
+          <div className="flex items-center gap-2">
+            <Video className="h-4 w-4 text-[#0f9d58] shrink-0" />
+            <span className="font-medium">Google Meet</span>
           </div>
-          <div className="flex items-center gap-2.5 text-xs text-slate-500">
-            <Globe className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-            <span>{proposal.timeZone || 'Asia/Ho_Chi_Minh'} (Múi giờ Việt Nam)</span>
-          </div>
-        </div>
-
-        {/* Attendees */}
-        {proposal.attendees && proposal.attendees.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-              <Users className="h-3.5 w-3.5 text-slate-400" />
-              <span>Người tham gia ({proposal.attendees.length}):</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {proposal.attendees.map((attendee) => (
-                <span
-                  key={attendee.email}
-                  className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
-                >
-                  {attendee.email}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Meet badge */}
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
-          <Video className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>Google Meet: Tự động tạo liên kết cuộc gọi video</span>
+          <span className="text-xs text-[#137333]">Sẽ tạo liên kết video call</span>
         </div>
 
         {/* Error notification */}
         {error && (
-          <div className="flex items-start gap-2 rounded-lg bg-rose-50 p-3 text-xs text-rose-700 border border-rose-200">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
-            <div className="flex-1">
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#fce8e6] p-3 text-xs text-[#c5221f] border border-[#fad2cf]">
+            <AlertCircle className="h-4 w-4 shrink-0 text-[#ea4335] mt-0.5" />
+            <div>
               <span className="font-semibold">Lỗi tạo lịch: </span>
               {error}
             </div>
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+        {/* Action Buttons */}
+        <div className="mt-5 flex items-center justify-end gap-2.5 border-t border-[#f1f3f4] pt-4">
           {onEditRequest && !isConfirmed && (
             <button
               type="button"
               onClick={onEditRequest}
               disabled={loading}
-              className="rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition sm:text-sm disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-4 py-2 text-xs font-medium text-[#1a73e8] hover:bg-[#f8fafd] transition-colors sm:text-sm disabled:opacity-50"
             >
-              Chỉnh sửa
+              <Edit3 className="h-3.5 w-3.5" />
+              <span>Chỉnh sửa</span>
             </button>
           )}
 
@@ -216,7 +224,7 @@ export function MeetingPreviewCard({
             type="button"
             onClick={handleConfirm}
             disabled={loading || isConfirmed}
-            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1a73e8] px-5 py-2 text-xs font-medium text-white shadow-xs hover:bg-[#1557b0] transition-colors sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
