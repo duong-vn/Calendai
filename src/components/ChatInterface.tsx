@@ -167,19 +167,9 @@ export function ChatInterface({
         {/* Scrollable messages container */}
         <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
           <div className="mx-auto max-w-3xl space-y-6">
-            {/* Guide & Reset actions bar */}
-            <div className="flex items-center justify-between pb-1">
-              <button
-                type="button"
-                onClick={toggleTips}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1 text-xs font-medium text-[#1a73e8] shadow-2xs hover:bg-[#f8fafd] transition-colors"
-                title="Bấm để xem các mẹo đặt lịch & tham số nâng cao"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-[#fbbc04]" />
-                <span>{isTipsOpen ? 'Đóng mẹo nâng cao' : 'Mẹo nâng cao & ví dụ prompt'}</span>
-              </button>
-
-              {messages.length > 0 && (
+            {/* Reset chat history action bar when there are messages */}
+            {messages.length > 0 && (
+              <div className="flex items-center justify-end pb-1">
                 <button
                   type="button"
                   onClick={handleClearChat}
@@ -189,8 +179,8 @@ export function ChatInterface({
                   <RotateCcw className="h-3 w-3" />
                   <span>Xóa lịch sử</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Gemini-inspired Welcome Hero when empty */}
             {messages.length === 0 && (

@@ -30,7 +30,7 @@ export function Header({
   onLogout,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-30 relative flex h-16 w-full items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-4 backdrop-blur-md sm:px-6">
       {/* Brand logo from public/assets/logo.png */}
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-2.5 group">
@@ -58,9 +58,9 @@ export function Header({
         </Link>
       </div>
 
-      {/* Center info: Timezone */}
-      <div className="hidden lg:flex items-center gap-2">
-        <div className="flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746]">
+      {/* Center info: Timezone (True absolute center) */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center gap-2">
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0]/50">
           <Globe className="h-3.5 w-3.5 text-[#1a73e8]" />
           <span>Hà Nội (GMT+7)</span>
         </div>
