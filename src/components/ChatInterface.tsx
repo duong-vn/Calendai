@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useChat } from 'ai/react';
 import {
   AlertCircle,
@@ -364,8 +365,17 @@ export function ChatInterface({ isAuthenticated }: ChatInterfaceProps) {
           </button>
         </form>
 
-        <div className="mx-auto mt-2 flex max-w-3xl items-center justify-center text-[11px] text-[#747775]">
-          <span>Calendai tự động tạo sự kiện Google Calendar & Google Meet chính thức</span>
+        <div className="mx-auto mt-2.5 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#747775] sm:flex-row">
+          <span>Calendai tự động tạo sự kiện Google Calendar & Google Meet</span>
+          <div className="flex items-center gap-3">
+            <Link href="/privacy" className="hover:text-[#1a73e8] hover:underline">
+              Chính sách quyền riêng tư
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-[#1a73e8] hover:underline">
+              Điều khoản dịch vụ
+            </Link>
+          </div>
         </div>
       </div>
     </div>
