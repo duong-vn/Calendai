@@ -50,9 +50,9 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
   })();
 
   return (
-    <div className="my-3 overflow-hidden rounded-2xl border border-[#ceead6] bg-white shadow-xs dark:border-[#10b981]/50 dark:bg-[#0a1611]">
+    <div className="my-3 overflow-hidden rounded-2xl border border-[#ceead6] bg-white shadow-xs dark:border-[#23382d] dark:bg-[#17241e]">
       {/* Top success banner */}
-      <div className="flex items-center justify-between border-b border-[#e6f4ea] bg-[#e6f4ea]/70 px-4 py-2.5 sm:px-5 dark:border-[#1b352a] dark:bg-[#082f22]/70">
+      <div className="flex items-center justify-between border-b border-[#e6f4ea] bg-[#e6f4ea]/70 px-4 py-2.5 sm:px-5 dark:border-[#23382d] dark:bg-[#153426]/70">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-[#137333] dark:text-[#10b981]" />
           <span className="text-xs font-medium text-[#137333] dark:text-[#34d399]">
@@ -60,7 +60,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
           </span>
         </div>
         {isMock && (
-          <span className="rounded-full bg-[#fef7e0] px-2.5 py-0.5 text-[11px] font-medium text-[#b06000] dark:bg-[#2e2609] dark:text-[#fde047]">
+          <span className="rounded-full bg-[#fef7e0] px-2.5 py-0.5 text-[11px] font-medium text-[#b06000] dark:bg-[#332408] dark:text-[#fde047]">
             Mock Mode
           </span>
         )}
@@ -71,7 +71,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
         <div className="flex items-start gap-3">
           <div className="mt-1 h-9 w-1 rounded-full bg-[#34a853] shrink-0 dark:bg-[#10b981]" />
           <div>
-            <h4 className="text-base font-medium text-[#1f1f1f] sm:text-lg dark:text-[#e6f4ea]">
+            <h4 className="text-base font-medium text-[#1f1f1f] sm:text-lg dark:text-[#f1f5f9]">
               {event.summary}
             </h4>
             <div className="mt-1 flex items-center gap-2 text-xs text-[#5f6368] sm:text-sm dark:text-[#94a3b8]">
@@ -83,20 +83,20 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
 
         {/* Google Meet Card */}
         {event.hangoutLink && (
-          <div className="mt-4 rounded-xl border border-[#dadce0] bg-[#f8fafd] p-3.5 dark:border-[#1b352a] dark:bg-[#0d2019]">
+          <div className="mt-4 rounded-xl border border-[#dadce0] bg-[#f8fafd] p-3.5 dark:border-[#23382d] dark:bg-[#1c2e26]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#00897b] text-white dark:bg-[#059669]">
                   <Video className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-xs font-medium text-[#3c4043] dark:text-[#e6f4ea]">
+                <span className="text-xs font-medium text-[#3c4043] dark:text-[#f1f5f9]">
                   Google Meet
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1 text-xs font-medium text-[#3c4043] hover:bg-[#f1f3f4] transition-colors dark:border-[#1b352a] dark:bg-[#0a1611] dark:text-[#a7f3d0] dark:hover:bg-[#11271e]"
+                className="flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1 text-xs font-medium text-[#3c4043] hover:bg-[#f1f3f4] transition-colors dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#23382d]"
               >
                 {copied ? (
                   <>
@@ -136,7 +136,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
         )}
 
         {/* Google Calendar Link Button */}
-        <div className="mt-4 flex items-center justify-between border-t border-[#f1f3f4] pt-3 dark:border-[#1b352a]">
+        <div className="mt-4 flex items-center justify-between border-t border-[#f1f3f4] pt-3 dark:border-[#23382d]">
           {isMock ? (
             <span className="text-[11px] text-[#747775] dark:text-[#94a3b8]">
               Chế độ giả lập phục vụ kiểm thử API & UI.

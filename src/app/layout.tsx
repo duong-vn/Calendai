@@ -32,7 +32,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-dvh bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#060c09] dark:text-[#e6f4ea] antialiased">
+      <body className="min-h-dvh bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#101714] dark:text-[#f1f5f9] antialiased">
         {children}
       </body>
     </html>

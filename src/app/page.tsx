@@ -66,7 +66,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#060c09]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#101714]">
       {/* Toast notification snackbar */}
       {toast && (
         <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all">

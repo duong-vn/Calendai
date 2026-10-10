@@ -66,14 +66,14 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="flex h-full max-h-[85vh] w-full max-w-xl flex-col rounded-3xl bg-white shadow-2xl border border-[#dadce0] dark:bg-[#0a1611] dark:border-[#1b352a]">
+      <div className="flex h-full max-h-[85vh] w-full max-w-xl flex-col rounded-3xl bg-white shadow-2xl border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#f1f3f4] px-6 py-4 dark:border-[#1b352a]">
+        <div className="flex items-center justify-between border-b border-[#f1f3f4] px-6 py-4 dark:border-[#23382d]">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#0d281e] dark:text-[#10b981]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#132c21] dark:text-[#10b981]">
               <Calendar className="h-4 w-4" />
             </div>
-            <h3 className="text-base font-medium text-[#1f1f1f] dark:text-[#e6f4ea]">
+            <h3 className="text-base font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
               Lịch trình sắp tới
             </h3>
           </div>
@@ -82,7 +82,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
               type="button"
               onClick={fetchEvents}
               disabled={loading}
-              className="rounded-full p-2 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors disabled:opacity-50 dark:text-[#94a3b8] dark:hover:bg-[#132c22] dark:hover:text-[#e6f4ea]"
+              className="rounded-full p-2 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors disabled:opacity-50 dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
               title="Làm mới"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -90,7 +90,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-2 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#132c22] dark:hover:text-[#e6f4ea]"
+              className="rounded-full p-2 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
               title="Đóng"
             >
               <X className="h-5 w-5" />
@@ -106,14 +106,14 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
               <span className="text-xs">Đang tải sự kiện...</span>
             </div>
           ) : error ? (
-            <div className="rounded-2xl bg-[#fce8e6] p-4 text-xs text-[#c5221f] border border-[#fad2cf] dark:border-[#7f1d1d] dark:bg-[#360d0d] dark:text-[#fca5a5]">
+            <div className="rounded-2xl bg-[#fce8e6] p-4 text-xs text-[#c5221f] border border-[#fad2cf] dark:border-[#7f1d1d] dark:bg-[#2b1111] dark:text-[#fca5a5]">
               <span className="font-semibold">Thông báo: </span>
               {error}
             </div>
           ) : events.length === 0 ? (
             <div className="flex h-48 flex-col items-center justify-center text-center text-[#5f6368] dark:text-[#94a3b8]">
-              <Calendar className="h-10 w-10 text-[#bdc1c6] mb-2 dark:text-[#1b352a]" />
-              <p className="text-sm font-medium text-[#1f1f1f] dark:text-[#e6f4ea]">
+              <Calendar className="h-10 w-10 text-[#bdc1c6] mb-2 dark:text-[#23382d]" />
+              <p className="text-sm font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
                 Chưa có sự kiện nào sắp tới
               </p>
               <p className="text-xs text-[#747775] mt-1 dark:text-[#94a3b8]">
@@ -125,10 +125,10 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
               {events.map((evt) => (
                 <div
                   key={evt.id}
-                  className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 transition-colors hover:bg-white dark:border-[#1b352a] dark:bg-[#0d2019] dark:hover:bg-[#11271e]"
+                  className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 transition-colors hover:bg-white dark:border-[#23382d] dark:bg-[#1c2e26] dark:hover:bg-[#20342b]"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-sm font-medium text-[#1f1f1f] dark:text-[#e6f4ea]">
+                    <h4 className="text-sm font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
                       {evt.summary}
                     </h4>
                     <a
@@ -148,7 +148,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
                   </div>
 
                   {evt.hangoutLink && (
-                    <div className="mt-3 flex items-center justify-between border-t border-[#edf2fa] pt-2.5 dark:border-[#1b352a]">
+                    <div className="mt-3 flex items-center justify-between border-t border-[#edf2fa] pt-2.5 dark:border-[#23382d]">
                       <div className="flex items-center gap-1.5 text-xs text-[#0f9d58] dark:text-[#34d399]">
                         <Video className="h-3.5 w-3.5" />
                         <span className="font-medium">Google Meet</span>

@@ -8,7 +8,7 @@ export function getOpenRouterProvider() {
     baseURL: env.OPENROUTER_BASE_URL,
     headers: {
       'HTTP-Referer': env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-      'X-Title': 'Calendai AI Assistant',
+      'X-Title': 'Calendai',
     },
   });
 }

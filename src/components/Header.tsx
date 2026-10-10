@@ -59,11 +59,11 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md transition-colors dark:border-[#1b352a] dark:bg-[#060c09]/95">
+    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md transition-colors dark:border-[#1e3027] dark:bg-[#111915]/95">
       {/* Brand logo from public/assets/logo.png */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
-          <div className="relative flex h-8.5 w-8.5 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-white p-1 border border-[#dadce0] shadow-xs group-hover:border-[#1a73e8] transition-colors overflow-hidden shrink-0 dark:bg-[#0a1611] dark:border-[#1b352a] dark:group-hover:border-[#10b981]">
+          <div className="relative flex h-8.5 w-8.5 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-white p-1 border border-[#dadce0] shadow-xs group-hover:border-[#1a73e8] transition-colors overflow-hidden shrink-0 dark:bg-[#17241e] dark:border-[#23382d] dark:group-hover:border-[#10b981]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/logo.png"
@@ -75,11 +75,11 @@ export function Header({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <span
               id="header-app-name"
-              className="text-lg sm:text-xl font-medium tracking-tight text-[#1f1f1f] dark:text-[#e6f4ea]"
+              className="text-lg sm:text-xl font-medium tracking-tight text-[#1f1f1f] dark:text-[#f1f5f9]"
             >
               Calendai
             </span>
-            <span className="hidden rounded-full bg-[#e8f0fe] px-2.5 py-0.5 text-[11px] font-medium text-[#1967d2] sm:inline-flex items-center gap-1 dark:bg-[#0d281e] dark:text-[#34d399] dark:border dark:border-[#1b352a]/60">
+            <span className="hidden rounded-full bg-[#e8f0fe] px-2.5 py-0.5 text-[11px] font-medium text-[#1967d2] sm:inline-flex items-center gap-1 dark:bg-[#132c21] dark:text-[#34d399] dark:border dark:border-[#23382d]">
               <Sparkles className="h-3 w-3 text-[#1a73e8] dark:text-[#10b981]" />
               Trợ lý AI
             </span>
@@ -89,7 +89,7 @@ export function Header({
 
       {/* Center info: Timezone (True absolute center on large screens) */}
       <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0]/50 dark:bg-[#0d2019] dark:text-[#a7f3d0] dark:border-[#1b352a]">
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0]/50 dark:bg-[#17241e] dark:text-[#cbd5e1] dark:border-[#23382d]">
           <Globe className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
           <span>Hà Nội (GMT+7)</span>
         </div>
@@ -101,12 +101,12 @@ export function Header({
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#1b352a] dark:bg-[#0d2019] dark:text-[#a7f3d0] dark:hover:bg-[#132c22] dark:hover:text-[#34d399]"
+          className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
           title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Loki / Doom'}
           aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Loki / Doom'}
         >
           {isDark ? (
-            <Sun className="h-4 w-4 text-[#eab308] hover:rotate-45 transition-transform" />
+            <Sun className="h-4 w-4 text-[#fbbf24] hover:rotate-45 transition-transform" />
           ) : (
             <Moon className="h-4 w-4 text-[#10b981] hover:-rotate-12 transition-transform" />
           )}
@@ -117,11 +117,11 @@ export function Header({
           <button
             type="button"
             onClick={onOpenTips}
-            className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#1b352a] dark:bg-[#0d2019] dark:text-[#e6f4ea] dark:hover:bg-[#132c22] dark:hover:text-[#34d399]"
+            className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
             title="Xem mẹo đặt lịch & các tham số nâng cao"
             aria-label="Xem mẹo đặt lịch"
           >
-            <Sparkles className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#fbbc04] dark:text-[#eab308]" />
+            <Sparkles className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#fbbc04] dark:text-[#fbbf24]" />
             <span className="hidden sm:inline">Mẹo nâng cao</span>
           </button>
         )}
@@ -129,7 +129,7 @@ export function Header({
         {/* Buttons to Privacy and Terms (Desktop/Tablet only) */}
         <Link
           href="/privacy"
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#1b352a] dark:bg-[#0d2019] dark:text-[#a7f3d0] dark:hover:bg-[#132c22] dark:hover:text-[#34d399]"
+          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
           title="Chính sách quyền riêng tư"
         >
           <Shield className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
@@ -138,7 +138,7 @@ export function Header({
 
         <Link
           href="/terms"
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#1b352a] dark:bg-[#0d2019] dark:text-[#a7f3d0] dark:hover:bg-[#132c22] dark:hover:text-[#34d399]"
+          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
           title="Điều khoản dịch vụ"
         >
           <FileText className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#94a3b8]" />
@@ -148,7 +148,7 @@ export function Header({
         <button
           type="button"
           onClick={onOpenUpcoming}
-          className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#1b352a] dark:bg-[#0d2019] dark:text-[#e6f4ea] dark:hover:bg-[#132c22] dark:hover:text-[#34d399]"
+          className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
           title="Xem lịch trình sắp tới"
           aria-label="Xem lịch trình sắp tới"
         >
@@ -157,20 +157,20 @@ export function Header({
         </button>
 
         {isAuthenticated && user ? (
-          <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-[#f8fafd] py-0.5 pl-1 pr-1.5 sm:py-1 sm:pl-1.5 sm:pr-2 dark:border-[#1b352a] dark:bg-[#0a1611]">
+          <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-[#f8fafd] py-0.5 pl-1 pr-1.5 sm:py-1 sm:pl-1.5 sm:pr-2 dark:border-[#23382d] dark:bg-[#17241e]">
             {user.picture ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.picture}
                 alt={user.name}
-                className="h-6.5 w-6.5 sm:h-7 sm:w-7 rounded-full object-cover ring-1 ring-white dark:ring-[#1b352a]"
+                className="h-6.5 w-6.5 sm:h-7 sm:w-7 rounded-full object-cover ring-1 ring-white dark:ring-[#23382d]"
               />
             ) : (
               <div className="flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[#1a73e8] text-[11px] sm:text-xs font-medium text-white dark:bg-[#059669]">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <span className="hidden max-w-[100px] truncate text-xs font-medium text-[#1f1f1f] md:inline dark:text-[#e6f4ea]">
+            <span className="hidden max-w-[100px] truncate text-xs font-medium text-[#1f1f1f] md:inline dark:text-[#f1f5f9]">
               {user.name}
             </span>
             <CheckCircle2 className="h-3.5 w-3.5 text-[#34a853] shrink-0 dark:text-[#10b981]" />
@@ -179,7 +179,7 @@ export function Header({
               onClick={onLogout}
               title="Đăng xuất"
               aria-label="Đăng xuất"
-              className="ml-0.5 sm:ml-1 rounded-full p-1 text-[#5f6368] hover:bg-[#e8eaed] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#132c22] dark:hover:text-[#e6f4ea]"
+              className="ml-0.5 sm:ml-1 rounded-full p-1 text-[#5f6368] hover:bg-[#e8eaed] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#1d2f26] dark:hover:text-[#f1f5f9]"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>

@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#060c09] dark:text-[#e6f4ea]">
-      <header className="sticky top-0 z-10 border-b border-[#dadce0] bg-white/90 px-6 py-4 backdrop-blur-md dark:border-[#1b352a] dark:bg-[#060c09]/90">
+    <div className="min-h-screen bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#101714] dark:text-[#f1f5f9]">
+      <header className="sticky top-0 z-10 border-b border-[#dadce0] bg-white/90 px-6 py-4 backdrop-blur-md dark:border-[#23382d] dark:bg-[#111915]/90">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
           <Link
             href="/"
@@ -20,25 +20,25 @@ export default function PrivacyPage() {
             <span>Quay lại Calendai</span>
           </Link>
           <Link href="/" className="flex items-center gap-2">
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-[#f0f4f9] text-[#1a73e8] dark:bg-[#0a1611] dark:border dark:border-[#1b352a]">
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-[#f0f4f9] text-[#1a73e8] dark:bg-[#17241e] dark:border dark:border-[#23382d]">
               <Calendar className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
-              <div className="absolute -bottom-0.5 -right-0.5 flex gap-0.5 rounded-full bg-white p-0.5 shadow-xs dark:bg-[#0a1611]">
+              <div className="absolute -bottom-0.5 -right-0.5 flex gap-0.5 rounded-full bg-white p-0.5 shadow-xs dark:bg-[#17241e]">
                 <span className="h-1 w-1 rounded-full bg-[#4285f4]" />
                 <span className="h-1 w-1 rounded-full bg-[#ea4335]" />
                 <span className="h-1 w-1 rounded-full bg-[#fbbc04]" />
                 <span className="h-1 w-1 rounded-full bg-[#34a853]" />
               </div>
             </div>
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Calendai</span>
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Calendai</span>
           </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <div className="rounded-3xl border border-[#dadce0] bg-white p-8 shadow-xs sm:p-12 dark:border-[#1b352a] dark:bg-[#0a1611]">
+        <div className="rounded-3xl border border-[#dadce0] bg-white p-8 shadow-xs sm:p-12 dark:border-[#23382d] dark:bg-[#17241e]">
           <div className="flex items-center gap-3 text-[#1a73e8] dark:text-[#10b981]">
             <Shield className="h-8 w-8" />
-            <h1 className="text-2xl font-bold tracking-tight text-[#1f1f1f] sm:text-3xl dark:text-[#e6f4ea]">
+            <h1 className="text-2xl font-bold tracking-tight text-[#1f1f1f] sm:text-3xl dark:text-[#f1f5f9]">
               Chính Sách Quyền Riêng Tư (Privacy Policy)
             </h1>
           </div>
@@ -46,7 +46,7 @@ export default function PrivacyPage() {
             Cập nhật lần cuối: Ngày 09 tháng 10 năm 2026
           </p>
 
-          <hr className="my-6 border-[#e1e3e1] dark:border-[#1b352a]" />
+          <hr className="my-6 border-[#e1e3e1] dark:border-[#23382d]" />
 
           <section className="space-y-6 text-sm leading-relaxed text-[#3c4043]">
             <div>

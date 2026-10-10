@@ -16,13 +16,13 @@
 }
 
 .dark {
-  --background: #060c09;
-  --foreground: #e6f4ea;
+  --background: #101714;
+  --foreground: #f1f5f9;
   --google-blue: #10b981;
-  --surface: #0a1410;
-  --surface-container: #0f1d17;
-  --surface-container-high: #162a22;
-  --outline-variant: #1e382e;
+  --surface: #16221d;
+  --surface-container: #1c2b25;
+  --surface-container-high: #23362e;
+  --outline-variant: #2a4237;
 }
 
 body {
@@ -34,13 +34,12 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Loki & Doctor Doom Arcane Dark Theme Ambient Pattern */
+/* Subtle, refined dark emerald ambient lighting */
 .dark body {
-  background-color: #060c09;
+  background-color: #101714;
   background-image:
-    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(16, 185, 129, 0.12), transparent),
-    radial-gradient(circle at 90% 90%, rgba(212, 175, 55, 0.05), transparent),
-    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg stroke='%2310b981' stroke-width='0.6' stroke-opacity='0.08'%3E%3Cpath d='M30 0l30 30-30 30L0 30z'/%3E%3Ccircle cx='30' cy='30' r='8'/%3E%3Cpath d='M30 18v24M18 30h24'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    radial-gradient(ellipse 70% 35% at 50% 0%, rgba(16, 185, 129, 0.08), transparent 70%),
+    radial-gradient(circle at 85% 15%, rgba(217, 119, 6, 0.03), transparent 50%);
   background-attachment: fixed;
 }
 
@@ -60,7 +59,7 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #1b352a;
+  background: #2a4237;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -68,5 +67,5 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #254a3b;
+  background: #385849;
 }
