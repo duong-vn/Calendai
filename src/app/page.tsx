@@ -66,7 +66,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8fafd]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd]">
       {/* Toast notification snackbar */}
       {toast && (
         <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all">
@@ -105,7 +105,7 @@ export default function Home() {
       />
 
       {/* Main Chat Interface */}
-      <main className="flex-1">
+      <main className="flex-1 min-h-0 overflow-hidden">
         <ChatInterface
           isAuthenticated={isAuthenticated}
           isTipsOpen={isTipsOpen}

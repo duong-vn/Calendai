@@ -30,7 +30,7 @@ export function Header({
   onLogout,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md">
+    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md">
       {/* Brand logo from public/assets/logo.png */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">

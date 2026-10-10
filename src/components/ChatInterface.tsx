@@ -161,11 +161,11 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)] w-full overflow-hidden bg-[#f8fafd]">
+    <div className="flex h-full w-full overflow-hidden bg-[#f8fafd]">
       {/* Main Chat Stream Area */}
       <div className="flex flex-1 flex-col h-full min-w-0">
         {/* Scrollable messages container */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
           <div className="mx-auto max-w-3xl space-y-6">
             {/* Reset chat history action bar when there are messages */}
             {messages.length > 0 && (
@@ -531,7 +531,7 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar */}
-        <div className="p-4 sm:p-5 border-t border-[#f1f3f4] bg-white/60 backdrop-blur-xs">
+        <div className="shrink-0 border-t border-[#f1f3f4] bg-white/80 px-3 py-2.5 sm:p-5 backdrop-blur-xs">
           <form
             onSubmit={handleSubmit}
             className="mx-auto flex max-w-3xl items-center rounded-3xl border border-[#dadce0] bg-white px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md"
@@ -559,21 +559,23 @@ export function ChatInterface({
             </button>
           </form>
 
-          <div className="mx-auto mt-2.5 flex max-w-3xl flex-col items-center justify-between gap-1.5 text-[11px] text-[#747775] sm:flex-row">
-            <span>Calendai tự động tạo sự kiện Google Calendar & Google Meet</span>
+          <div className="mx-auto mt-2 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#747775] sm:flex-row">
+            <span className="text-center sm:text-left">
+              Calendai tự động tạo sự kiện Google Calendar & Google Meet
+            </span>
             <div className="flex items-center gap-1.5">
               <Link
                 href="/privacy"
-                className="rounded-md px-2 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
+                className="rounded-md px-1.5 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
               >
-                Chính sách quyền riêng tư
+                Chính sách
               </Link>
               <span>•</span>
               <Link
                 href="/terms"
-                className="rounded-md px-2 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
+                className="rounded-md px-1.5 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
               >
-                Điều khoản dịch vụ
+                Điều khoản
               </Link>
             </div>
           </div>
