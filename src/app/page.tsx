@@ -66,19 +66,19 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#060c09]">
       {/* Toast notification snackbar */}
       {toast && (
         <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all">
           <div
             className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-xs sm:text-sm font-medium shadow-md border ${
               toast.type === 'success'
-                ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6]'
-                : 'bg-[#fce8e6] text-[#c5221f] border-[#fad2cf]'
+                ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6] dark:bg-[#082f22] dark:text-[#a7f3d0] dark:border-[#10b981]/40'
+                : 'bg-[#fce8e6] text-[#c5221f] border-[#fad2cf] dark:bg-[#360d0d] dark:text-[#fca5a5] dark:border-[#7f1d1d]'
             }`}
           >
             {toast.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-[#1e8e3e]" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-[#1e8e3e] dark:text-[#10b981]" />
             ) : (
               <AlertCircle className="h-4 w-4 shrink-0 text-[#ea4335]" />
             )}
@@ -86,7 +86,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setToast(null)}
-              className="ml-2 rounded-full p-1 hover:bg-black/5 transition-colors"
+              className="ml-2 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             >
               <X className="h-3.5 w-3.5" />
             </button>

@@ -90,4 +90,34 @@ describe('Header Component Mobile Responsiveness & Actions', () => {
     fireEvent.click(logoutBtn);
     expect(mockLogout).toHaveBeenCalledTimes(1);
   });
+
+  it('toggles theme between light and dark, updating html class and localStorage', () => {
+    document.documentElement.classList.remove('dark');
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    render(
+      <Header
+        user={null}
+        isAuthenticated={false}
+        isConfigured={true}
+        onOpenUpcoming={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    );
+
+    const themeBtn = screen.getByLabelText(/giao diện/i);
+    expect(themeBtn).toBeInTheDocument();
+
+    // Click to switch to dark mode
+    fireEvent.click(themeBtn);
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(setItemSpy).toHaveBeenCalledWith('calendai_theme', 'dark');
+
+    // Click again to switch back to light mode
+    fireEvent.click(themeBtn);
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+    expect(setItemSpy).toHaveBeenCalledWith('calendai_theme', 'light');
+
+    setItemSpy.mockRestore();
+  });
 });

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f8fafd;
   --foreground: #1f1f1f;
@@ -13,12 +15,33 @@
   --outline-variant: #e1e3e1;
 }
 
+.dark {
+  --background: #060c09;
+  --foreground: #e6f4ea;
+  --google-blue: #10b981;
+  --surface: #0a1410;
+  --surface-container: #0f1d17;
+  --surface-container-high: #162a22;
+  --outline-variant: #1e382e;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: "Google Sans", "Plus Jakarta Sans", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Loki & Doctor Doom Arcane Dark Theme Ambient Pattern */
+.dark body {
+  background-color: #060c09;
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(16, 185, 129, 0.12), transparent),
+    radial-gradient(circle at 90% 90%, rgba(212, 175, 55, 0.05), transparent),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg stroke='%2310b981' stroke-width='0.6' stroke-opacity='0.08'%3E%3Cpath d='M30 0l30 30-30 30L0 30z'/%3E%3Ccircle cx='30' cy='30' r='8'/%3E%3Cpath d='M30 18v24M18 30h24'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed;
 }
 
 /* Custom sleek scrollbar */
@@ -36,6 +59,14 @@ body {
   border-radius: 9999px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #1b352a;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #bdc1c6;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #254a3b;
 }

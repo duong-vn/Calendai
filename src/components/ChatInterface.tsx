@@ -161,7 +161,7 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[#f8fafd]">
+    <div className="flex h-full w-full overflow-hidden bg-[#f8fafd] dark:bg-[#060c09]/90">
       {/* Main Chat Stream Area */}
       <div className="flex flex-1 flex-col h-full min-w-0">
         {/* Scrollable messages container */}
@@ -173,7 +173,7 @@ export function ChatInterface({
                 <button
                   type="button"
                   onClick={handleClearChat}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#0f231b] dark:hover:text-[#34d399]"
                   title="Bắt đầu cuộc trò chuyện mới"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -185,17 +185,17 @@ export function ChatInterface({
             {/* Gemini-inspired Welcome Hero when empty */}
             {messages.length === 0 && (
               <div className="my-8 flex flex-col items-start justify-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-xs border border-[#dadce0] mb-5">
-                  <Sparkles className="h-6 w-6 text-[#1a73e8]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-xs border border-[#dadce0] mb-5 dark:bg-[#0a1611] dark:border-[#1b352a]">
+                  <Sparkles className="h-6 w-6 text-[#1a73e8] dark:text-[#10b981]" />
                 </div>
 
                 <h1
                   id="app-name"
-                  className="text-3xl font-medium tracking-tight text-[#1f1f1f] sm:text-4xl"
+                  className="text-3xl font-medium tracking-tight text-[#1f1f1f] dark:text-[#e6f4ea] sm:text-4xl"
                 >
                   Calendai
                 </h1>
-                <p className="mt-1 text-2xl font-normal text-[#5f6368] sm:text-3xl">
+                <p className="mt-1 text-2xl font-normal text-[#5f6368] dark:text-[#94a3b8] sm:text-3xl">
                   Tôi có thể giúp bạn lên lịch cuộc họp nào hôm nay?
                 </p>
 
@@ -206,17 +206,17 @@ export function ChatInterface({
                       key={item.title}
                       type="button"
                       onClick={() => handlePromptClick(item.prompt)}
-                      className="flex flex-col justify-between rounded-2xl border border-[#dadce0] bg-white p-4 text-left shadow-2xs transition-all hover:bg-[#f8fafd] hover:border-[#1a73e8] hover:shadow-xs"
+                      className="flex flex-col justify-between rounded-2xl border border-[#dadce0] bg-white p-4 text-left shadow-2xs transition-all hover:bg-[#f8fafd] hover:border-[#1a73e8] hover:shadow-xs dark:border-[#1b352a] dark:bg-[#0a1611]/90 dark:hover:bg-[#0f231b] dark:hover:border-[#10b981]"
                     >
                       <div>
-                        <span className="text-sm font-medium text-[#1f1f1f]">
+                        <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#e6f4ea]">
                           {item.title}
                         </span>
-                        <p className="mt-1 text-xs text-[#5f6368] line-clamp-2">
+                        <p className="mt-1 text-xs text-[#5f6368] dark:text-[#94a3b8] line-clamp-2">
                           {item.desc}
                         </p>
                       </div>
-                      <div className="mt-4 flex items-center justify-end text-[#1a73e8]">
+                      <div className="mt-4 flex items-center justify-end text-[#1a73e8] dark:text-[#10b981]">
                         <ArrowUp className="h-4 w-4 rotate-45" />
                       </div>
                     </button>
@@ -250,8 +250,8 @@ export function ChatInterface({
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
                       isUser
-                        ? 'bg-[#1a73e8] text-white shadow-xs'
-                        : 'bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs'
+                        ? 'bg-[#1a73e8] text-white shadow-xs dark:bg-[#059669]'
+                        : 'bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-[#0a1611] dark:border-[#1b352a] dark:text-[#10b981]'
                     }`}
                   >
                     {isUser ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
@@ -261,8 +261,8 @@ export function ChatInterface({
                   <div
                     className={`max-w-[85%] sm:max-w-[78%] space-y-2.5 ${
                       isUser
-                        ? 'rounded-2xl rounded-tr-xs bg-[#e8f0fe] px-4 py-3 text-sm text-[#1f1f1f] border border-[#d2e3fc]'
-                        : 'rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs'
+                        ? 'rounded-2xl rounded-tr-xs bg-[#e8f0fe] px-4 py-3 text-sm text-[#1f1f1f] border border-[#d2e3fc] dark:bg-[#083325] dark:text-[#ecfdf5] dark:border-[#10b981]/40'
+                        : 'rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#0a1611] dark:text-[#e6f4ea] dark:border-[#1b352a]'
                     }`}
                   >
                     {message.content && (
@@ -274,7 +274,7 @@ export function ChatInterface({
                               <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
                             ),
                             strong: ({ children }) => (
-                              <strong className="font-semibold text-[#1f1f1f]">
+                              <strong className="font-semibold text-[#1f1f1f] dark:text-[#fef08a]">
                                 {children}
                               </strong>
                             ),
@@ -299,13 +299,13 @@ export function ChatInterface({
                                 href={href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[#1a73e8] underline hover:text-[#1557b0]"
+                                className="text-[#1a73e8] underline hover:text-[#1557b0] dark:text-[#34d399] dark:hover:text-[#6ee7b7]"
                               >
                                 {children}
                               </a>
                             ),
                             code: ({ children }) => (
-                              <code className="rounded bg-[#f0f4f9] px-1.5 py-0.5 text-xs text-[#1a73e8] font-mono">
+                              <code className="rounded bg-[#f0f4f9] px-1.5 py-0.5 text-xs text-[#1a73e8] font-mono dark:bg-[#132a20] dark:text-[#34d399]">
                                 {children}
                               </code>
                             ),
@@ -319,18 +319,18 @@ export function ChatInterface({
                     {/* Empty Assistant State: only show thinking while loading, or retry if real error */}
                     {isEmptyAssistant && (
                       isLoading && isLast ? (
-                        <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368]">
+                        <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
                           <span className="flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s] dark:bg-[#10b981]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s] dark:bg-[#10b981]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce dark:bg-[#10b981]" />
                           </span>
-                          <span className="font-medium text-[#444746]">
+                          <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
                             Calendai đang suy nghĩ...
                           </span>
                         </div>
                       ) : error && isLast ? (
-                        <div className="flex items-center justify-between gap-3 text-xs text-[#5f6368]">
+                        <div className="flex items-center justify-between gap-3 text-xs text-[#5f6368] dark:text-[#94a3b8]">
                           <div className="flex items-center gap-1.5">
                             <AlertCircle className="h-3.5 w-3.5 text-[#ea4335] shrink-0" />
                             <span>Chưa nhận được phản hồi từ trợ lý AI.</span>
@@ -338,7 +338,7 @@ export function ChatInterface({
                           <button
                             type="button"
                             onClick={() => reload()}
-                            className="font-medium text-[#1a73e8] hover:underline shrink-0"
+                            className="font-medium text-[#1a73e8] hover:underline shrink-0 dark:text-[#34d399]"
                           >
                             Thử lại
                           </button>
@@ -489,17 +489,17 @@ export function ChatInterface({
             {/* Pending assistant thinking state right after user submits message */}
             {isLoading && messages[messages.length - 1]?.role === 'user' && (
               <div className="flex items-start gap-3 flex-row">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs">
-                  <Sparkles className="h-4 w-4 text-[#1a73e8]" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-[#0a1611] dark:border-[#1b352a] dark:text-[#10b981]">
+                  <Sparkles className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
                 </div>
-                <div className="max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs">
-                  <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368]">
+                <div className="max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#0a1611] dark:text-[#e6f4ea] dark:border-[#1b352a]">
+                  <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
                     <span className="flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s] dark:bg-[#10b981]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s] dark:bg-[#10b981]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce dark:bg-[#10b981]" />
                     </span>
-                    <span className="font-medium text-[#444746]">
+                    <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
                       Calendai đang suy nghĩ...
                     </span>
                   </div>
@@ -509,7 +509,7 @@ export function ChatInterface({
 
             {/* Error Banner */}
             {error && (
-              <div className="flex items-center justify-between rounded-2xl border border-[#fad2cf] bg-[#fce8e6] p-3.5 text-xs text-[#c5221f]">
+              <div className="flex items-center justify-between rounded-2xl border border-[#fad2cf] bg-[#fce8e6] p-3.5 text-xs text-[#c5221f] dark:border-[#7f1d1d] dark:bg-[#360d0d] dark:text-[#fca5a5]">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0 text-[#ea4335]" />
                   <span>
@@ -519,7 +519,7 @@ export function ChatInterface({
                 <button
                   type="button"
                   onClick={() => reload()}
-                  className="font-medium text-[#c5221f] underline hover:no-underline"
+                  className="font-medium text-[#c5221f] underline hover:no-underline dark:text-[#fca5a5]"
                 >
                   Thử lại
                 </button>
@@ -531,10 +531,10 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar */}
-        <div className="shrink-0 border-t border-[#f1f3f4] bg-white/80 px-3 py-2.5 sm:p-5 backdrop-blur-xs">
+        <div className="shrink-0 border-t border-[#f1f3f4] bg-white/80 px-3 py-2.5 sm:p-5 backdrop-blur-xs dark:border-[#1b352a] dark:bg-[#060c09]/90">
           <form
             onSubmit={handleSubmit}
-            className="mx-auto flex max-w-3xl items-center rounded-3xl border border-[#dadce0] bg-white px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md"
+            className="mx-auto flex max-w-3xl items-center rounded-3xl border border-[#dadce0] bg-white px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md dark:border-[#1b352a] dark:bg-[#0a1611] dark:focus-within:border-[#10b981]"
           >
             <input
               ref={inputRef}
@@ -543,13 +543,13 @@ export function ChatInterface({
               onChange={handleInputChange}
               placeholder="Đặt lịch họp (VD: Họp dự án sáng mai 9h có Meet...)"
               disabled={isLoading}
-              className="flex-1 bg-transparent py-2 text-sm text-[#1f1f1f] placeholder:text-[#747775] focus:outline-hidden disabled:opacity-50"
+              className="flex-1 bg-transparent py-2 text-sm text-[#1f1f1f] placeholder:text-[#747775] focus:outline-hidden disabled:opacity-50 dark:text-[#e6f4ea] dark:placeholder:text-[#6ee7b7]/40"
             />
 
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1a73e8] text-white transition-colors hover:bg-[#1557b0] disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1a73e8] text-white transition-colors hover:bg-[#1557b0] disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed dark:bg-[#059669] dark:hover:bg-[#047857] dark:disabled:bg-[#1b352a] dark:disabled:text-[#4b5563]"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -559,21 +559,21 @@ export function ChatInterface({
             </button>
           </form>
 
-          <div className="mx-auto mt-2 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#747775] sm:flex-row">
+          <div className="mx-auto mt-2 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#747775] sm:flex-row dark:text-[#94a3b8]">
             <span className="text-center sm:text-left">
               Calendai tự động tạo sự kiện Google Calendar & Google Meet
             </span>
             <div className="flex items-center gap-1.5">
               <Link
                 href="/privacy"
-                className="rounded-md px-1.5 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
+                className="rounded-md px-1.5 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors dark:text-[#a7f3d0] dark:hover:bg-[#132c22] dark:hover:text-[#34d399]"
               >
                 Chính sách
               </Link>
               <span>•</span>
               <Link
                 href="/terms"
-                className="rounded-md px-1.5 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors"
+                className="rounded-md px-1.5 py-0.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors dark:text-[#a7f3d0] dark:hover:bg-[#132c22] dark:hover:text-[#34d399]"
               >
                 Điều khoản
               </Link>
@@ -584,7 +584,7 @@ export function ChatInterface({
 
       {/* Desktop Right Sidenote Sidebar (Slide in when isTipsOpen is true) */}
       {isTipsOpen && (
-        <aside className="hidden lg:flex w-84 xl:w-92 flex-col border-l border-[#dadce0] bg-white h-full overflow-y-auto p-5 shrink-0 animate-in slide-in-from-right duration-200">
+        <aside className="hidden lg:flex w-84 xl:w-92 flex-col border-l border-[#dadce0] bg-white h-full overflow-y-auto p-5 shrink-0 animate-in slide-in-from-right duration-200 dark:border-[#1b352a] dark:bg-[#060c09]">
           <Sidenote
             onUsePrompt={handlePromptClick}
             onClearChat={handleClearChat}
@@ -597,7 +597,7 @@ export function ChatInterface({
       {/* Mobile Sidenote Modal / Drawer */}
       {isTipsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs lg:hidden animate-in fade-in duration-150">
-          <div className="flex h-full max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white p-5 shadow-2xl overflow-y-auto">
+          <div className="flex h-full max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white p-5 shadow-2xl overflow-y-auto dark:bg-[#0a1611] dark:border dark:border-[#1b352a]">
             <Sidenote
               onUsePrompt={(prompt) => {
                 handlePromptClick(prompt);

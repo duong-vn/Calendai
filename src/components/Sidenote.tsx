@@ -44,16 +44,16 @@ export function Sidenote({
   };
 
   return (
-    <div className="flex h-full flex-col space-y-5 text-sm text-[#3c4043]">
+    <div className="flex h-full flex-col space-y-5 text-sm text-[#3c4043] dark:text-[#94a3b8]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#f1f3f4] pb-3">
+      <div className="flex items-center justify-between border-b border-[#f1f3f4] dark:border-[#1b352a] pb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#e8f0fe] text-[#1a73e8]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#0a271c] dark:text-[#10b981]">
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="font-medium text-[#1f1f1f]">Khả Năng Của AI</h3>
-            <p className="text-[11px] text-[#747775]">Hướng dẫn & tham số hỗ trợ</p>
+            <h3 className="font-medium text-[#1f1f1f] dark:text-[#e6f4ea]">Khả Năng Của AI</h3>
+            <p className="text-[11px] text-[#747775] dark:text-[#94a3b8]">Hướng dẫn & tham số hỗ trợ</p>
           </div>
         </div>
 
@@ -61,7 +61,7 @@ export function Sidenote({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors"
+            className="rounded-full p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#132c22] dark:hover:text-[#e6f4ea]"
             title="Đóng bảng hướng dẫn"
           >
             <X className="h-4 w-4" />
@@ -74,7 +74,7 @@ export function Sidenote({
         <button
           type="button"
           onClick={onClearChat}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white py-2 px-3 text-xs font-medium text-[#1a73e8] shadow-2xs transition-colors hover:bg-[#f8fafd]"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white py-2 px-3 text-xs font-medium text-[#1a73e8] shadow-2xs transition-colors hover:bg-[#f8fafd] dark:border-[#1b352a] dark:bg-[#0d2019] dark:text-[#34d399] dark:hover:bg-[#11271e]"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" />
           <span>Bắt đầu cuộc trò chuyện mới</span>
@@ -83,38 +83,38 @@ export function Sidenote({
 
       {/* What AI can do */}
       <div className="space-y-2.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775]">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775] dark:text-[#6ee7b7]">
           Những gì AI có thể làm
         </span>
         <ul className="space-y-2 text-xs">
           <li className="flex items-start gap-2">
-            <Calendar className="h-3.5 w-3.5 text-[#1a73e8] shrink-0 mt-0.5" />
+            <Calendar className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981] shrink-0 mt-0.5" />
             <span>
-              <strong>Lên lịch thông minh</strong>: Tự suy luận ngày giờ tiếng Việt (sáng mai, chiều thứ 6 tuần tới, 30 phút nữa).
+              <strong className="text-[#1f1f1f] dark:text-[#e6f4ea]">Lên lịch thông minh</strong>: Tự suy luận ngày giờ tiếng Việt (sáng mai, chiều thứ 6 tuần tới, 30 phút nữa).
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Users className="h-3.5 w-3.5 text-[#1a73e8] shrink-0 mt-0.5" />
+            <Users className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981] shrink-0 mt-0.5" />
             <span>
-              <strong>Thêm khách mời</strong>: Tự trích xuất email mời tham gia sự kiện.
+              <strong className="text-[#1f1f1f] dark:text-[#e6f4ea]">Thêm khách mời</strong>: Tự trích xuất email mời tham gia sự kiện.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Video className="h-3.5 w-3.5 text-[#00897b] shrink-0 mt-0.5" />
+            <Video className="h-3.5 w-3.5 text-[#00897b] dark:text-[#2dd4bf] shrink-0 mt-0.5" />
             <span>
-              <strong>Tùy chọn Google Meet</strong>: Chỉ tạo link Meet khi bạn yêu cầu (mặc định tắt nếu không nhắc đến Meet).
+              <strong className="text-[#1f1f1f] dark:text-[#e6f4ea]">Tùy chọn Google Meet</strong>: Chỉ tạo link Meet khi bạn yêu cầu (mặc định tắt nếu không nhắc đến Meet).
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Clock className="h-3.5 w-3.5 text-[#1a73e8] shrink-0 mt-0.5" />
+            <Clock className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981] shrink-0 mt-0.5" />
             <span>
-              <strong>Tra cứu lịch trình</strong>: Xem các cuộc họp sắp tới trên Google Calendar.
+              <strong className="text-[#1f1f1f] dark:text-[#e6f4ea]">Tra cứu lịch trình</strong>: Xem các cuộc họp sắp tới trên Google Calendar.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <CheckCircle2 className="h-3.5 w-3.5 text-[#34a853] shrink-0 mt-0.5" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-[#34a853] dark:text-[#10b981] shrink-0 mt-0.5" />
             <span>
-              <strong>Xác nhận an toàn</strong>: Luôn hiển thị bản xem trước để bạn xác nhận trước khi lưu lên Google.
+              <strong className="text-[#1f1f1f] dark:text-[#e6f4ea]">Xác nhận an toàn</strong>: Luôn hiển thị bản xem trước để bạn xác nhận trước khi lưu lên Google.
             </span>
           </li>
         </ul>
@@ -122,42 +122,42 @@ export function Sidenote({
 
       {/* Supported Parameters */}
       <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775]">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775] dark:text-[#6ee7b7]">
           Các tham số khi tạo sự kiện
         </span>
         <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-          <div className="rounded-lg bg-[#f0f4f9] p-2">
-            <span className="font-semibold text-[#1f1f1f]">Tiêu đề:</span> Tên/chủ đề cuộc họp
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0d2019] dark:border dark:border-[#1b352a]/50">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Tiêu đề:</span> Tên/chủ đề cuộc họp
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2">
-            <span className="font-semibold text-[#1f1f1f]">Thời gian:</span> Ngày & giờ bắt đầu, kết thúc
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0d2019] dark:border dark:border-[#1b352a]/50">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Thời gian:</span> Ngày & giờ bắt đầu, kết thúc
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2">
-            <span className="font-semibold text-[#1f1f1f]">Khách mời:</span> Email người tham gia
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0d2019] dark:border dark:border-[#1b352a]/50">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Khách mời:</span> Email người tham gia
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2">
-            <span className="font-semibold text-[#1f1f1f]">Mô tả:</span> Nội dung, ghi chú họp
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0d2019] dark:border dark:border-[#1b352a]/50">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Mô tả:</span> Nội dung, ghi chú họp
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2">
-            <span className="font-semibold text-[#1f1f1f]">Google Meet:</span> Bật/Tắt họp online
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0d2019] dark:border dark:border-[#1b352a]/50">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Google Meet:</span> Bật/Tắt họp online
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2">
-            <span className="font-semibold text-[#1f1f1f]">Múi giờ:</span> Mặc định GMT+7 (Hà Nội)
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0d2019] dark:border dark:border-[#1b352a]/50">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Múi giờ:</span> Mặc định GMT+7 (Hà Nội)
           </div>
         </div>
       </div>
 
       {/* Comprehensive Prompt Example */}
-      <div className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-3.5 space-y-2.5">
+      <div className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-3.5 space-y-2.5 dark:border-[#1b352a] dark:bg-[#0a1611]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1f1f1f]">
-            <Info className="h-3.5 w-3.5 text-[#1a73e8]" />
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">
+            <Info className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
             <span>Ví dụ prompt đầy đủ tham số</span>
           </div>
           <button
             type="button"
             onClick={handleCopyPrompt}
-            className="flex items-center gap-1 text-[11px] font-medium text-[#1a73e8] hover:underline"
+            className="flex items-center gap-1 text-[11px] font-medium text-[#1a73e8] hover:underline dark:text-[#34d399]"
             title="Sao chép prompt"
           >
             <Copy className="h-3 w-3" />
@@ -165,31 +165,31 @@ export function Sidenote({
           </button>
         </div>
 
-        <p className="rounded-xl bg-white p-2.5 text-xs text-[#1f1f1f] leading-relaxed border border-[#edf2fa] italic">
+        <p className="rounded-xl bg-white p-2.5 text-xs text-[#1f1f1f] leading-relaxed border border-[#edf2fa] italic dark:bg-[#0f231b] dark:text-[#ecfdf5] dark:border-[#1b352a]">
           &quot;{FULL_PROMPT_EXAMPLE}&quot;
         </p>
 
         <button
           type="button"
           onClick={() => onUsePrompt(FULL_PROMPT_EXAMPLE)}
-          className="w-full rounded-xl bg-[#1a73e8] py-2 text-xs font-medium text-white shadow-2xs transition-colors hover:bg-[#1557b0]"
+          className="w-full rounded-xl bg-[#1a73e8] py-2 text-xs font-medium text-white shadow-2xs transition-colors hover:bg-[#1557b0] dark:bg-[#059669] dark:hover:bg-[#047857]"
         >
           Dùng câu lệnh mẫu này
         </button>
       </div>
 
       {/* Footer legal links */}
-      <div className="pt-2 border-t border-[#f1f3f4] flex items-center justify-center gap-2 text-[11px] text-[#747775]">
+      <div className="pt-2 border-t border-[#f1f3f4] dark:border-[#1b352a] flex items-center justify-center gap-2 text-[11px] text-[#747775] dark:text-[#94a3b8]">
         <Link
           href="/privacy"
-          className="hover:text-[#1a73e8] transition-colors"
+          className="hover:text-[#1a73e8] dark:hover:text-[#34d399] transition-colors"
         >
           Chính sách quyền riêng tư
         </Link>
         <span>•</span>
         <Link
           href="/terms"
-          className="hover:text-[#1a73e8] transition-colors"
+          className="hover:text-[#1a73e8] dark:hover:text-[#34d399] transition-colors"
         >
           Điều khoản dịch vụ
         </Link>

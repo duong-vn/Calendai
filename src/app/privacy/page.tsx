@@ -9,44 +9,44 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#f8fafd] text-[#1f1f1f]">
-      <header className="sticky top-0 z-10 border-b border-[#dadce0] bg-white/90 px-6 py-4 backdrop-blur-md">
+    <div className="min-h-screen bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#060c09] dark:text-[#e6f4ea]">
+      <header className="sticky top-0 z-10 border-b border-[#dadce0] bg-white/90 px-6 py-4 backdrop-blur-md dark:border-[#1b352a] dark:bg-[#060c09]/90">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-2 text-sm font-medium text-[#1a73e8] hover:underline"
+            className="flex items-center gap-2 text-sm font-medium text-[#1a73e8] hover:underline dark:text-[#10b981]"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Quay lại Calendai</span>
           </Link>
           <Link href="/" className="flex items-center gap-2">
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-[#f0f4f9] text-[#1a73e8]">
-              <Calendar className="h-4 w-4 text-[#1a73e8]" />
-              <div className="absolute -bottom-0.5 -right-0.5 flex gap-0.5 rounded-full bg-white p-0.5 shadow-xs">
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-[#f0f4f9] text-[#1a73e8] dark:bg-[#0a1611] dark:border dark:border-[#1b352a]">
+              <Calendar className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
+              <div className="absolute -bottom-0.5 -right-0.5 flex gap-0.5 rounded-full bg-white p-0.5 shadow-xs dark:bg-[#0a1611]">
                 <span className="h-1 w-1 rounded-full bg-[#4285f4]" />
                 <span className="h-1 w-1 rounded-full bg-[#ea4335]" />
                 <span className="h-1 w-1 rounded-full bg-[#fbbc04]" />
                 <span className="h-1 w-1 rounded-full bg-[#34a853]" />
               </div>
             </div>
-            <span className="font-semibold text-[#1f1f1f]">Calendai</span>
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#e6f4ea]">Calendai</span>
           </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <div className="rounded-3xl border border-[#dadce0] bg-white p-8 shadow-xs sm:p-12">
-          <div className="flex items-center gap-3 text-[#1a73e8]">
+        <div className="rounded-3xl border border-[#dadce0] bg-white p-8 shadow-xs sm:p-12 dark:border-[#1b352a] dark:bg-[#0a1611]">
+          <div className="flex items-center gap-3 text-[#1a73e8] dark:text-[#10b981]">
             <Shield className="h-8 w-8" />
-            <h1 className="text-2xl font-bold tracking-tight text-[#1f1f1f] sm:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-[#1f1f1f] sm:text-3xl dark:text-[#e6f4ea]">
               Chính Sách Quyền Riêng Tư (Privacy Policy)
             </h1>
           </div>
-          <p className="mt-2 text-xs text-[#5f6368]">
+          <p className="mt-2 text-xs text-[#5f6368] dark:text-[#94a3b8]">
             Cập nhật lần cuối: Ngày 09 tháng 10 năm 2026
           </p>
 
-          <hr className="my-6 border-[#e1e3e1]" />
+          <hr className="my-6 border-[#e1e3e1] dark:border-[#1b352a]" />
 
           <section className="space-y-6 text-sm leading-relaxed text-[#3c4043]">
             <div>
