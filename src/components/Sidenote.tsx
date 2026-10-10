@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Calendar,
   CheckCircle2,
@@ -175,6 +176,23 @@ export function Sidenote({
         >
           Dùng câu lệnh mẫu này
         </button>
+      </div>
+
+      {/* Footer legal links */}
+      <div className="pt-2 border-t border-[#f1f3f4] flex items-center justify-center gap-2 text-[11px] text-[#747775]">
+        <Link
+          href="/privacy"
+          className="hover:text-[#1a73e8] transition-colors"
+        >
+          Chính sách quyền riêng tư
+        </Link>
+        <span>•</span>
+        <Link
+          href="/terms"
+          className="hover:text-[#1a73e8] transition-colors"
+        >
+          Điều khoản dịch vụ
+        </Link>
       </div>
     </div>
   );

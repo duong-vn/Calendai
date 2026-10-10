@@ -24,7 +24,6 @@ Calendai là ứng dụng web trợ lý lịch trình AI ưu tiên tiếng Việ
 - **Framework**: Next.js 15 (App Router), React 19, TypeScript (Strict Mode).
 - **Styling**: Tailwind CSS v4, Lucide React icons.
 - **AI Integration**: Vercel AI SDK (`ai`), `@ai-sdk/openai` (`createOpenAI` adapter tương thích OpenRouter).
-- **Model**: `nvidia/nemotron-3-ultra-550b-a55b:free` qua OpenRouter.
 - **Xác thực & Mã hóa**: Google OAuth 2.0, `jose` (Web Crypto JWE AES-256-GCM).
 - **Calendar API**: Google Calendar REST API v3.
 - **Kiểm thử**: Vitest, React Testing Library, Playwright MCP.
