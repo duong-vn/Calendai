@@ -614,28 +614,22 @@ export function ChatInterface({
               onKeyDown={handleKeyDown}
               placeholder="Đặt lịch họp (VD: Họp dự án sáng mai 9h có Meet...)"
               disabled={isLoading}
-              className="flex-1 resize-none bg-transparent py-1.5 text-sm text-[#1f1f1f] placeholder:text-[#747775] focus:outline-hidden disabled:opacity-50 max-h-36 overflow-y-auto leading-relaxed dark:text-[#f1f5f9] dark:placeholder:text-[#94a3b8]"
+              className="flex-1 resize-none bg-transparent py-1.5 text-sm text-[#1f1f1f] placeholder:text-[#747775] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:opacity-50 max-h-36 overflow-y-auto leading-relaxed dark:text-[#f1f5f9] dark:placeholder:text-[#94a3b8]"
               style={{ height: 'auto' }}
             />
 
-            <div className="flex items-center mb-0.5 ml-1.5 sm:ml-2">
-              <span className="hidden sm:inline-flex items-center text-[11px] text-[#747775] dark:text-[#94a3b8] mr-2 select-none">
-                <kbd className="rounded px-1.5 py-0.5 bg-[#f0f4f9] border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d] font-mono text-[11px]">Enter ↵</kbd>
-              </span>
-
-              <button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                aria-label="Gửi tin nhắn"
-                className="flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full bg-[#1a73e8] text-white transition-all hover:bg-[#1557b0] active:scale-95 disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_16px_rgba(16,185,129,0.35)] dark:disabled:from-[#1c2e26] dark:disabled:to-[#1c2e26] dark:disabled:shadow-none dark:disabled:text-[#475569]"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              aria-label="Gửi tin nhắn"
+              className="flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full bg-[#1a73e8] text-white transition-all hover:bg-[#1557b0] active:scale-95 disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed mb-0.5 ml-1.5 sm:ml-2 dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_16px_rgba(16,185,129,0.35)] dark:disabled:from-[#1c2e26] dark:disabled:to-[#1c2e26] dark:disabled:shadow-none dark:disabled:text-[#475569]"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowUp className="h-4 w-4" />
+              )}
+            </button>
           </form>
 
           <div className="mx-auto mt-2 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#747775] sm:flex-row dark:text-[#94a3b8]">

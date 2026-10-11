@@ -42,9 +42,18 @@
 textarea,
 input {
   caret-color: var(--google-blue);
+  outline: none;
 }
 
-:focus-visible {
+textarea:focus,
+textarea:focus-visible,
+input:focus,
+input:focus-visible {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible {
   outline: 2px solid var(--google-blue);
   outline-offset: 2px;
 }
