@@ -62,11 +62,11 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#dadce0]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#23382d] dark:bg-[#111915]/95">
+    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#dadce0]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#23382d] dark:bg-[#0c120f]/95">
       {/* Brand logo from public/assets/logo.png */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
-          <div className="relative flex h-8.5 w-8.5 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-white p-1 border border-[#dadce0] shadow-2xs group-hover:border-[#1a73e8] transition-all overflow-hidden shrink-0 dark:bg-[#17241e] dark:border-[#23382d] dark:group-hover:border-[#10b981]">
+          <div className="relative flex h-8.5 w-8.5 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-white p-1 border border-[#dadce0] shadow-2xs group-hover:border-[#1a73e8] transition-all overflow-hidden shrink-0 dark:bg-gradient-to-br dark:from-[#192f25] dark:to-[#111e18] dark:border-[#23382d] dark:group-hover:border-[#10b981] dark:group-hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/logo.png"
@@ -82,8 +82,8 @@ export function Header({
             >
               Calendai
             </span>
-            <span className="hidden rounded-full bg-[#e8f0fe] px-2.5 py-0.5 text-[11px] font-medium text-[#1967d2] sm:inline-flex items-center gap-1 dark:bg-[#132c21] dark:text-[#34d399] dark:border dark:border-[#23382d]">
-              <Sparkles className="h-3 w-3 text-[#1a73e8] dark:text-[#10b981]" />
+            <span className="hidden rounded-full bg-[#e8f0fe] px-2.5 py-0.5 text-[11px] font-medium text-[#1967d2] sm:inline-flex items-center gap-1 dark:bg-gradient-to-r dark:from-[#0d2a1e] dark:to-[#123829] dark:text-[#34d399] dark:border dark:border-[#10b981]/30">
+              <Sparkles className="h-3 w-3 text-[#1a73e8] dark:text-[#34d399]" />
               Trợ lý AI
             </span>
           </div>
@@ -92,8 +92,8 @@ export function Header({
 
       {/* Center info: Timezone (True absolute center on large screens) */}
       <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:border-[#23382d]">
-          <Globe className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0] dark:bg-[#13231c] dark:text-[#cbd5e1] dark:border-[#23382d]">
+          <Globe className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#38bdf8]" />
           <span>Hà Nội (GMT+7)</span>
         </div>
       </div>
@@ -173,7 +173,7 @@ export function Header({
         )}
 
         {isAuthenticated && user ? (
-          <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-[#f8fafd] py-0.5 pl-1 pr-1.5 sm:py-1 sm:pl-1.5 sm:pr-2 dark:border-[#23382d] dark:bg-[#17241e]">
+          <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-[#f8fafd] py-0.5 pl-1 pr-1.5 sm:py-1 sm:pl-1.5 sm:pr-2 dark:border-[#23382d] dark:bg-gradient-to-r dark:from-[#13231c] dark:to-[#182c23]">
             {user.picture ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -182,7 +182,7 @@ export function Header({
                 className="h-6.5 w-6.5 sm:h-7 sm:w-7 rounded-full object-cover ring-1 ring-white dark:ring-[#23382d]"
               />
             ) : (
-              <div className="flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[#1a73e8] text-[11px] sm:text-xs font-medium text-white dark:bg-[#059669]">
+              <div className="flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[#1a73e8] text-[11px] sm:text-xs font-medium text-white dark:bg-gradient-to-br dark:from-[#059669] dark:to-[#10b981]">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -203,7 +203,7 @@ export function Header({
         ) : (
           <a
             href="/api/auth/google"
-            className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#1a73e8] px-2.5 py-1.5 text-xs font-medium text-white shadow-xs transition-all hover:bg-[#1557b0] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:px-4 dark:bg-[#059669] dark:hover:bg-[#047857] dark:focus-visible:ring-[#10b981]"
+            className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#1a73e8] px-2.5 py-1.5 text-xs font-medium text-white shadow-xs transition-all hover:bg-[#1557b0] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:px-4 dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_14px_rgba(16,185,129,0.25)] dark:focus-visible:ring-[#10b981]"
           >
             {/* Google G icon */}
             <svg className="h-4 w-4 bg-white rounded-full p-0.5 shrink-0" viewBox="0 0 24 24">

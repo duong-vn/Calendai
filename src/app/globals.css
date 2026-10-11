@@ -58,12 +58,14 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Subtle, refined dark emerald ambient lighting */
+/* Multi-chromatic dark ambient lighting: Arcane Emerald, Celestial Cyan & Solar Gold */
 .dark body {
-  background-color: #101714;
+  background-color: #0c120f;
   background-image:
-    radial-gradient(ellipse 70% 35% at 50% 0%, rgba(16, 185, 129, 0.08), transparent 70%),
-    radial-gradient(circle at 85% 15%, rgba(217, 119, 6, 0.03), transparent 50%);
+    radial-gradient(ellipse 80% 45% at 50% -10%, rgba(16, 185, 129, 0.14), transparent 70%),
+    radial-gradient(circle 500px at 90% 15%, rgba(251, 191, 36, 0.05), transparent 60%),
+    radial-gradient(circle 600px at 10% 85%, rgba(56, 189, 248, 0.06), transparent 60%),
+    radial-gradient(circle 450px at 85% 75%, rgba(167, 139, 250, 0.04), transparent 60%);
   background-attachment: fixed;
 }
 

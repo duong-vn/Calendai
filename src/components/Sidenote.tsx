@@ -123,33 +123,33 @@ export function Sidenote({
 
       {/* Supported Parameters */}
       <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775] dark:text-[#a7f3d0]">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775] dark:text-[#34d399]">
           Các tham số khi tạo sự kiện
         </span>
         <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#17241e] dark:border dark:border-[#23382d]">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Tiêu đề:</span> Tên/chủ đề cuộc họp
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#12231b] dark:border dark:border-[#10b981]/25">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#34d399]">Tiêu đề:</span> Tên/chủ đề cuộc họp
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#17241e] dark:border dark:border-[#23382d]">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Thời gian:</span> Ngày & giờ bắt đầu, kết thúc
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#10222a] dark:border dark:border-[#38bdf8]/25">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#38bdf8]">Thời gian:</span> Ngày & giờ bắt đầu, kết thúc
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#17241e] dark:border dark:border-[#23382d]">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Khách mời:</span> Email người tham gia
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#201a11] dark:border dark:border-[#fbbf24]/25">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#fbbf24]">Khách mời:</span> Email người tham gia
           </div>
           <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#17241e] dark:border dark:border-[#23382d]">
             <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Mô tả:</span> Nội dung, ghi chú họp
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#17241e] dark:border dark:border-[#23382d]">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Google Meet:</span> Bật/Tắt họp online
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0f2420] dark:border dark:border-[#2dd4bf]/25">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#2dd4bf]">Google Meet:</span> Bật/Tắt họp online
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#17241e] dark:border dark:border-[#23382d]">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Múi giờ:</span> Mặc định GMT+7 (Hà Nội)
+          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#1c1827] dark:border dark:border-[#a78bfa]/25">
+            <span className="font-semibold text-[#1f1f1f] dark:text-[#a78bfa]">Múi giờ:</span> Mặc định GMT+7 (Hà Nội)
           </div>
         </div>
       </div>
 
       {/* Comprehensive Prompt Example */}
-      <div className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-3.5 space-y-2.5 dark:border-[#23382d] dark:bg-[#17241e]">
+      <div className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-3.5 space-y-2.5 dark:border-[#10b981]/30 dark:bg-gradient-to-br dark:from-[#13251e] dark:to-[#101915]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">
             <Info className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
@@ -166,14 +166,14 @@ export function Sidenote({
           </button>
         </div>
 
-        <p className="rounded-xl bg-white p-2.5 text-xs text-[#1f1f1f] leading-relaxed border border-[#edf2fa] italic dark:bg-[#121c18] dark:text-[#ecfdf5] dark:border-[#23382d]">
+        <p className="rounded-xl bg-white p-2.5 text-xs text-[#1f1f1f] leading-relaxed border border-[#edf2fa] italic dark:bg-[#0c120f] dark:text-[#ecfdf5] dark:border-[#23382d]">
           &quot;{FULL_PROMPT_EXAMPLE}&quot;
         </p>
 
         <button
           type="button"
           onClick={() => onUsePrompt(FULL_PROMPT_EXAMPLE)}
-          className="w-full min-h-[38px] touch-manipulation rounded-xl bg-[#1a73e8] py-2 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#1557b0] active:scale-[0.98] dark:bg-[#059669] dark:hover:bg-[#047857]"
+          className="w-full min-h-[38px] touch-manipulation rounded-xl bg-[#1a73e8] py-2 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#1557b0] active:scale-[0.98] dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_12px_rgba(16,185,129,0.25)]"
         >
           Dùng câu lệnh mẫu này
         </button>

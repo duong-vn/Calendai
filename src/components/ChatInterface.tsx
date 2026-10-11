@@ -30,16 +30,25 @@ const QUICK_PROMPTS = [
     title: 'Họp nhóm dự án',
     desc: 'Lúc 10h sáng mai trong 45 phút có Google Meet',
     prompt: 'Họp nhóm dự án vào 10h sáng mai trong 45 phút, có Google Meet nhé',
+    cardStyle:
+      'dark:bg-gradient-to-br dark:from-[#11261e] dark:to-[#14201a] dark:border-[#10b981]/30 hover:dark:border-[#34d399] hover:dark:shadow-[0_4px_22px_rgba(16,185,129,0.18)]',
+    arrowColor: 'dark:text-[#34d399]',
   },
   {
     title: 'Gặp gỡ đối tác',
     desc: 'partner@company.com vào 14:00 thứ 6 tuần này',
     prompt: 'Lên lịch gặp partner@company.com lúc 14:00 thứ 6 tuần này',
+    cardStyle:
+      'dark:bg-gradient-to-br dark:from-[#211a10] dark:to-[#171b16] dark:border-[#fbbf24]/30 hover:dark:border-[#fbbf24] hover:dark:shadow-[0_4px_22px_rgba(251,191,36,0.18)]',
+    arrowColor: 'dark:text-[#fbbf24]',
   },
   {
     title: 'Xem lịch trình',
     desc: 'Kiểm tra các cuộc họp sắp diễn ra',
     prompt: 'Xem các cuộc họp sắp tới của tôi',
+    cardStyle:
+      'dark:bg-gradient-to-br dark:from-[#102029] dark:to-[#11191a] dark:border-[#38bdf8]/30 hover:dark:border-[#38bdf8] hover:dark:shadow-[0_4px_22px_rgba(56,189,248,0.18)]',
+    arrowColor: 'dark:text-[#38bdf8]',
   },
 ];
 
@@ -229,8 +238,8 @@ export function ChatInterface({
             {/* Gemini-inspired Welcome Hero when empty */}
             {messages.length === 0 && (
               <div className="my-8 flex flex-col items-start justify-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-xs border border-[#dadce0] mb-5 dark:bg-[#17241e] dark:border-[#23382d]">
-                  <Sparkles className="h-6 w-6 text-[#1a73e8] dark:text-[#10b981]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-xs border border-[#dadce0] mb-5 dark:bg-gradient-to-br dark:from-[#183125] dark:to-[#12221a] dark:border-[#10b981]/40 dark:shadow-[0_0_24px_rgba(16,185,129,0.2)]">
+                  <Sparkles className="h-6 w-6 text-[#1a73e8] dark:text-[#34d399]" />
                 </div>
 
                 <h1
@@ -243,14 +252,14 @@ export function ChatInterface({
                   Tôi có thể giúp bạn lên lịch cuộc họp nào hôm nay?
                 </p>
 
-                {/* Quick suggestion cards */}
+                {/* Quick suggestion cards with distinctive chromatic shades */}
                 <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
                   {QUICK_PROMPTS.map((item) => (
                     <button
                       key={item.title}
                       type="button"
                       onClick={() => handlePromptClick(item.prompt)}
-                      className="flex flex-col justify-between rounded-2xl border border-[#dadce0] bg-white p-4 text-left shadow-2xs transition-all hover:bg-[#f8fafd] hover:border-[#1a73e8] hover:shadow-xs dark:border-[#23382d] dark:bg-[#17241e] dark:hover:bg-[#1c2e26] dark:hover:border-[#10b981]"
+                      className={`flex flex-col justify-between rounded-2xl border border-[#dadce0] bg-white p-4 text-left shadow-2xs transition-all hover:bg-[#f8fafd] hover:border-[#1a73e8] hover:shadow-xs hover:-translate-y-0.5 active:scale-[0.98] dark:border-[#23382d] ${item.cardStyle}`}
                     >
                       <div>
                         <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
@@ -260,7 +269,7 @@ export function ChatInterface({
                           {item.desc}
                         </p>
                       </div>
-                      <div className="mt-4 flex items-center justify-end text-[#1a73e8] dark:text-[#10b981]">
+                      <div className={`mt-4 flex items-center justify-end text-[#1a73e8] ${item.arrowColor}`}>
                         <ArrowUp className="h-4 w-4 rotate-45" />
                       </div>
                     </button>
@@ -294,8 +303,8 @@ export function ChatInterface({
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
                       isUser
-                        ? 'bg-[#1a73e8] text-white shadow-xs dark:bg-[#059669]'
-                        : 'bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-[#17241e] dark:border-[#23382d] dark:text-[#10b981]'
+                        ? 'bg-[#1a73e8] text-white shadow-xs dark:bg-gradient-to-br dark:from-[#059669] dark:to-[#10b981] dark:shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                        : 'bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-gradient-to-br dark:from-[#183125] dark:to-[#12221a] dark:border-[#10b981]/40 dark:text-[#34d399] dark:shadow-[0_0_12px_rgba(16,185,129,0.18)]'
                     }`}
                   >
                     {isUser ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
@@ -305,8 +314,8 @@ export function ChatInterface({
                   <div
                     className={`w-fit max-w-[85%] sm:max-w-[78%] space-y-2.5 ${
                       isUser
-                        ? 'rounded-2xl rounded-tr-xs bg-[#e8f0fe] px-4 py-3 text-sm text-[#1f1f1f] border border-[#d2e3fc] dark:bg-[#173828] dark:text-[#ecfdf5] dark:border-[#225039]'
-                        : 'rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#17241e] dark:text-[#f1f5f9] dark:border-[#23382d]'
+                        ? 'rounded-2xl rounded-tr-xs bg-[#e8f0fe] px-4 py-3 text-sm text-[#1f1f1f] border border-[#d2e3fc] dark:bg-gradient-to-br dark:from-[#0d3427] dark:to-[#124232] dark:text-[#ecfdf5] dark:border-[#10b981]/35 dark:shadow-[0_2px_12px_rgba(16,185,129,0.12)]'
+                        : 'rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#131e19]/95 dark:text-[#f1f5f9] dark:border-[#23382d] dark:shadow-xs'
                     }`}
                   >
                     {message.content && (
@@ -343,13 +352,13 @@ export function ChatInterface({
                                 href={href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[#1a73e8] underline hover:text-[#1557b0] dark:text-[#34d399] dark:hover:text-[#6ee7b7]"
+                                className="text-[#1a73e8] underline hover:text-[#1557b0] dark:text-[#38bdf8] dark:hover:text-[#7dd3fc]"
                               >
                                 {children}
                               </a>
                             ),
                             code: ({ children }) => (
-                              <code className="rounded bg-[#f0f4f9] px-1.5 py-0.5 text-xs text-[#1a73e8] font-mono dark:bg-[#1c2e26] dark:text-[#34d399]">
+                              <code className="rounded bg-[#f0f4f9] px-1.5 py-0.5 text-xs text-[#1a73e8] font-mono dark:bg-[#1c2e26] dark:text-[#34d399] dark:border dark:border-[#23382d]">
                                 {children}
                               </code>
                             ),
@@ -366,8 +375,8 @@ export function ChatInterface({
                         <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
                           <span className="flex items-center gap-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse dark:bg-[#10b981]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#10b981]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#10b981]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#38bdf8]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#fbbf24]" />
                           </span>
                           <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
                             Calendai đang suy nghĩ...
@@ -538,15 +547,15 @@ export function ChatInterface({
             {/* Pending assistant thinking state right after user submits message */}
             {isLoading && messages[messages.length - 1]?.role === 'user' && (
               <div className="flex items-start gap-3 flex-row">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-[#17241e] dark:border-[#23382d] dark:text-[#10b981]">
-                  <Sparkles className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-gradient-to-br dark:from-[#183125] dark:to-[#12221a] dark:border-[#10b981]/40 dark:text-[#34d399] dark:shadow-[0_0_12px_rgba(16,185,129,0.18)]">
+                  <Sparkles className="h-4 w-4 text-[#1a73e8] dark:text-[#34d399]" />
                 </div>
-                <div className="w-fit max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#17241e] dark:text-[#f1f5f9] dark:border-[#23382d]">
+                <div className="w-fit max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#131e19]/95 dark:text-[#f1f5f9] dark:border-[#23382d] dark:shadow-xs">
                   <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
                     <span className="flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse dark:bg-[#10b981]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#10b981]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#10b981]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#38bdf8]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#fbbf24]" />
                     </span>
                     <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
                       Calendai đang suy nghĩ...
@@ -580,10 +589,10 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar */}
-        <div className="shrink-0 border-t border-[#dadce0]/60 bg-white/90 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-5 backdrop-blur-md transition-colors dark:border-[#23382d] dark:bg-[#101714]/90">
+        <div className="shrink-0 border-t border-[#dadce0]/60 bg-white/90 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-5 backdrop-blur-md transition-colors dark:border-[#23382d] dark:bg-[#0c120f]/90">
           <form
             onSubmit={onFormSubmit}
-            className="mx-auto flex max-w-3xl items-end rounded-3xl border border-[#dadce0] bg-white px-3 sm:px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md dark:border-[#23382d] dark:bg-[#17241e] dark:focus-within:border-[#10b981]"
+            className="mx-auto flex max-w-3xl items-end rounded-3xl border border-[#dadce0] bg-white px-3 sm:px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md dark:border-[#23382d] dark:bg-gradient-to-b dark:from-[#15231c] dark:to-[#111c17] dark:focus-within:border-[#10b981] dark:focus-within:shadow-[0_0_24px_rgba(16,185,129,0.18)]"
           >
             {messages.length > 0 && (
               <button
@@ -618,7 +627,7 @@ export function ChatInterface({
                 type="submit"
                 disabled={isLoading || !input.trim()}
                 aria-label="Gửi tin nhắn"
-                className="flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full bg-[#1a73e8] text-white transition-all hover:bg-[#1557b0] active:scale-95 disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed dark:bg-[#059669] dark:hover:bg-[#047857] dark:disabled:bg-[#1c2e26] dark:disabled:text-[#475569]"
+                className="flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full bg-[#1a73e8] text-white transition-all hover:bg-[#1557b0] active:scale-95 disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_16px_rgba(16,185,129,0.35)] dark:disabled:from-[#1c2e26] dark:disabled:to-[#1c2e26] dark:disabled:shadow-none dark:disabled:text-[#475569]"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

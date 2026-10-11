@@ -128,7 +128,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
               {events.map((evt) => (
                 <div
                   key={evt.id}
-                  className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 transition-colors hover:bg-white dark:border-[#23382d] dark:bg-[#1c2e26] dark:hover:bg-[#20342b]"
+                  className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 transition-all hover:bg-white dark:border-[#23382d] dark:bg-gradient-to-r dark:from-[#13221b] dark:to-[#172b22] hover:dark:border-[#10b981]/40"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="text-sm font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
@@ -138,7 +138,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
                       href={evt.htmlLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#747775] hover:text-[#1a73e8] transition-colors dark:text-[#94a3b8] dark:hover:text-[#34d399]"
+                      className="text-[#747775] hover:text-[#1a73e8] transition-colors dark:text-[#94a3b8] dark:hover:text-[#38bdf8]"
                       title="Mở trên Google Calendar"
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -152,7 +152,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
 
                   {evt.hangoutLink && (
                     <div className="mt-3 flex items-center justify-between border-t border-[#edf2fa] pt-2.5 dark:border-[#23382d]">
-                      <div className="flex items-center gap-1.5 text-xs text-[#0f9d58] dark:text-[#34d399]">
+                      <div className="flex items-center gap-1.5 text-xs text-[#0f9d58] dark:text-[#2dd4bf]">
                         <Video className="h-3.5 w-3.5" />
                         <span className="font-medium">Google Meet</span>
                       </div>
@@ -160,7 +160,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
                         href={evt.hangoutLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-full bg-[#00897b] px-3.5 py-1 text-xs font-medium text-white hover:bg-[#00796b] transition-colors dark:bg-[#059669] dark:hover:bg-[#047857]"
+                        className="rounded-full bg-[#00897b] px-3.5 py-1 text-xs font-medium text-white hover:bg-[#00796b] transition-colors dark:bg-gradient-to-r dark:from-[#00897b] dark:to-[#059669] dark:hover:from-[#00796b] dark:hover:to-[#047857]"
                       >
                         Tham gia
                       </a>
