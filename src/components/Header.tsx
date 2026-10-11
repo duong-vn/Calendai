@@ -8,6 +8,7 @@ import {
   Globe,
   LogOut,
   Moon,
+  RotateCcw,
   Shield,
   Sparkles,
   Sun,
@@ -21,6 +22,7 @@ interface HeaderProps {
   isConfigured: boolean;
   onOpenUpcoming: () => void;
   onOpenTips?: () => void;
+  onClearSession?: () => void;
   onLogout: () => void;
 }
 
@@ -30,6 +32,7 @@ export function Header({
   isConfigured,
   onOpenUpcoming,
   onOpenTips,
+  onClearSession,
   onLogout,
 }: HeaderProps) {
   const [isDark, setIsDark] = useState(false);
@@ -156,6 +159,19 @@ export function Header({
           <span className="hidden lg:inline">Lịch trình</span>
         </button>
 
+        {onClearSession && (
+          <button
+            type="button"
+            onClick={onClearSession}
+            className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#fce8e6] hover:border-[#fad2cf] hover:text-[#c5221f] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+            title="Xóa session (Bắt đầu đoạn chat mới)"
+            aria-label="Xóa session"
+          >
+            <RotateCcw className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#5f6368] dark:text-[#94a3b8]" />
+            <span className="hidden sm:inline">Xóa session</span>
+          </button>
+        )}
+
         {isAuthenticated && user ? (
           <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-[#f8fafd] py-0.5 pl-1 pr-1.5 sm:py-1 sm:pl-1.5 sm:pr-2 dark:border-[#23382d] dark:bg-[#17241e]">
             {user.picture ? (
@@ -211,7 +227,7 @@ export function Header({
             <span className="hidden sm:inline">Kết nối Google</span>
             <span className="sm:hidden">Kết nối</span>
             {!isConfigured && (
-              <span className="rounded-full bg-[#1557b0] px-1.5 py-0.2 text-[10px] text-blue-100 dark:bg-[#047857]">
+              <span className="rounded-full bg-[#1557b0] px-1.5 py-0.2 text-[11px] text-blue-100 dark:bg-[#047857]">
                 Mock
               </span>
             )}

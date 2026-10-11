@@ -13,6 +13,7 @@ export default function Home() {
   const [isConfigured, setIsConfigured] = useState(true);
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
+  const [chatKey, setChatKey] = useState(0);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const fetchAuthStatus = async () => {
@@ -65,6 +66,20 @@ export default function Home() {
     }
   };
 
+  const handleClearSession = () => {
+    try {
+      localStorage.removeItem('calendai_chat_messages');
+      localStorage.removeItem('calendai_confirmed_events');
+    } catch {
+      // Ignored
+    }
+    setChatKey((prev) => prev + 1);
+    setToast({
+      type: 'success',
+      message: 'Đã xóa session và làm mới cuộc trò chuyện.',
+    });
+  };
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#101714]">
       {/* Toast notification snackbar */}
@@ -101,15 +116,23 @@ export default function Home() {
         isConfigured={isConfigured}
         onOpenUpcoming={() => setIsUpcomingOpen(true)}
         onOpenTips={() => setIsTipsOpen((prev) => !prev)}
+        onClearSession={handleClearSession}
         onLogout={handleLogout}
       />
 
       {/* Main Chat Interface */}
       <main className="flex-1 min-h-0 overflow-hidden">
         <ChatInterface
+          key={chatKey}
           isAuthenticated={isAuthenticated}
           isTipsOpen={isTipsOpen}
           onToggleTips={() => setIsTipsOpen((prev) => !prev)}
+          onClearSession={() => {
+            setToast({
+              type: 'success',
+              message: 'Đã xóa session và làm mới cuộc trò chuyện.',
+            });
+          }}
         />
       </main>
 

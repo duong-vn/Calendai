@@ -11,16 +11,23 @@ export const AttendeeSchema = z.object({
 });
 
 export const ProposeMeetingSchema = z.object({
-  summary: z.string().min(1, 'Tiêu đề cuộc họp không được để trống'),
+  summary: z
+    .string()
+    .min(1, 'Tiêu đề cuộc họp không được để trống')
+    .describe('Tiêu đề cuộc họp hoặc hoạt động (tự suy luận ngắn gọn từ lời người dùng nếu không có tiêu đề chính thức)'),
   description: z.string().optional().default(''),
-  startDateTime: z.string().describe('Thời gian bắt đầu dạng ISO 8601 (ví dụ: 2026-10-12T09:00:00+07:00)'),
-  endDateTime: z.string().describe('Thời gian kết thúc dạng ISO 8601 (ví dụ: 2026-10-12T10:00:00+07:00)'),
+  startDateTime: z
+    .string()
+    .describe('Thời gian bắt đầu dạng ISO 8601 có offset +07:00 (ví dụ: 2026-10-12T09:00:00+07:00)'),
+  endDateTime: z
+    .string()
+    .describe('Thời gian kết thúc dạng ISO 8601 có offset +07:00 (mặc định sau startDateTime 60 phút nếu chưa rõ thời lượng)'),
   timeZone: z.string().default('Asia/Ho_Chi_Minh'),
   attendees: z.array(AttendeeSchema).optional().default([]),
   createMeet: z
     .boolean()
     .default(false)
-    .describe('Tạo Google Meet link (chỉ bật khi người dùng yêu cầu họp online/Meet)'),
+    .describe('Tạo Google Meet link (mặc định false, chỉ bật true khi người dùng yêu cầu họp online/Meet)'),
 });
 
 export type ProposeMeetingInput = z.infer<typeof ProposeMeetingSchema>;
@@ -37,7 +44,7 @@ export function createCalendarTools(
   return {
     proposeMeeting: tool({
       description:
-        'Đề xuất tạo cuộc họp và hiển thị Thẻ xem trước (Preview Card) để người dùng xác nhận trên giao diện. Tuyệt đối chỉ gọi tool này khi đã có đủ thông tin tiêu đề và ngày giờ.',
+        'Đề xuất tạo cuộc họp và hiển thị Thẻ xem trước (Preview Card) trên giao diện. Kích hoạt ngay khi có thông tin cơ bản về ngày giờ và hoạt động/chủ đề (tiêu đề có thể tự suy luận ngắn gọn, các tham số khác áp dụng giá trị mặc định).',
       parameters: ProposeMeetingSchema,
       execute: async (args) => {
         const proposalId = crypto.randomUUID();

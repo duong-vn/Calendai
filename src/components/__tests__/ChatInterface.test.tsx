@@ -118,4 +118,31 @@ describe('ChatInterface Component UX & States', () => {
     const listElements = container.querySelectorAll('.break-words li');
     expect(listElements.length).toBe(2);
   });
+
+  it('renders clear session button when messages exist and calls onClearSession on click', () => {
+    const mockSetMessages = vi.fn();
+    const mockClearSession = vi.fn();
+    mockUseChat.mockReturnValue({
+      messages: [
+        { id: '1', role: 'user', content: 'Họp lúc 14h' },
+      ],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: mockSetMessages,
+    });
+
+    render(<ChatInterface isAuthenticated={true} onClearSession={mockClearSession} />);
+
+    const clearBtns = screen.getAllByTitle(/Xóa session/i);
+    expect(clearBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(clearBtns[0]);
+    expect(mockSetMessages).toHaveBeenCalledWith([]);
+    expect(mockClearSession).toHaveBeenCalled();
+  });
 });

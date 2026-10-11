@@ -68,6 +68,25 @@ describe('Header Component Mobile Responsiveness & Actions', () => {
     expect(mockUpcoming).toHaveBeenCalledTimes(1);
   });
 
+  it('renders clear session button and fires onClearSession', () => {
+    const mockClear = vi.fn();
+    render(
+      <Header
+        user={null}
+        isAuthenticated={false}
+        isConfigured={true}
+        onOpenUpcoming={vi.fn()}
+        onClearSession={mockClear}
+        onLogout={vi.fn()}
+      />
+    );
+
+    const clearBtn = screen.getByTitle('Xóa session (Bắt đầu đoạn chat mới)');
+    expect(clearBtn).toBeInTheDocument();
+    fireEvent.click(clearBtn);
+    expect(mockClear).toHaveBeenCalledTimes(1);
+  });
+
   it('renders authenticated user profile and fires onLogout', () => {
     const mockLogout = vi.fn();
     render(

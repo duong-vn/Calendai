@@ -47,12 +47,14 @@ interface ChatInterfaceProps {
   isAuthenticated: boolean;
   isTipsOpen?: boolean;
   onToggleTips?: () => void;
+  onClearSession?: () => void;
 }
 
 export function ChatInterface({
   isAuthenticated,
   isTipsOpen: externalTipsOpen,
   onToggleTips: externalToggleTips,
+  onClearSession,
 }: ChatInterfaceProps) {
   const [internalTipsOpen, setInternalTipsOpen] = useState(false);
   const isTipsOpen =
@@ -186,6 +188,9 @@ export function ChatInterface({
     } catch {
       // Ignore
     }
+    if (onClearSession) {
+      onClearSession();
+    }
   };
 
   const handleConfirmSuccess = (
@@ -212,11 +217,11 @@ export function ChatInterface({
                 <button
                   type="button"
                   onClick={handleClearChat}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#1a73e8] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#17241e] dark:hover:text-[#34d399]"
-                  title="Bắt đầu cuộc trò chuyện mới"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#dadce0]/70 bg-white px-3 py-1 text-xs text-[#5f6368] hover:bg-[#fce8e6] hover:border-[#fad2cf] hover:text-[#c5221f] transition-all dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#94a3b8] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+                  title="Xóa session và bắt đầu cuộc trò chuyện mới"
                 >
                   <RotateCcw className="h-3 w-3" />
-                  <span>Xóa lịch sử</span>
+                  <span>Xóa session</span>
                 </button>
               </div>
             )}
@@ -360,9 +365,9 @@ export function ChatInterface({
                       isLoading && isLast ? (
                         <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
                           <span className="flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s] dark:bg-[#10b981]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s] dark:bg-[#10b981]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce dark:bg-[#10b981]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse dark:bg-[#10b981]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#10b981]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#10b981]" />
                           </span>
                           <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
                             Calendai đang suy nghĩ...
@@ -539,9 +544,9 @@ export function ChatInterface({
                 <div className="w-fit max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#17241e] dark:text-[#f1f5f9] dark:border-[#23382d]">
                   <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
                     <span className="flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.3s] dark:bg-[#10b981]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce [animation-delay:-0.15s] dark:bg-[#10b981]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-bounce dark:bg-[#10b981]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse dark:bg-[#10b981]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#10b981]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#10b981]" />
                     </span>
                     <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
                       Calendai đang suy nghĩ...
@@ -580,6 +585,18 @@ export function ChatInterface({
             onSubmit={onFormSubmit}
             className="mx-auto flex max-w-3xl items-end rounded-3xl border border-[#dadce0] bg-white px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md dark:border-[#23382d] dark:bg-[#17241e] dark:focus-within:border-[#10b981]"
           >
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearChat}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#fce8e6] hover:text-[#c5221f] transition-colors mb-0.5 mr-2 dark:text-[#94a3b8] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+                title="Xóa session (Bắt đầu đoạn chat mới)"
+                aria-label="Xóa session"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+            )}
+
             <textarea
               ref={textareaRef}
               rows={1}

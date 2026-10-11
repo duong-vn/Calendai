@@ -20,6 +20,8 @@ describe('AI & LLM Integration Layer', () => {
     expect(prompt).toContain('user@example.com');
     expect(prompt).toContain('proposeMeeting');
     expect(prompt).toContain('TUYỆT ĐỐI KHÔNG BAO GIỜ');
+    expect(prompt).toContain('Chủ động tạo thẻ xem trước');
+    expect(prompt).toContain('TỰ SUY LUẬN TIÊU ĐỀ');
   });
 
   it('validates proposeMeeting schema correctly', () => {
