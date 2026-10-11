@@ -192,10 +192,10 @@ export function MeetingPreviewCard({
           type="button"
           onClick={() => !isConfirmed && !loading && setCreateMeet(!createMeet)}
           disabled={isConfirmed || loading}
-          className={`mt-3 flex items-center justify-between w-full rounded-xl p-3 text-xs sm:text-sm border transition-all text-left ${
+          className={`mt-3 flex min-h-[44px] touch-manipulation items-center justify-between w-full rounded-xl p-3 text-xs sm:text-sm border transition-all text-left ${
             createMeet
-              ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6] hover:bg-[#d8eedd] dark:bg-[#064e3b]/40 dark:text-[#34d399] dark:border-[#059669]/60'
-              : 'bg-[#f8fafd] text-[#5f6368] border-[#dadce0] hover:bg-[#f1f3f4] dark:bg-[#1c2e26] dark:text-[#94a3b8] dark:border-[#23382d]'
+              ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6] hover:bg-[#d8eedd] active:scale-[0.99] dark:bg-[#064e3b]/40 dark:text-[#34d399] dark:border-[#059669]/60'
+              : 'bg-[#f8fafd] text-[#5f6368] border-[#dadce0] hover:bg-[#f1f3f4] active:scale-[0.99] dark:bg-[#1c2e26] dark:text-[#94a3b8] dark:border-[#23382d]'
           } ${isConfirmed || loading ? 'cursor-default' : 'cursor-pointer'}`}
           title="Bấm để bật hoặc tắt tạo link Google Meet"
         >
@@ -232,13 +232,13 @@ export function MeetingPreviewCard({
         )}
 
         {/* Action Buttons */}
-        <div className="mt-5 flex items-center justify-end gap-2.5 border-t border-[#f1f3f4] pt-4 dark:border-[#23382d]">
+        <div className="mt-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5 border-t border-[#f1f3f4] pt-4 dark:border-[#23382d]">
           {onEditRequest && !isConfirmed && (
             <button
               type="button"
               onClick={onEditRequest}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-4 py-2 text-xs font-medium text-[#1a73e8] hover:bg-[#f8fafd] transition-colors sm:text-sm disabled:opacity-50 dark:border-[#23382d] dark:bg-[#1c2e26] dark:text-[#34d399] dark:hover:bg-[#23382d]"
+              className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-4 py-2 text-xs font-medium text-[#1a73e8] hover:bg-[#f8fafd] transition-all active:scale-[0.98] sm:text-sm disabled:opacity-50 dark:border-[#23382d] dark:bg-[#1c2e26] dark:text-[#34d399] dark:hover:bg-[#23382d]"
             >
               <Edit3 className="h-3.5 w-3.5" />
               <span>Chỉnh sửa</span>
@@ -249,7 +249,7 @@ export function MeetingPreviewCard({
             type="button"
             onClick={handleConfirm}
             disabled={loading || isConfirmed}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1a73e8] px-5 py-2 text-xs font-medium text-white shadow-xs hover:bg-[#1557b0] transition-colors sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#059669] dark:hover:bg-[#047857]"
+            className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-2 rounded-full bg-[#1a73e8] px-5 py-2 text-xs font-medium text-white shadow-xs hover:bg-[#1557b0] transition-all active:scale-[0.98] sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#059669] dark:hover:bg-[#047857]"
           >
             {loading ? (
               <>

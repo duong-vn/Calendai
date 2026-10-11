@@ -96,7 +96,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1 text-xs font-medium text-[#3c4043] hover:bg-[#f1f3f4] transition-colors dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#23382d]"
+                className="flex min-h-[36px] touch-manipulation items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1 text-xs font-medium text-[#3c4043] hover:bg-[#f1f3f4] transition-all active:scale-95 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#23382d]"
               >
                 {copied ? (
                   <>
@@ -126,7 +126,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
                 href={event.hangoutLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#00897b] px-4 py-1.5 text-xs font-medium text-white shadow-xs hover:bg-[#00796b] transition-colors dark:bg-[#059669] dark:hover:bg-[#047857]"
+                className="inline-flex min-h-[38px] touch-manipulation items-center justify-center gap-1.5 rounded-full bg-[#00897b] px-4 py-1.5 text-xs font-medium text-white shadow-xs hover:bg-[#00796b] transition-all active:scale-[0.98] dark:bg-[#059669] dark:hover:bg-[#047857]"
               >
                 <Video className="h-3.5 w-3.5" />
                 <span>Vào phòng họp</span>

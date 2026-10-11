@@ -22,7 +22,31 @@
   --surface: #16221d;
   --surface-container: #1c2b25;
   --surface-container-high: #23362e;
-  --outline-variant: #2a4237;
+  --outline-variant: #23382d;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background-color: #1a73e8;
+  color: #ffffff;
+}
+
+.dark ::selection {
+  background-color: #10b981;
+  color: #101714;
+}
+
+textarea,
+input {
+  caret-color: var(--google-blue);
+}
+
+:focus-visible {
+  outline: 2px solid var(--google-blue);
+  outline-offset: 2px;
 }
 
 body {
@@ -59,13 +83,13 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #2a4237;
+  background: #23382d;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #bdc1c6;
+  background: #5f6368;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #385849;
+  background: #10b981;
 }

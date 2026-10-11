@@ -65,10 +65,11 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="flex h-full max-h-[85vh] w-full max-w-xl flex-col rounded-3xl bg-white shadow-2xl border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="flex max-h-[85dvh] sm:max-h-[85vh] w-full max-w-xl flex-col rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl border-t sm:border border-[#dadce0] pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0 dark:bg-[#16221d] dark:border-[#23382d]">
+        <div className="w-10 h-1 bg-[#dadce0] dark:bg-[#23382d] rounded-full mx-auto mt-3 mb-1 shrink-0 sm:hidden" />
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#f1f3f4] px-6 py-4 dark:border-[#23382d]">
+        <div className="flex items-center justify-between border-b border-[#f1f3f4] px-5 sm:px-6 py-3.5 sm:py-4 dark:border-[#23382d]">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#132c21] dark:text-[#10b981]">
               <Calendar className="h-4 w-4" />
@@ -82,16 +83,18 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
               type="button"
               onClick={fetchEvents}
               disabled={loading}
-              className="rounded-full p-2 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors disabled:opacity-50 dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
+              className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] transition-all active:scale-95 disabled:opacity-50 dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
               title="Làm mới"
+              aria-label="Làm mới lịch trình"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-2 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
+              className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] transition-all active:scale-95 dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
               title="Đóng"
+              aria-label="Đóng cửa sổ lịch trình"
             >
               <X className="h-5 w-5" />
             </button>
@@ -99,7 +102,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
           {loading ? (
             <div className="flex h-48 flex-col items-center justify-center gap-2 text-[#5f6368] dark:text-[#94a3b8]">
               <Loader2 className="h-6 w-6 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
@@ -112,7 +115,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
             </div>
           ) : events.length === 0 ? (
             <div className="flex h-48 flex-col items-center justify-center text-center text-[#5f6368] dark:text-[#94a3b8]">
-              <Calendar className="h-10 w-10 text-[#bdc1c6] mb-2 dark:text-[#23382d]" />
+              <Calendar className="h-10 w-10 text-[#dadce0] mb-2 dark:text-[#23382d]" />
               <p className="text-sm font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
                 Chưa có sự kiện nào sắp tới
               </p>

@@ -61,8 +61,9 @@ export function Sidenote({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
+            className="flex h-8 w-8 min-h-[32px] min-w-[32px] touch-manipulation items-center justify-center rounded-full p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] transition-all active:scale-95 dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
             title="Đóng bảng hướng dẫn"
+            aria-label="Đóng bảng hướng dẫn"
           >
             <X className="h-4 w-4" />
           </button>
@@ -74,7 +75,7 @@ export function Sidenote({
         <button
           type="button"
           onClick={onClearChat}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white py-2 px-3 text-xs font-medium text-[#1a73e8] shadow-2xs transition-colors hover:bg-[#f8fafd] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#34d399] dark:hover:bg-[#1c2e26]"
+          className="flex min-h-[38px] touch-manipulation w-full items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white py-2 px-3 text-xs font-medium text-[#1a73e8] shadow-2xs transition-all hover:bg-[#f8fafd] active:scale-[0.98] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#34d399] dark:hover:bg-[#1c2e26]"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" />
           <span>Bắt đầu cuộc trò chuyện mới</span>
@@ -172,7 +173,7 @@ export function Sidenote({
         <button
           type="button"
           onClick={() => onUsePrompt(FULL_PROMPT_EXAMPLE)}
-          className="w-full rounded-xl bg-[#1a73e8] py-2 text-xs font-medium text-white shadow-2xs transition-colors hover:bg-[#1557b0] dark:bg-[#059669] dark:hover:bg-[#047857]"
+          className="w-full min-h-[38px] touch-manipulation rounded-xl bg-[#1a73e8] py-2 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#1557b0] active:scale-[0.98] dark:bg-[#059669] dark:hover:bg-[#047857]"
         >
           Dùng câu lệnh mẫu này
         </button>

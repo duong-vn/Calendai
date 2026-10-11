@@ -62,11 +62,11 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#e1e3e1]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md transition-colors dark:border-[#1e3027] dark:bg-[#111915]/95">
+    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#dadce0]/80 bg-white/95 px-3 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#23382d] dark:bg-[#111915]/95">
       {/* Brand logo from public/assets/logo.png */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
-          <div className="relative flex h-8.5 w-8.5 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-white p-1 border border-[#dadce0] shadow-xs group-hover:border-[#1a73e8] transition-colors overflow-hidden shrink-0 dark:bg-[#17241e] dark:border-[#23382d] dark:group-hover:border-[#10b981]">
+          <div className="relative flex h-8.5 w-8.5 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-white p-1 border border-[#dadce0] shadow-2xs group-hover:border-[#1a73e8] transition-all overflow-hidden shrink-0 dark:bg-[#17241e] dark:border-[#23382d] dark:group-hover:border-[#10b981]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/logo.png"
@@ -92,19 +92,19 @@ export function Header({
 
       {/* Center info: Timezone (True absolute center on large screens) */}
       <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0]/50 dark:bg-[#17241e] dark:text-[#cbd5e1] dark:border-[#23382d]">
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:border-[#23382d]">
           <Globe className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
           <span>Hà Nội (GMT+7)</span>
         </div>
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Dark Mode Toggle (Loki / Doctor Doom Emerald Theme) */}
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
+          className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399] dark:focus-visible:ring-[#10b981]"
           title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Loki / Doom'}
           aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Loki / Doom'}
         >
@@ -120,7 +120,7 @@ export function Header({
           <button
             type="button"
             onClick={onOpenTips}
-            className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
+            className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399] dark:focus-visible:ring-[#10b981]"
             title="Xem mẹo đặt lịch & các tham số nâng cao"
             aria-label="Xem mẹo đặt lịch"
           >
@@ -132,7 +132,7 @@ export function Header({
         {/* Buttons to Privacy and Terms (Desktop/Tablet only) */}
         <Link
           href="/privacy"
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
+          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399] dark:focus-visible:ring-[#10b981]"
           title="Chính sách quyền riêng tư"
         >
           <Shield className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
@@ -141,7 +141,7 @@ export function Header({
 
         <Link
           href="/terms"
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] hover:text-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
+          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399] dark:focus-visible:ring-[#10b981]"
           title="Điều khoản dịch vụ"
         >
           <FileText className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#94a3b8]" />
@@ -151,7 +151,7 @@ export function Header({
         <button
           type="button"
           onClick={onOpenUpcoming}
-          className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399]"
+          className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399] dark:focus-visible:ring-[#10b981]"
           title="Xem lịch trình sắp tới"
           aria-label="Xem lịch trình sắp tới"
         >
@@ -163,7 +163,7 @@ export function Header({
           <button
             type="button"
             onClick={onClearSession}
-            className="flex h-8.5 w-8.5 items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-colors hover:bg-[#fce8e6] hover:border-[#fad2cf] hover:text-[#c5221f] sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+            className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#fce8e6] hover:border-[#fad2cf] hover:text-[#c5221f] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#ea4335] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
             title="Xóa session (Bắt đầu đoạn chat mới)"
             aria-label="Xóa session"
           >
@@ -203,7 +203,7 @@ export function Header({
         ) : (
           <a
             href="/api/auth/google"
-            className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#1a73e8] px-2.5 py-1.5 text-xs font-medium text-white shadow-xs transition-colors hover:bg-[#1557b0] sm:px-4 dark:bg-[#059669] dark:hover:bg-[#047857]"
+            className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#1a73e8] px-2.5 py-1.5 text-xs font-medium text-white shadow-xs transition-all hover:bg-[#1557b0] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:px-4 dark:bg-[#059669] dark:hover:bg-[#047857] dark:focus-visible:ring-[#10b981]"
           >
             {/* Google G icon */}
             <svg className="h-4 w-4 bg-white rounded-full p-0.5 shrink-0" viewBox="0 0 24 24">

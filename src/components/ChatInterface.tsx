@@ -434,9 +434,9 @@ export function ChatInterface({
                         return (
                           <div
                             key={toolCallId}
-                            className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#1a73e8]"
+                            className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#1a73e8] dark:bg-[#17241e] dark:text-[#34d399] dark:border dark:border-[#23382d]"
                           >
-                            <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8]" />
+                            <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
                             <span>Đang chuẩn bị thẻ xem trước Google Calendar...</span>
                           </div>
                         );
@@ -461,7 +461,7 @@ export function ChatInterface({
                             return (
                               <div
                                 key={toolCallId}
-                                className="rounded-xl bg-[#fef7e0] p-3 text-xs text-[#b06000] border border-[#feefc3]"
+                                className="rounded-xl bg-[#fef7e0] p-3 text-xs text-[#b06000] border border-[#feefc3] dark:bg-[#332408] dark:text-[#fde047] dark:border-[#523b0c]"
                               >
                                 {res.error || 'Không thể lấy danh sách sự kiện.'}
                               </div>
@@ -471,10 +471,10 @@ export function ChatInterface({
                           return (
                             <div
                               key={toolCallId}
-                              className="my-2 space-y-2 rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4"
+                              className="my-2 space-y-2 rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 dark:border-[#23382d] dark:bg-[#16221d]"
                             >
-                              <div className="flex items-center gap-2 text-xs font-medium text-[#1f1f1f]">
-                                <Calendar className="h-4 w-4 text-[#1a73e8]" />
+                              <div className="flex items-center gap-2 text-xs font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
+                                <Calendar className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
                                 <span>Sự kiện sắp diễn ra trên Google Calendar:</span>
                               </div>
                               {res.events && res.events.length > 0 ? (
@@ -482,10 +482,10 @@ export function ChatInterface({
                                   {res.events.map((evt) => (
                                     <div
                                       key={evt.id}
-                                      className="flex items-center justify-between rounded-xl bg-white p-2.5 text-xs border border-[#dadce0]"
+                                      className="flex items-center justify-between rounded-xl bg-white p-2.5 text-xs border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d]"
                                     >
                                       <div className="truncate pr-2">
-                                        <span className="font-medium text-[#1f1f1f]">
+                                        <span className="font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
                                           {evt.summary}
                                         </span>
                                       </div>
@@ -494,7 +494,7 @@ export function ChatInterface({
                                           href={evt.hangoutLink}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="shrink-0 flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-0.5 text-[11px] font-medium text-[#137333] hover:underline"
+                                          className="shrink-0 flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-0.5 text-[11px] font-medium text-[#137333] hover:underline dark:bg-[#082f22] dark:text-[#34d399] dark:border dark:border-[#10b981]/30"
                                         >
                                           <Video className="h-3 w-3" />
                                           <span>Meet</span>
@@ -504,12 +504,12 @@ export function ChatInterface({
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-xs text-[#5f6368] italic">
+                                <p className="text-xs text-[#5f6368] italic dark:text-[#94a3b8]">
                                   Không có sự kiện nào sắp tới trong khoảng thời gian này.
                                 </p>
                               )}
                               {res.note && (
-                                <p className="text-[11px] text-[#747775] italic">
+                                <p className="text-[11px] text-[#747775] italic dark:text-[#94a3b8]">
                                   {res.note}
                                 </p>
                               )}
@@ -520,9 +520,9 @@ export function ChatInterface({
                         return (
                           <div
                             key={toolCallId}
-                            className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#5f6368]"
+                            className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#5f6368] dark:bg-[#17241e] dark:text-[#94a3b8] dark:border dark:border-[#23382d]"
                           >
-                            <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8]" />
+                            <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
                             <span>Đang tra cứu Google Calendar...</span>
                           </div>
                         );
@@ -580,16 +580,16 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar */}
-        <div className="shrink-0 border-t border-[#f1f3f4] bg-white/80 px-3 py-2.5 sm:p-5 backdrop-blur-xs dark:border-[#1e3027] dark:bg-[#101714]/90">
+        <div className="shrink-0 border-t border-[#dadce0]/60 bg-white/90 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-5 backdrop-blur-md transition-colors dark:border-[#23382d] dark:bg-[#101714]/90">
           <form
             onSubmit={onFormSubmit}
-            className="mx-auto flex max-w-3xl items-end rounded-3xl border border-[#dadce0] bg-white px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md dark:border-[#23382d] dark:bg-[#17241e] dark:focus-within:border-[#10b981]"
+            className="mx-auto flex max-w-3xl items-end rounded-3xl border border-[#dadce0] bg-white px-3 sm:px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md dark:border-[#23382d] dark:bg-[#17241e] dark:focus-within:border-[#10b981]"
           >
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearChat}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#fce8e6] hover:text-[#c5221f] transition-colors mb-0.5 mr-2 dark:text-[#94a3b8] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+                className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full text-[#5f6368] hover:bg-[#fce8e6] hover:text-[#c5221f] transition-all active:scale-95 mb-0.5 mr-1.5 sm:mr-2 dark:text-[#94a3b8] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
                 title="Xóa session (Bắt đầu đoạn chat mới)"
                 aria-label="Xóa session"
               >
@@ -609,17 +609,24 @@ export function ChatInterface({
               style={{ height: 'auto' }}
             />
 
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1a73e8] text-white transition-colors hover:bg-[#1557b0] disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed mb-0.5 ml-2 dark:bg-[#059669] dark:hover:bg-[#047857] dark:disabled:bg-[#1c2e26] dark:disabled:text-[#475569]"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-            </button>
+            <div className="flex items-center mb-0.5 ml-1.5 sm:ml-2">
+              <span className="hidden sm:inline-flex items-center text-[11px] text-[#747775] dark:text-[#94a3b8] mr-2 select-none">
+                <kbd className="rounded px-1.5 py-0.5 bg-[#f0f4f9] border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d] font-mono text-[11px]">Enter ↵</kbd>
+              </span>
+
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                aria-label="Gửi tin nhắn"
+                className="flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full bg-[#1a73e8] text-white transition-all hover:bg-[#1557b0] active:scale-95 disabled:bg-[#dadce0] disabled:text-[#80868b] disabled:cursor-not-allowed dark:bg-[#059669] dark:hover:bg-[#047857] dark:disabled:bg-[#1c2e26] dark:disabled:text-[#475569]"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </form>
 
           <div className="mx-auto mt-2 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#747775] sm:flex-row dark:text-[#94a3b8]">
@@ -647,7 +654,7 @@ export function ChatInterface({
 
       {/* Desktop Right Sidenote Sidebar (Slide in when isTipsOpen is true) */}
       {isTipsOpen && (
-        <aside className="hidden lg:flex w-84 xl:w-92 flex-col border-l border-[#dadce0] bg-white h-full overflow-y-auto p-5 shrink-0 animate-in slide-in-from-right duration-200 dark:border-[#1e3027] dark:bg-[#101714]">
+        <aside className="hidden lg:flex w-84 xl:w-92 flex-col border-l border-[#dadce0] bg-white h-full overflow-y-auto p-5 shrink-0 animate-in slide-in-from-right duration-200 dark:border-[#23382d] dark:bg-[#16221d]">
           <Sidenote
             onUsePrompt={handlePromptClick}
             onClearChat={handleClearChat}
@@ -657,10 +664,11 @@ export function ChatInterface({
         </aside>
       )}
 
-      {/* Mobile Sidenote Modal / Drawer */}
+      {/* Mobile Sidenote Modal / Bottom Sheet Drawer */}
       {isTipsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs lg:hidden animate-in fade-in duration-150">
-          <div className="flex h-full max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white p-5 shadow-2xl overflow-y-auto dark:bg-[#17241e] dark:border dark:border-[#23382d]">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs lg:hidden animate-in fade-in duration-150">
+          <div className="flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-3xl sm:rounded-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-t sm:border border-[#dadce0] overflow-y-auto dark:bg-[#16221d] dark:border-[#23382d]">
+            <div className="w-10 h-1 bg-[#dadce0] dark:bg-[#23382d] rounded-full mx-auto mb-3 shrink-0 sm:hidden" />
             <Sidenote
               onUsePrompt={(prompt) => {
                 handlePromptClick(prompt);
