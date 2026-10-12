@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const EnvSchema = z.object({
-  OPENROUTER_API_KEY: z.string().min(1, 'OPENROUTER_API_KEY không được để trống'),
-  OPENROUTER_MODEL: z.string().default('nvidia/nemotron-3-ultra-550b-a55b:free'),
-  OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
+  AI_API_KEY: z.string().min(1, 'AI_API_KEY không được để trống'),
+  AI_MODEL: z.string().min(1, 'AI_MODEL không được để trống'),
+  AI_BASE_URL: z.string().url('AI_BASE_URL phải là URL hợp lệ').default('https://api.openai.com/v1'),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
@@ -16,9 +16,12 @@ export type EnvConfig = z.infer<typeof EnvSchema>;
 
 export function getServerEnv(): EnvConfig {
   const parsed = EnvSchema.safeParse({
-    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ?? '',
-    OPENROUTER_MODEL: process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free',
-    OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+    AI_API_KEY: process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY || '',
+    AI_MODEL: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || '',
+    AI_BASE_URL:
+      process.env.AI_BASE_URL ||
+      process.env.OPENROUTER_BASE_URL ||
+      'https://api.openai.com/v1',
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',

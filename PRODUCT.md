@@ -36,7 +36,7 @@ Trợ lý AI tiếng Việt tối giản và trực diện: đặt lịch và t�
 
 ### Constraints
 - Tuân thủ nghiêm ngặt chính sách bảo mật Google OAuth 2.0 (không rò rỉ token, client secrets vào prompt LLM hoặc browser).
-- Mặc định mô hình LLM qua OpenRouter API.
+- Hỗ trợ linh hoạt các nhà cung cấp mô hình LLM theo chuẩn OpenAI API (`AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`).
 - Phản hồi và trải nghiệm luôn ưu tiên tiếng Việt tự nhiên, lịch sự.
 
 ## Brand Commitments

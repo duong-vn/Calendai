@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   Copy,
+  Cpu,
   Info,
   MessageSquarePlus,
   Sparkles,
@@ -116,6 +117,12 @@ export function Sidenote({
             <CheckCircle2 className="h-3.5 w-3.5 text-[#34a853] dark:text-[#10b981] shrink-0 mt-0.5" />
             <span>
               <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Xác nhận an toàn</strong>: Luôn hiển thị bản xem trước để bạn xác nhận trước khi lưu lên Google.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Cpu className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#38bdf8] shrink-0 mt-0.5" />
+            <span>
+              <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Đổi mô hình linh hoạt</strong>: Tìm kiếm và lựa chọn bất kỳ mô hình AI nào theo nhu cầu sử dụng.
             </span>
           </li>
         </ul>

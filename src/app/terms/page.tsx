@@ -75,7 +75,7 @@ export default function TermsPage() {
             <div>
               <h2 className="text-lg font-semibold text-[#1f1f1f]">4. Tuyên bố từ chối trách nhiệm</h2>
               <p className="mt-2">
-                Dịch vụ được cung cấp trên cơ sở &quot;nguyên trạng&quot; (as is). Chúng tôi nỗ lực tối đa để đảm bảo độ chính xác và tính sẵn sàng của dịch vụ, tuy nhiên không đảm bảo rằng dịch vụ sẽ không bao giờ bị gián đoạn hoặc không có lỗi do sự cố mạng hay sự cố từ dịch vụ của bên thứ ba (như Google API hoặc OpenRouter).
+                Dịch vụ được cung cấp trên cơ sở &quot;nguyên trạng&quot; (as is). Chúng tôi nỗ lực tối đa để đảm bảo độ chính xác và tính sẵn sàng của dịch vụ, tuy nhiên không đảm bảo rằng dịch vụ sẽ không bao giờ bị gián đoạn hoặc không có lỗi do sự cố mạng hay sự cố từ dịch vụ của bên thứ ba (như Google API hoặc nhà cung cấp dịch vụ AI).
               </p>
             </div>
 

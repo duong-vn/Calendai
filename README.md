@@ -91,10 +91,10 @@ cp .env.example .env.local
 
 Mở `.env.local` và điền các thông tin:
 ```env
-# 1. OpenRouter AI (Bắt buộc để chat AI)
-OPENROUTER_API_KEY=sk-or-v1-your-key-here
-OPENROUTER_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+# 1. Cấu hình AI Provider (Chuẩn OpenAI-compatible API)
+AI_API_KEY=your_ai_api_key_here
+AI_MODEL=gpt-4o-mini
+AI_BASE_URL=https://api.openai.com/v1
 
 # 2. Google OAuth 2.0 Credentials (Cần khi kết nối Calendar thật)
 GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com

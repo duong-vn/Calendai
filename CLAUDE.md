@@ -6,17 +6,18 @@ Calendai is a Vietnamese-first AI Calendar Assistant web app that creates Google
 ## Tech Stack
 - Framework: Next.js 15+ (App Router), React 19, TypeScript (strict mode)
 - Styling: Tailwind CSS v4 / PostCSS, Lucide React
-- AI: Vercel AI SDK (`ai`), `@ai-sdk/openai` configured with OpenRouter
+- AI: Vercel AI SDK (`ai`), `@ai-sdk/openai` configured with OpenAI-compatible providers
 - Auth & Session: Google OAuth 2.0, `jose` encrypted JWE HTTP-only cookies
 - Calendar: Google Calendar API v3 direct REST calls (`conferenceDataVersion=1`)
 - Testing: Vitest, React Testing Library, Playwright
 
 ## Durable Project Rules
 1. **Mandatory LLM Environment Variables**:
-   - `OPENROUTER_API_KEY`: API key for OpenRouter
-   - `OPENROUTER_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free`: Free OpenRouter model
-   - `OPENROUTER_BASE_URL=https://openrouter.ai/api/v1`: Endpoint URL
-   - Never substitute provider SDKs or hardcode models.
+   - `AI_API_KEY`: API key for AI provider
+   - `AI_MODEL`: Default chat model
+   - `AI_BASE_URL`: Endpoint URL (defaults to standard OpenAI-compatible `/v1`)
+   - Also supports legacy `OPENROUTER_*` variables as fallback.
+   - Never hardcode models in code.
 2. **Vietnamese First**:
    - All UI copy, assistant responses, error messages, and prompt hints must be natural, polite Vietnamese.
    - Timezone defaults to `Asia/Ho_Chi_Minh` (GMT+7).
@@ -24,7 +25,7 @@ Calendai is a Vietnamese-first AI Calendar Assistant web app that creates Google
    - Never claim an event was created until Google Calendar API returns success.
    - The AI must call `proposeMeeting` to present a `MeetingPreviewCard`. The actual creation is triggered only by the user clicking the confirmation button (`POST /api/calendar/confirm`).
 4. **Security & Secrets**:
-   - Google tokens, client secret, and OpenRouter API key must never be sent to the browser or leaked into LLM prompts.
+   - Google tokens, client secret, and AI API key must never be sent to the browser or leaked into LLM prompts.
    - Encrypt sessions server-side using AES-256-GCM / JWE via `jose` in HTTP-only cookies.
    - Validate OAuth `state` to prevent CSRF.
 5. **No AI Attribution in Commits**:

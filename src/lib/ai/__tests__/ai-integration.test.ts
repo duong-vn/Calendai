@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getChatModel, getOpenRouterProvider } from '../provider';
+import { getChatModel, getAIProvider } from '../provider';
 import { buildSystemPrompt, getVietnamTimeContext } from '../system-prompt';
 import { ProposeMeetingSchema, createCalendarTools } from '../tools';
 
@@ -69,15 +69,30 @@ describe('AI & LLM Integration Layer', () => {
     }
   });
 
-  it('configures OpenRouter provider with mandatory environment specs', () => {
-    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-    process.env.OPENROUTER_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
-    process.env.OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+  it('configures AI provider with generic environment specs', () => {
+    process.env.AI_API_KEY = 'test-ai-key';
+    process.env.AI_MODEL = 'test-chat-model';
+    process.env.AI_BASE_URL = 'https://api.openai.com/v1';
 
-    const provider = getOpenRouterProvider();
+    const provider = getAIProvider();
     expect(provider).toBeDefined();
 
     const model = getChatModel();
-    expect(model.modelId).toBe('nvidia/nemotron-3-ultra-550b-a55b:free');
+    expect(model.modelId).toBe('test-chat-model');
+  });
+
+  it('supports selecting different or custom AI models', () => {
+    process.env.AI_API_KEY = 'test-ai-key';
+    process.env.AI_MODEL = 'default-model';
+
+    const customModel1 = getChatModel('custom-org/model-a');
+    expect(customModel1.modelId).toBe('custom-org/model-a');
+
+    const customModel2 = getChatModel('deepseek/deepseek-chat');
+    expect(customModel2.modelId).toBe('deepseek/deepseek-chat');
+
+    // Falls back to default when empty string or whitespace
+    const fallbackModel = getChatModel('   ');
+    expect(fallbackModel.modelId).toBe('default-model');
   });
 });

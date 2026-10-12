@@ -7,7 +7,7 @@ import { getServerEnv } from '@/lib/env';
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages, model: requestModel } = await req.json();
 
     if (!Array.isArray(messages)) {
       return new Response(
@@ -40,7 +40,11 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(session?.user?.email);
     const tools = createCalendarTools(session, validAccessToken);
-    const model = getChatModel();
+    const selectedModelId =
+      typeof requestModel === 'string' && requestModel.trim()
+        ? requestModel.trim()
+        : undefined;
+    const model = getChatModel(selectedModelId);
 
     const result = streamText({
       model,

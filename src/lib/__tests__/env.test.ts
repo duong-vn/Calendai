@@ -12,19 +12,43 @@ describe('Environment Config', () => {
     process.env = originalEnv;
   });
 
-  it('fails when OPENROUTER_API_KEY is missing', () => {
+  it('fails when AI_API_KEY is missing', () => {
+    delete process.env.AI_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
-    expect(() => getServerEnv()).toThrow('OPENROUTER_API_KEY không được để trống');
+    expect(() => getServerEnv()).toThrow('AI_API_KEY không được để trống');
+  });
+
+  it('fails when AI_MODEL is missing and no OPENROUTER_MODEL provided', () => {
+    process.env.AI_API_KEY = 'test-key';
+    delete process.env.AI_MODEL;
+    delete process.env.OPENROUTER_MODEL;
+    expect(() => getServerEnv()).toThrow('AI_MODEL không được để trống');
   });
 
   it('parses valid environment variables with default values', () => {
-    process.env.OPENROUTER_API_KEY = 'test-key';
+    process.env.AI_API_KEY = 'test-key';
+    process.env.AI_MODEL = 'custom-configured-model';
+    delete process.env.OPENROUTER_API_KEY;
+    delete process.env.OPENROUTER_MODEL;
+    delete process.env.AI_BASE_URL;
+    delete process.env.OPENROUTER_BASE_URL;
+
     const env = getServerEnv();
 
-    expect(env.OPENROUTER_API_KEY).toBe('test-key');
-    expect(env.OPENROUTER_MODEL).toBe('nvidia/nemotron-3-ultra-550b-a55b:free');
-    expect(env.OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
+    expect(env.AI_API_KEY).toBe('test-key');
+    expect(env.AI_MODEL).toBe('custom-configured-model');
+    expect(env.AI_BASE_URL).toBe('https://api.openai.com/v1');
     expect(env.NEXT_PUBLIC_APP_URL).toBe('http://localhost:3000');
+  });
+
+  it('supports legacy OPENROUTER_API_KEY seamlessly', () => {
+    delete process.env.AI_API_KEY;
+    process.env.OPENROUTER_API_KEY = 'legacy-key';
+    process.env.OPENROUTER_MODEL = 'test-model';
+
+    const env = getServerEnv();
+    expect(env.AI_API_KEY).toBe('legacy-key');
+    expect(env.AI_MODEL).toBe('test-model');
   });
 
   it('correctly determines whether Google OAuth is configured', () => {
