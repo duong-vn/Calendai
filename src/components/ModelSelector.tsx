@@ -144,23 +144,23 @@ export function ModelSelector({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Chọn mô hình AI (Đang chọn: ${currentModel.name})`}
-        className="group flex min-h-[34px] touch-manipulation items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-2.5 py-1 text-xs font-medium text-[#1f1f1f] shadow-2xs transition-all hover:border-[#1a73e8] hover:bg-[#f8fafd] active:scale-95 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#16221d] dark:text-[#f1f5f9] dark:hover:border-[#10b981] dark:hover:bg-[#1c2e26]"
+        className="group flex min-h-[30px] sm:min-h-[34px] touch-manipulation items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-white px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-medium text-[#1f1f1f] shadow-2xs transition-all hover:border-[#1a73e8] hover:bg-[#f8fafd] active:scale-95 dark:border-[#23382d] dark:bg-[#16221d] dark:text-[#f1f5f9] dark:hover:border-[#10b981] dark:hover:bg-[#1c2e26]"
       >
-        <div className="flex h-4 w-4 items-center justify-center rounded-full text-[#1a73e8] dark:text-[#10b981]">
+        <div className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-[#1a73e8] dark:text-[#10b981] shrink-0">
           {currentModel.isFree ? (
-            <Zap className="h-3.5 w-3.5 text-[#34a853] dark:text-[#34d399]" />
+            <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#34a853] dark:text-[#34d399]" />
           ) : (
-            <Sparkles className="h-3.5 w-3.5 text-[#fbbc04] dark:text-[#fbbf24]" />
+            <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#fbbc04] dark:text-[#fbbf24]" />
           )}
         </div>
 
-        <span className="max-w-[125px] truncate sm:max-w-[170px]">
+        <span className="max-w-[70px] xs:max-w-[100px] sm:max-w-[150px] md:max-w-[180px] truncate text-[11px] sm:text-xs">
           {currentModel.name || 'Mô hình AI'}
         </span>
 
         {currentModel.badge && (
           <span
-            className={`rounded-full px-1.5 py-0.2 text-[11px] font-semibold ${
+            className={`hidden xs:inline-block rounded-full px-1.5 py-0.2 text-[11px] font-semibold shrink-0 ${
               currentModel.isFree
                 ? 'bg-[#e6f4ea] text-[#137333] dark:bg-[#064e3b] dark:text-[#a7f3d0]'
                 : 'bg-[#fef7e0] text-[#b06000] dark:bg-[#332408] dark:text-[#fde047]'
@@ -171,38 +171,58 @@ export function ModelSelector({
         )}
 
         <ChevronDown
-          className={`h-3.5 w-3.5 text-[#5f6368] transition-transform duration-200 dark:text-[#94a3b8] ${
+          className={`h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#5f6368] transition-transform duration-200 dark:text-[#94a3b8] shrink-0 ${
             isOpen ? 'rotate-180 text-[#1a73e8] dark:text-[#10b981]' : ''
           }`}
         />
       </button>
 
-      {/* Dropdown Menu (opens upwards from input bar) */}
+      {/* Responsive Modal/Dropdown Container (Bottom Sheet on mobile, Anchored Dropdown on desktop) */}
       {isOpen && (
         <div
-          role="listbox"
-          aria-label="Danh sách mô hình AI"
-          className="absolute bottom-full left-0 z-50 mb-2 w-80 sm:w-96 origin-bottom-left rounded-2xl border border-[#dadce0] bg-white p-2.5 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 dark:border-[#23382d] dark:bg-[#131d18] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-xs sm:absolute sm:inset-auto sm:top-full sm:left-0 sm:mt-2 sm:block sm:bg-transparent sm:backdrop-blur-none sm:p-0 animate-in fade-in duration-150"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-1 pb-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">
-              <Cpu className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
-              <span>Mô hình AI</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-[#5f6368] dark:text-[#94a3b8]">
-              {isLoadingModels ? (
-                <>
-                  <Loader2 className="h-3 w-3 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
-                  <span>Đang tải...</span>
-                </>
-              ) : (
-                <span>{models.length} mô hình</span>
-              )}
-            </div>
-          </div>
+          <div
+            role="listbox"
+            aria-label="Danh sách mô hình AI"
+            className="flex max-h-[85dvh] w-full flex-col rounded-t-3xl bg-white p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-t border-[#dadce0] overflow-hidden sm:max-h-none sm:w-84 sm:w-96 sm:rounded-2xl sm:p-2.5 sm:pb-2.5 sm:border sm:shadow-xl sm:backdrop-blur-md dark:bg-[#131d18] dark:border-[#23382d] dark:sm:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+          >
+            {/* Mobile Drag Handle */}
+            <div className="w-10 h-1 bg-[#dadce0] dark:bg-[#23382d] rounded-full mx-auto mb-2.5 shrink-0 sm:hidden" />
 
-          {/* Search Box */}
+            {/* Header */}
+            <div className="flex items-center justify-between px-1 pb-2.5 sm:pb-2">
+              <div className="flex items-center gap-1.5 text-sm sm:text-xs font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">
+                <Cpu className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
+                <span>Mô hình AI</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs sm:text-[11px] text-[#5f6368] dark:text-[#94a3b8]">
+                  {isLoadingModels ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
+                      <span>Đang tải...</span>
+                    </>
+                  ) : (
+                    <span>{models.length} mô hình</span>
+                  )}
+                </div>
+                {/* Mobile close button */}
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-full p-1 text-[#5f6368] hover:bg-[#f0f4f9] sm:hidden dark:text-[#94a3b8] dark:hover:bg-[#1a2820]"
+                  aria-label="Đóng chọn mô hình"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search Box */}
           <div className="relative mb-2">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#94a3b8]" />
             <input
@@ -393,7 +413,8 @@ export function ModelSelector({
             )}
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 }

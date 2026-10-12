@@ -14,7 +14,28 @@ export default function Home() {
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
+  const [selectedModel, setSelectedModel] = useState<string>('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const savedModel = localStorage.getItem('calendai_selected_model');
+      if (savedModel && typeof savedModel === 'string') {
+        setSelectedModel(savedModel);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  const handleSelectModel = (modelId: string) => {
+    setSelectedModel(modelId);
+    try {
+      localStorage.setItem('calendai_selected_model', modelId);
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
 
   const fetchAuthStatus = async () => {
     try {
@@ -114,6 +135,8 @@ export default function Home() {
         user={user}
         isAuthenticated={isAuthenticated}
         isConfigured={isConfigured}
+        selectedModel={selectedModel}
+        onSelectModel={handleSelectModel}
         onOpenUpcoming={() => setIsUpcomingOpen(true)}
         onOpenTips={() => setIsTipsOpen((prev) => !prev)}
         onClearSession={handleClearSession}
@@ -125,6 +148,8 @@ export default function Home() {
         <ChatInterface
           key={chatKey}
           isAuthenticated={isAuthenticated}
+          selectedModel={selectedModel}
+          onSelectModel={handleSelectModel}
           isTipsOpen={isTipsOpen}
           onToggleTips={() => setIsTipsOpen((prev) => !prev)}
           onClearSession={() => {

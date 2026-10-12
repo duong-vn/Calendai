@@ -23,7 +23,6 @@ import {
   MeetingPreviewCard,
   type MeetingProposalData,
 } from './MeetingPreviewCard';
-import { ModelSelector } from './ModelSelector';
 import { Sidenote } from './Sidenote';
 
 const QUICK_PROMPTS = [
@@ -55,6 +54,8 @@ const QUICK_PROMPTS = [
 
 interface ChatInterfaceProps {
   isAuthenticated: boolean;
+  selectedModel?: string;
+  onSelectModel?: (modelId: string) => void;
   isTipsOpen?: boolean;
   onToggleTips?: () => void;
   onClearSession?: () => void;
@@ -62,6 +63,8 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({
   isAuthenticated,
+  selectedModel: propSelectedModel,
+  onSelectModel,
   isTipsOpen: externalTipsOpen,
   onToggleTips: externalToggleTips,
   onClearSession,
@@ -72,27 +75,21 @@ export function ChatInterface({
   const toggleTips =
     externalToggleTips || (() => setInternalTipsOpen((prev) => !prev));
 
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [internalSelectedModel, setInternalSelectedModel] = useState<string>('');
 
   useEffect(() => {
     try {
       const savedModel = localStorage.getItem('calendai_selected_model');
       if (savedModel && typeof savedModel === 'string') {
-        setSelectedModel(savedModel);
+        setInternalSelectedModel(savedModel);
       }
     } catch {
       // Ignore localStorage errors
     }
   }, []);
 
-  const handleSelectModel = (modelId: string) => {
-    setSelectedModel(modelId);
-    try {
-      localStorage.setItem('calendai_selected_model', modelId);
-    } catch {
-      // Ignore localStorage errors
-    }
-  };
+  const activeModel =
+    propSelectedModel !== undefined ? propSelectedModel : internalSelectedModel;
 
   const {
     messages,
@@ -107,7 +104,7 @@ export function ChatInterface({
   } = useChat({
     api: '/api/chat',
     body: {
-      model: selectedModel,
+      model: activeModel,
     },
   });
 
@@ -615,19 +612,7 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar */}
-        <div className="shrink-0 border-t border-[#dadce0]/60 bg-white/90 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-5 backdrop-blur-md transition-colors dark:border-[#23382d] dark:bg-[#0c120f]/90">
-          {/* Model Selector Bar */}
-          <div className="mx-auto flex max-w-3xl items-center justify-between mb-1.5 px-1">
-            <ModelSelector
-              selectedModel={selectedModel}
-              onSelectModel={handleSelectModel}
-            />
-            <span className="hidden sm:inline-flex text-[11px] text-[#5f6368] dark:text-[#94a3b8] items-center gap-1.5 select-none">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#34a853] dark:bg-[#10b981] animate-pulse" />
-              <span>Trợ lý AI</span>
-            </span>
-          </div>
-
+        <div className="shrink-0 border-t border-[#dadce0]/60 bg-white/90 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 backdrop-blur-md transition-colors dark:border-[#23382d] dark:bg-[#0c120f]/90">
           <form
             onSubmit={onFormSubmit}
             className="mx-auto flex max-w-3xl items-end rounded-3xl border border-[#dadce0] bg-white px-3 sm:px-4 py-2 shadow-xs transition-shadow focus-within:border-[#1a73e8] focus-within:shadow-md dark:border-[#23382d] dark:bg-gradient-to-b dark:from-[#15231c] dark:to-[#111c17] dark:focus-within:border-[#10b981] dark:focus-within:shadow-[0_0_24px_rgba(16,185,129,0.18)]"
