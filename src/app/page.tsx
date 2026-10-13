@@ -23,6 +23,16 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Auto-dismiss toast notification after 4 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   useEffect(() => {
     try {
       const savedModel = localStorage.getItem('calendai_selected_model');
@@ -111,7 +121,7 @@ export default function Home() {
     <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#0c120f]">
       {/* Toast notification snackbar */}
       {toast && (
-        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all">
+        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
           <div
             className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-xs sm:text-sm font-medium shadow-md border ${
               toast.type === 'success'
@@ -128,6 +138,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setToast(null)}
+              aria-label="Đóng thông báo"
               className="ml-2 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             >
               <X className="h-3.5 w-3.5" />
