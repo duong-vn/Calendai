@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   CheckCircle2,
   FileText,
@@ -101,10 +102,12 @@ export function Header({
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
         <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 group shrink-0">
           <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-white p-1 border border-[#dadce0] shadow-2xs group-hover:border-[#1a73e8] transition-all overflow-hidden shrink-0 dark:bg-gradient-to-br dark:from-[#192f25] dark:to-[#111e18] dark:border-[#23382d] dark:group-hover:border-[#10b981] dark:group-hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/assets/logo.png"
               alt="Calendai Logo"
+              width={36}
+              height={36}
+              priority
               className="h-full w-full object-contain"
             />
           </div>

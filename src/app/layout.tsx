@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from 'next';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin', 'vietnamese'],
+  display: 'swap',
+  variable: '--font-plus-jakarta',
+});
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -7,7 +14,7 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f8fafd' },
-    { media: '(prefers-color-scheme: dark)', color: '#101714' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c120f' },
   ],
 };
 
@@ -42,7 +49,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-dvh bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#101714] dark:text-[#f1f5f9] antialiased">
+      <body className={`${plusJakartaSans.variable} min-h-dvh bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#0c120f] dark:text-[#f1f5f9] antialiased`}>
         {children}
       </body>
     </html>

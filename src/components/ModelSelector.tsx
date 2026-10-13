@@ -48,7 +48,7 @@ export function ModelSelector({
     return found || getModelById(selectedModel);
   }, [models, selectedModel]);
 
-  // Fetch live AI models on mount and resolve default model
+  // Fetch live AI models on demand when opened or when default model is needed
   useEffect(() => {
     let isMounted = true;
 
@@ -74,12 +74,14 @@ export function ModelSelector({
       }
     }
 
-    fetchModels();
+    if (isOpen || !selectedModel) {
+      fetchModels();
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [hasFetched, selectedModel, onSelectModel]);
+  }, [isOpen, hasFetched, selectedModel, onSelectModel]);
 
   // Close dropdown on outside click or Escape
   useEffect(() => {

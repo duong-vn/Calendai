@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useChat } from 'ai/react';
+import type { Message } from 'ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -10,7 +12,6 @@ import {
   ArrowUp,
   Calendar,
   Clock,
-  HelpCircle,
   Loader2,
   RotateCcw,
   Sparkles,
@@ -23,7 +24,284 @@ import {
   MeetingPreviewCard,
   type MeetingProposalData,
 } from './MeetingPreviewCard';
-import { Sidenote } from './Sidenote';
+
+// Lazy-load drawer only when opened
+const Sidenote = dynamic(
+  () => import('./Sidenote').then((mod) => mod.Sidenote),
+  { ssr: false }
+);
+
+const MARKDOWN_PLUGINS = [remarkGfm];
+
+const MARKDOWN_COMPONENTS = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-[#1f1f1f] dark:text-[#fbbf24]">
+      {children}
+    </strong>
+  ),
+  em: ({ children }: { children?: React.ReactNode }) => (
+    <em className="italic">{children}</em>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="my-2 list-disc pl-5 space-y-1">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="my-2 list-decimal pl-5 space-y-1">{children}</ol>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[#1a73e8] underline hover:text-[#1557b0] dark:text-[#38bdf8] dark:hover:text-[#7dd3fc]"
+    >
+      {children}
+    </a>
+  ),
+  code: ({ children }: { children?: React.ReactNode }) => (
+    <code className="rounded bg-[#f0f4f9] px-1.5 py-0.5 text-xs text-[#1a73e8] font-mono dark:bg-[#1c2e26] dark:text-[#34d399] dark:border dark:border-[#23382d]">
+      {children}
+    </code>
+  ),
+};
+
+interface ChatMessageItemProps {
+  message: Message;
+  isLast: boolean;
+  isLoading: boolean;
+  error?: Error;
+  confirmedEvent?: { event: CalendarEventResult; isMock?: boolean };
+  onConfirmSuccess: (proposalId: string, event: CalendarEventResult, isMock?: boolean) => void;
+  onEditRequest: (proposal: MeetingProposalData) => void;
+  onReload: () => void;
+}
+
+const ChatMessageItem = memo(function ChatMessageItem({
+  message,
+  isLast,
+  isLoading,
+  error,
+  confirmedEvent,
+  onConfirmSuccess,
+  onEditRequest,
+  onReload,
+}: ChatMessageItemProps) {
+  const isUser = message.role === 'user';
+  const isEmptyAssistant =
+    !isUser &&
+    !message.content &&
+    (!message.toolInvocations || message.toolInvocations.length === 0);
+
+  // Do not render empty phantom assistant messages if not loading and no error
+  if (isEmptyAssistant && !isLoading && !error) {
+    return null;
+  }
+
+  return (
+    <div
+      className={`flex items-start gap-3 ${
+        isUser ? 'flex-row-reverse' : 'flex-row'
+      }`}
+    >
+      {/* Avatar */}
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+          isUser
+            ? 'bg-[#1a73e8] text-white shadow-xs dark:bg-gradient-to-br dark:from-[#059669] dark:to-[#10b981] dark:shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+            : 'bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-gradient-to-br dark:from-[#183125] dark:to-[#12221a] dark:border-[#10b981]/40 dark:text-[#34d399] dark:shadow-[0_0_12px_rgba(16,185,129,0.18)]'
+        }`}
+      >
+        {isUser ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+      </div>
+
+      {/* Message Bubble - expands with content up to max-width limit */}
+      <div
+        className={`w-fit max-w-[85%] sm:max-w-[78%] space-y-2.5 ${
+          isUser
+            ? 'rounded-2xl rounded-tr-xs bg-[#e8f0fe] px-4 py-3 text-sm text-[#1f1f1f] border border-[#d2e3fc] dark:bg-gradient-to-br dark:from-[#0d3427] dark:to-[#124232] dark:text-[#ecfdf5] dark:border-[#10b981]/35 dark:shadow-[0_2px_12px_rgba(16,185,129,0.12)]'
+            : 'rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#131e19]/95 dark:text-[#f1f5f9] dark:border-[#23382d] dark:shadow-xs'
+        }`}
+      >
+        {message.content && (
+          <div className="leading-relaxed text-sm break-words">
+            <ReactMarkdown
+              remarkPlugins={MARKDOWN_PLUGINS}
+              components={MARKDOWN_COMPONENTS}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {/* Empty Assistant State: only show thinking while loading, or retry if real error */}
+        {isEmptyAssistant && (
+          isLoading && isLast ? (
+            <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse dark:bg-[#10b981]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#38bdf8]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#fbbf24]" />
+              </span>
+              <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
+                Calendai đang suy nghĩ...
+              </span>
+            </div>
+          ) : error && isLast ? (
+            <div className="flex items-center justify-between gap-3 text-xs text-[#5f6368] dark:text-[#94a3b8]">
+              <div className="flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 text-[#ea4335] shrink-0" />
+                <span>Chưa nhận được phản hồi từ trợ lý AI.</span>
+              </div>
+              <button
+                type="button"
+                onClick={onReload}
+                className="font-medium text-[#1a73e8] hover:underline shrink-0 dark:text-[#34d399]"
+              >
+                Thử lại
+              </button>
+            </div>
+          ) : null
+        )}
+
+        {/* Tool Invocations */}
+        {message.toolInvocations?.map((toolInvocation) => {
+          const { toolName, toolCallId } = toolInvocation;
+
+          if (toolName === 'proposeMeeting') {
+            if ('result' in toolInvocation) {
+              const proposal = toolInvocation.result as MeetingProposalData;
+
+              if (confirmedEvent) {
+                return (
+                  <EventCreatedCard
+                    key={toolCallId}
+                    event={confirmedEvent.event}
+                    isMock={confirmedEvent.isMock}
+                  />
+                );
+              }
+
+              return (
+                <MeetingPreviewCard
+                  key={toolCallId}
+                  proposal={proposal}
+                  onConfirmSuccess={(event, isMock) =>
+                    onConfirmSuccess(proposal.proposalId, event, isMock)
+                  }
+                  onEditRequest={() => onEditRequest(proposal)}
+                />
+              );
+            }
+
+            return (
+              <div
+                key={toolCallId}
+                className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#1a73e8] dark:bg-[#17241e] dark:text-[#34d399] dark:border dark:border-[#23382d]"
+              >
+                <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
+                <span>Đang chuẩn bị thẻ xem trước Google Calendar...</span>
+              </div>
+            );
+          }
+
+          if (toolName === 'listUpcomingEvents') {
+            if ('result' in toolInvocation) {
+              const res = toolInvocation.result as {
+                success?: boolean;
+                events?: Array<{
+                  id: string;
+                  summary: string;
+                  start: string;
+                  hangoutLink?: string;
+                  htmlLink: string;
+                }>;
+                error?: string;
+                note?: string;
+              };
+
+              if (!res.success) {
+                return (
+                  <div
+                    key={toolCallId}
+                    className="rounded-xl bg-[#fef7e0] p-3 text-xs text-[#b06000] border border-[#feefc3] dark:bg-[#332408] dark:text-[#fde047] dark:border-[#523b0c]"
+                  >
+                    {res.error || 'Không thể lấy danh sách sự kiện.'}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={toolCallId}
+                  className="my-2 space-y-2 rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 dark:border-[#23382d] dark:bg-[#16221d]"
+                >
+                  <div className="flex items-center gap-2 text-xs font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
+                    <Calendar className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
+                    <span>Sự kiện sắp diễn ra trên Google Calendar:</span>
+                  </div>
+                  {res.events && res.events.length > 0 ? (
+                    <div className="space-y-1.5 pt-1">
+                      {res.events.map((evt) => (
+                        <div
+                          key={evt.id}
+                          className="flex items-center justify-between rounded-xl bg-white p-2.5 text-xs border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d]"
+                        >
+                          <div className="truncate pr-2">
+                            <span className="font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
+                              {evt.summary}
+                            </span>
+                          </div>
+                          {evt.hangoutLink && (
+                            <a
+                              href={evt.hangoutLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-0.5 text-[11px] font-medium text-[#137333] hover:underline dark:bg-[#082f22] dark:text-[#34d399] dark:border dark:border-[#10b981]/30"
+                            >
+                              <Video className="h-3 w-3" />
+                              <span>Meet</span>
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#5f6368] italic dark:text-[#94a3b8]">
+                      Không có sự kiện nào sắp tới trong khoảng thời gian này.
+                    </p>
+                  )}
+                  {res.note && (
+                    <p className="text-[11px] text-[#747775] italic dark:text-[#94a3b8]">
+                      {res.note}
+                    </p>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={toolCallId}
+                className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#5f6368] dark:bg-[#17241e] dark:text-[#94a3b8] dark:border dark:border-[#23382d]"
+              >
+                <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
+                <span>Đang tra cứu Google Calendar...</span>
+              </div>
+            );
+          }
+
+          return null;
+        })}
+      </div>
+    </div>
+  );
+});
 
 const QUICK_PROMPTS = [
   {
@@ -225,7 +503,7 @@ export function ChatInterface({
     }
   };
 
-  const handleConfirmSuccess = (
+  const handleConfirmSuccess = useCallback((
     proposalId: string,
     event: CalendarEventResult,
     isMock?: boolean
@@ -234,10 +512,20 @@ export function ChatInterface({
       ...prev,
       [proposalId]: { event, isMock },
     }));
-  };
+  }, []);
+
+  const handleEditRequest = useCallback((proposal: MeetingProposalData) => {
+    setInput(`Tôi muốn chỉnh sửa thông tin cuộc họp "${proposal.summary}": `);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        adjustTextareaHeight();
+      }
+    }, 0);
+  }, [setInput]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[#f8fafd] dark:bg-[#101714]">
+    <div className="flex h-full w-full overflow-hidden bg-[#f8fafd] dark:bg-[#0c120f]">
       {/* Main Chat Stream Area */}
       <div className="flex flex-1 flex-col h-full min-w-0">
         {/* Scrollable messages container */}
@@ -301,269 +589,30 @@ export function ChatInterface({
               </div>
             )}
 
-            {/* Messages list */}
+            {/* Messages list (memoized to eliminate re-rendering completed messages on streaming) */}
             {messages.map((message, index) => {
-              const isUser = message.role === 'user';
               const isLast = index === messages.length - 1;
-              const isEmptyAssistant =
-                !isUser &&
-                !message.content &&
-                (!message.toolInvocations || message.toolInvocations.length === 0);
-
-              // Do not render empty phantom assistant messages if not loading and no error
-              if (isEmptyAssistant && !isLoading && !error) {
-                return null;
-              }
+              const proposalInvocation = message.toolInvocations?.find(
+                (t) => t.toolName === 'proposeMeeting' && 'result' in t
+              );
+              const proposalId =
+                proposalInvocation && 'result' in proposalInvocation
+                  ? (proposalInvocation.result as MeetingProposalData | undefined)?.proposalId
+                  : undefined;
+              const confirmed = proposalId ? confirmedEvents[proposalId] : undefined;
 
               return (
-                <div
+                <ChatMessageItem
                   key={message.id}
-                  className={`flex items-start gap-3 ${
-                    isUser ? 'flex-row-reverse' : 'flex-row'
-                  }`}
-                >
-                  {/* Avatar */}
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                      isUser
-                        ? 'bg-[#1a73e8] text-white shadow-xs dark:bg-gradient-to-br dark:from-[#059669] dark:to-[#10b981] dark:shadow-[0_0_12px_rgba(16,185,129,0.25)]'
-                        : 'bg-white border border-[#dadce0] text-[#1a73e8] shadow-xs dark:bg-gradient-to-br dark:from-[#183125] dark:to-[#12221a] dark:border-[#10b981]/40 dark:text-[#34d399] dark:shadow-[0_0_12px_rgba(16,185,129,0.18)]'
-                    }`}
-                  >
-                    {isUser ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                  </div>
-
-                  {/* Message Bubble - expands with content up to max-width limit */}
-                  <div
-                    className={`w-fit max-w-[85%] sm:max-w-[78%] space-y-2.5 ${
-                      isUser
-                        ? 'rounded-2xl rounded-tr-xs bg-[#e8f0fe] px-4 py-3 text-sm text-[#1f1f1f] border border-[#d2e3fc] dark:bg-gradient-to-br dark:from-[#0d3427] dark:to-[#124232] dark:text-[#ecfdf5] dark:border-[#10b981]/35 dark:shadow-[0_2px_12px_rgba(16,185,129,0.12)]'
-                        : 'rounded-2xl rounded-tl-xs bg-white px-5 py-3.5 text-sm text-[#1f1f1f] border border-[#dadce0] shadow-2xs dark:bg-[#131e19]/95 dark:text-[#f1f5f9] dark:border-[#23382d] dark:shadow-xs'
-                    }`}
-                  >
-                    {message.content && (
-                      <div className="leading-relaxed text-sm break-words">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: ({ children }) => (
-                              <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
-                            ),
-                            strong: ({ children }) => (
-                              <strong className="font-semibold text-[#1f1f1f] dark:text-[#fbbf24]">
-                                {children}
-                              </strong>
-                            ),
-                            em: ({ children }) => (
-                              <em className="italic">{children}</em>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="my-2 list-disc pl-5 space-y-1">
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="my-2 list-decimal pl-5 space-y-1">
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children }) => (
-                              <li className="leading-relaxed">{children}</li>
-                            ),
-                            a: ({ href, children }) => (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#1a73e8] underline hover:text-[#1557b0] dark:text-[#38bdf8] dark:hover:text-[#7dd3fc]"
-                              >
-                                {children}
-                              </a>
-                            ),
-                            code: ({ children }) => (
-                              <code className="rounded bg-[#f0f4f9] px-1.5 py-0.5 text-xs text-[#1a73e8] font-mono dark:bg-[#1c2e26] dark:text-[#34d399] dark:border dark:border-[#23382d]">
-                                {children}
-                              </code>
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-
-                    {/* Empty Assistant State: only show thinking while loading, or retry if real error */}
-                    {isEmptyAssistant && (
-                      isLoading && isLast ? (
-                        <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
-                          <span className="flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse dark:bg-[#10b981]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#38bdf8]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#fbbf24]" />
-                          </span>
-                          <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
-                            Calendai đang suy nghĩ...
-                          </span>
-                        </div>
-                      ) : error && isLast ? (
-                        <div className="flex items-center justify-between gap-3 text-xs text-[#5f6368] dark:text-[#94a3b8]">
-                          <div className="flex items-center gap-1.5">
-                            <AlertCircle className="h-3.5 w-3.5 text-[#ea4335] shrink-0" />
-                            <span>Chưa nhận được phản hồi từ trợ lý AI.</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => reload()}
-                            className="font-medium text-[#1a73e8] hover:underline shrink-0 dark:text-[#34d399]"
-                          >
-                            Thử lại
-                          </button>
-                        </div>
-                      ) : null
-                    )}
-
-                    {/* Tool Invocations */}
-                    {message.toolInvocations?.map((toolInvocation) => {
-                      const { toolName, toolCallId } = toolInvocation;
-
-                      if (toolName === 'proposeMeeting') {
-                        if ('result' in toolInvocation) {
-                          const proposal = toolInvocation.result as MeetingProposalData;
-                          const confirmed = confirmedEvents[proposal.proposalId];
-
-                          if (confirmed) {
-                            return (
-                              <EventCreatedCard
-                                key={toolCallId}
-                                event={confirmed.event}
-                                isMock={confirmed.isMock}
-                              />
-                            );
-                          }
-
-                          return (
-                            <MeetingPreviewCard
-                              key={toolCallId}
-                              proposal={proposal}
-                              onConfirmSuccess={(event, isMock) =>
-                                handleConfirmSuccess(proposal.proposalId, event, isMock)
-                              }
-                              onEditRequest={() => {
-                                setInput(
-                                  `Tôi muốn chỉnh sửa thông tin cuộc họp "${proposal.summary}": `
-                                );
-                                setTimeout(() => {
-                                  if (textareaRef.current) {
-                                    textareaRef.current.focus();
-                                    adjustTextareaHeight();
-                                  }
-                                }, 0);
-                              }}
-                            />
-                          );
-                        }
-
-                        return (
-                          <div
-                            key={toolCallId}
-                            className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#1a73e8] dark:bg-[#17241e] dark:text-[#34d399] dark:border dark:border-[#23382d]"
-                          >
-                            <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
-                            <span>Đang chuẩn bị thẻ xem trước Google Calendar...</span>
-                          </div>
-                        );
-                      }
-
-                      if (toolName === 'listUpcomingEvents') {
-                        if ('result' in toolInvocation) {
-                          const res = toolInvocation.result as {
-                            success?: boolean;
-                            events?: Array<{
-                              id: string;
-                              summary: string;
-                              start: string;
-                              hangoutLink?: string;
-                              htmlLink: string;
-                            }>;
-                            error?: string;
-                            note?: string;
-                          };
-
-                          if (!res.success) {
-                            return (
-                              <div
-                                key={toolCallId}
-                                className="rounded-xl bg-[#fef7e0] p-3 text-xs text-[#b06000] border border-[#feefc3] dark:bg-[#332408] dark:text-[#fde047] dark:border-[#523b0c]"
-                              >
-                                {res.error || 'Không thể lấy danh sách sự kiện.'}
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div
-                              key={toolCallId}
-                              className="my-2 space-y-2 rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 dark:border-[#23382d] dark:bg-[#16221d]"
-                            >
-                              <div className="flex items-center gap-2 text-xs font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
-                                <Calendar className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
-                                <span>Sự kiện sắp diễn ra trên Google Calendar:</span>
-                              </div>
-                              {res.events && res.events.length > 0 ? (
-                                <div className="space-y-1.5 pt-1">
-                                  {res.events.map((evt) => (
-                                    <div
-                                      key={evt.id}
-                                      className="flex items-center justify-between rounded-xl bg-white p-2.5 text-xs border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d]"
-                                    >
-                                      <div className="truncate pr-2">
-                                        <span className="font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
-                                          {evt.summary}
-                                        </span>
-                                      </div>
-                                      {evt.hangoutLink && (
-                                        <a
-                                          href={evt.hangoutLink}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="shrink-0 flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-0.5 text-[11px] font-medium text-[#137333] hover:underline dark:bg-[#082f22] dark:text-[#34d399] dark:border dark:border-[#10b981]/30"
-                                        >
-                                          <Video className="h-3 w-3" />
-                                          <span>Meet</span>
-                                        </a>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-[#5f6368] italic dark:text-[#94a3b8]">
-                                  Không có sự kiện nào sắp tới trong khoảng thời gian này.
-                                </p>
-                              )}
-                              {res.note && (
-                                <p className="text-[11px] text-[#747775] italic dark:text-[#94a3b8]">
-                                  {res.note}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <div
-                            key={toolCallId}
-                            className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#5f6368] dark:bg-[#17241e] dark:text-[#94a3b8] dark:border dark:border-[#23382d]"
-                          >
-                            <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
-                            <span>Đang tra cứu Google Calendar...</span>
-                          </div>
-                        );
-                      }
-
-                      return null;
-                    })}
-                  </div>
-                </div>
+                  message={message}
+                  isLast={isLast}
+                  isLoading={isLoading}
+                  error={error}
+                  confirmedEvent={confirmed}
+                  onConfirmSuccess={handleConfirmSuccess}
+                  onEditRequest={handleEditRequest}
+                  onReload={reload}
+                />
               );
             })}
 

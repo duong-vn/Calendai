@@ -61,21 +61,30 @@ a:focus-visible {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: "Google Sans", "Plus Jakarta Sans", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-plus-jakarta), "Google Sans", "Plus Jakarta Sans", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
   transition: background-color 0.25s ease, color 0.25s ease;
+  position: relative;
 }
 
-/* Multi-chromatic dark ambient lighting: Arcane Emerald, Celestial Cyan & Solar Gold */
+/* Multi-chromatic dark ambient lighting: Arcane Emerald, Celestial Cyan & Solar Gold (GPU composited) */
 .dark body {
   background-color: #0c120f;
+}
+
+.dark body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
   background-image:
     radial-gradient(ellipse 80% 45% at 50% -10%, rgba(16, 185, 129, 0.14), transparent 70%),
     radial-gradient(circle 500px at 90% 15%, rgba(251, 191, 36, 0.05), transparent 60%),
     radial-gradient(circle 600px at 10% 85%, rgba(56, 189, 248, 0.06), transparent 60%),
     radial-gradient(circle 450px at 85% 75%, rgba(167, 139, 250, 0.04), transparent 60%);
-  background-attachment: fixed;
+  transform: translateZ(0);
 }
 
 /* Custom sleek scrollbar */

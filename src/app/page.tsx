@@ -1,11 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import type { UserProfile } from '@/lib/auth/types';
 import { ChatInterface } from '@/components/ChatInterface';
 import { Header } from '@/components/Header';
-import { UpcomingEventsModal } from '@/components/UpcomingEventsModal';
+
+// Lazy-load modal to reduce initial bundle size
+const UpcomingEventsModal = dynamic(
+  () => import('@/components/UpcomingEventsModal').then((mod) => mod.UpcomingEventsModal),
+  { ssr: false }
+);
 
 export default function Home() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -102,7 +108,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#101714]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#0c120f]">
       {/* Toast notification snackbar */}
       {toast && (
         <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all">
