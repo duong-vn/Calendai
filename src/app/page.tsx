@@ -1,15 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import type { UserProfile } from '@/lib/auth/types';
+import {
+  type ChatSession,
+  createNewSession,
+  deleteSessionById,
+  getActiveSessionId,
+  loadAllSessions,
+  setActiveSessionId,
+} from '@/lib/chat/session-storage';
 import { ChatInterface } from '@/components/ChatInterface';
 import { Header } from '@/components/Header';
 
-// Lazy-load modal to reduce initial bundle size
+// Lazy-load modals to reduce initial bundle size
 const UpcomingEventsModal = dynamic(
   () => import('@/components/UpcomingEventsModal').then((mod) => mod.UpcomingEventsModal),
+  { ssr: false }
+);
+
+const ChatHistoryModal = dynamic(
+  () => import('@/components/ChatHistoryModal').then((mod) => mod.ChatHistoryModal),
   { ssr: false }
 );
 
@@ -18,9 +31,12 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isConfigured, setIsConfigured] = useState(true);
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
   const [selectedModel, setSelectedModel] = useState<string>('');
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Auto-dismiss toast notification after 4 seconds
@@ -32,6 +48,19 @@ export default function Home() {
 
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Load chat sessions on mount
+  useEffect(() => {
+    const all = loadAllSessions();
+    setSessions(all);
+    const active = getActiveSessionId() || all[0]?.id || null;
+    setActiveSessionIdState(active);
+  }, []);
+
+  const refreshSessions = useCallback(() => {
+    const all = loadAllSessions();
+    setSessions(all);
+  }, []);
 
   useEffect(() => {
     try {
@@ -51,6 +80,36 @@ export default function Home() {
     } catch {
       // Ignore localStorage errors
     }
+  };
+
+  const handleSelectSession = (session: ChatSession) => {
+    setActiveSessionId(session.id);
+    setActiveSessionIdState(session.id);
+    setChatKey((prev) => prev + 1);
+  };
+
+  const handleNewSession = () => {
+    const newSession = createNewSession(selectedModel);
+    refreshSessions();
+    setActiveSessionIdState(newSession.id);
+    setChatKey((prev) => prev + 1);
+    setToast({
+      type: 'success',
+      message: 'Đã tạo cuộc trò chuyện mới.',
+    });
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    const { remainingSessions, newActiveId } = deleteSessionById(sessionId);
+    setSessions(remainingSessions);
+    if (activeSessionId === sessionId) {
+      setActiveSessionIdState(newActiveId);
+      setChatKey((prev) => prev + 1);
+    }
+    setToast({
+      type: 'success',
+      message: 'Đã xóa phiên chat.',
+    });
   };
 
   const fetchAuthStatus = async () => {
@@ -104,17 +163,7 @@ export default function Home() {
   };
 
   const handleClearSession = () => {
-    try {
-      localStorage.removeItem('calendai_chat_messages');
-      localStorage.removeItem('calendai_confirmed_events');
-    } catch {
-      // Ignored
-    }
-    setChatKey((prev) => prev + 1);
-    setToast({
-      type: 'success',
-      message: 'Đã xóa session và làm mới cuộc trò chuyện.',
-    });
+    handleNewSession();
   };
 
   return (
@@ -155,6 +204,10 @@ export default function Home() {
         selectedModel={selectedModel}
         onSelectModel={handleSelectModel}
         onOpenUpcoming={() => setIsUpcomingOpen(true)}
+        onOpenHistory={() => {
+          refreshSessions();
+          setIsHistoryOpen(true);
+        }}
         onOpenTips={() => setIsTipsOpen((prev) => !prev)}
         onClearSession={handleClearSession}
         onLogout={handleLogout}
@@ -167,12 +220,14 @@ export default function Home() {
           isAuthenticated={isAuthenticated}
           selectedModel={selectedModel}
           onSelectModel={handleSelectModel}
+          activeSessionId={activeSessionId}
+          onSessionsChange={refreshSessions}
           isTipsOpen={isTipsOpen}
           onToggleTips={() => setIsTipsOpen((prev) => !prev)}
           onClearSession={() => {
             setToast({
               type: 'success',
-              message: 'Đã xóa session và làm mới cuộc trò chuyện.',
+              message: 'Đã tạo cuộc trò chuyện mới.',
             });
           }}
         />
@@ -182,6 +237,17 @@ export default function Home() {
       <UpcomingEventsModal
         isOpen={isUpcomingOpen}
         onClose={() => setIsUpcomingOpen(false)}
+      />
+
+      {/* Multi-Session History Modal Drawer */}
+      <ChatHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onNewSession={handleNewSession}
+        onDeleteSession={handleDeleteSession}
       />
     </div>
   );

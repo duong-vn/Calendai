@@ -55,6 +55,7 @@ describe('ChatInterface Component UX & States', () => {
       error: undefined,
       reload: vi.fn(),
       setInput: vi.fn(),
+      setMessages: vi.fn(),
     });
 
     render(<ChatInterface isAuthenticated={true} />);
@@ -78,6 +79,7 @@ describe('ChatInterface Component UX & States', () => {
       error: undefined,
       reload: vi.fn(),
       setInput: vi.fn(),
+      setMessages: vi.fn(),
     });
 
     render(<ChatInterface isAuthenticated={true} />);
@@ -104,6 +106,7 @@ describe('ChatInterface Component UX & States', () => {
       error: undefined,
       reload: vi.fn(),
       setInput: vi.fn(),
+      setMessages: vi.fn(),
     });
 
     const { container } = render(<ChatInterface isAuthenticated={true} />);

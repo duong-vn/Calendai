@@ -8,6 +8,7 @@ import {
   FileText,
   Globe,
   LogOut,
+  MessageSquare,
   Moon,
   MoreVertical,
   RotateCcw,
@@ -27,6 +28,7 @@ interface HeaderProps {
   selectedModel?: string;
   onSelectModel?: (modelId: string) => void;
   onOpenUpcoming: () => void;
+  onOpenHistory?: () => void;
   onOpenTips?: () => void;
   onClearSession?: () => void;
   onLogout: () => void;
@@ -39,6 +41,7 @@ export function Header({
   selectedModel,
   onSelectModel,
   onOpenUpcoming,
+  onOpenHistory,
   onOpenTips,
   onClearSession,
   onLogout,
@@ -207,6 +210,20 @@ export function Header({
           <span className="hidden lg:inline">Lịch trình</span>
         </button>
 
+        {/* Button: Lịch sử chat (Desktop / Tablet) */}
+        {onOpenHistory && (
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#38bdf8] dark:focus-visible:ring-[#10b981]"
+            title="Lịch sử các phiên chat"
+            aria-label="Lịch sử các phiên chat"
+          >
+            <MessageSquare className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#1a73e8] dark:text-[#38bdf8]" />
+            <span className="hidden lg:inline">Lịch sử</span>
+          </button>
+        )}
+
         {onClearSession && (
           <button
             type="button"
@@ -317,6 +334,21 @@ export function Header({
                 <Video className="h-4 w-4 text-[#00897b] dark:text-[#2dd4bf]" />
                 <span>Lịch trình sắp tới</span>
               </button>
+
+              {onOpenHistory && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onOpenHistory();
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#1f1f1f] hover:bg-[#f0f4f9] transition-colors dark:text-[#f1f5f9] dark:hover:bg-[#1c2e26]"
+                >
+                  <MessageSquare className="h-4 w-4 text-[#1a73e8] dark:text-[#38bdf8]" />
+                  <span>Lịch sử phiên chat</span>
+                </button>
+              )}
 
               {onOpenTips && (
                 <button

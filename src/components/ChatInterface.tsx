@@ -19,6 +19,15 @@ import {
   Video,
 } from 'lucide-react';
 import type { CalendarEventResult } from '@/lib/calendar/types';
+import {
+  type ChatSession,
+  deriveSessionTitle,
+  generateSessionId,
+  getActiveSessionId,
+  loadAllSessions,
+  saveCurrentSession,
+  setActiveSessionId,
+} from '@/lib/chat/session-storage';
 import { EventCreatedCard } from './EventCreatedCard';
 import {
   MeetingPreviewCard,
@@ -334,6 +343,8 @@ interface ChatInterfaceProps {
   isAuthenticated: boolean;
   selectedModel?: string;
   onSelectModel?: (modelId: string) => void;
+  activeSessionId?: string | null;
+  onSessionsChange?: () => void;
   isTipsOpen?: boolean;
   onToggleTips?: () => void;
   onClearSession?: () => void;
@@ -343,6 +354,8 @@ export function ChatInterface({
   isAuthenticated,
   selectedModel: propSelectedModel,
   onSelectModel,
+  activeSessionId: propActiveSessionId,
+  onSessionsChange,
   isTipsOpen: externalTipsOpen,
   onToggleTips: externalToggleTips,
   onClearSession,
@@ -352,6 +365,10 @@ export function ChatInterface({
     externalTipsOpen !== undefined ? externalTipsOpen : internalTipsOpen;
   const toggleTips =
     externalToggleTips || (() => setInternalTipsOpen((prev) => !prev));
+
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
+    return propActiveSessionId || getActiveSessionId() || generateSessionId();
+  });
 
   const [internalSelectedModel, setInternalSelectedModel] = useState<string>('');
 
@@ -427,52 +444,64 @@ export function ChatInterface({
     }
   };
 
-  // Restore chat session from localStorage on mount
+  // Restore chat session from localStorage on mount or when activeSessionId changes
   useEffect(() => {
-    try {
-      const savedMessages = localStorage.getItem('calendai_chat_messages');
-      if (savedMessages) {
-        const parsed = JSON.parse(savedMessages);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-        }
-      }
-      const savedEvents = localStorage.getItem('calendai_confirmed_events');
-      if (savedEvents) {
-        const parsedEvents = JSON.parse(savedEvents);
-        if (parsedEvents && typeof parsedEvents === 'object') {
-          setConfirmedEvents(parsedEvents);
-        }
-      }
-    } catch {
-      // Ignore parse errors
-    }
-  }, [setMessages]);
+    const sessions = loadAllSessions();
+    const targetId = propActiveSessionId || getActiveSessionId();
+    const target = sessions.find((s) => s.id === targetId) || sessions[0];
 
-  // Persist messages across page reloads
-  useEffect(() => {
-    if (messages.length > 0) {
+    if (target) {
+      setCurrentSessionId(target.id);
+      setActiveSessionId(target.id);
+      if (typeof setMessages === 'function') {
+        setMessages(target.messages || []);
+      }
+      setConfirmedEvents(target.confirmedEvents || {});
+    } else {
+      // Legacy single-session fallback
       try {
-        localStorage.setItem('calendai_chat_messages', JSON.stringify(messages));
+        const savedMessages = localStorage.getItem('calendai_chat_messages');
+        if (savedMessages) {
+          const parsed = JSON.parse(savedMessages);
+          if (Array.isArray(parsed) && parsed.length > 0 && typeof setMessages === 'function') {
+            setMessages(parsed);
+          }
+        }
+        const savedEvents = localStorage.getItem('calendai_confirmed_events');
+        if (savedEvents) {
+          const parsedEvents = JSON.parse(savedEvents);
+          if (parsedEvents && typeof parsedEvents === 'object') {
+            setConfirmedEvents(parsedEvents);
+          }
+        }
       } catch {
-        // Ignore quota errors
+        // Ignore parse errors
       }
     }
-  }, [messages]);
+  }, [propActiveSessionId, setMessages]);
 
-  // Persist confirmed events across page reloads
+  // Persist messages & confirmedEvents to current session in localStorage
   useEffect(() => {
-    if (Object.keys(confirmedEvents).length > 0) {
-      try {
-        localStorage.setItem(
-          'calendai_confirmed_events',
-          JSON.stringify(confirmedEvents)
-        );
-      } catch {
-        // Ignore quota errors
-      }
+    if (messages.length > 0 || Object.keys(confirmedEvents).length > 0) {
+      const all = loadAllSessions();
+      const existing = all.find((s) => s.id === currentSessionId);
+      const sessionToSave: ChatSession = {
+        id: currentSessionId,
+        title:
+          existing?.title && existing.title !== 'Cuộc trò chuyện mới'
+            ? existing.title
+            : deriveSessionTitle(messages),
+        createdAt: existing?.createdAt || Date.now(),
+        updatedAt: Date.now(),
+        messages,
+        confirmedEvents,
+        model: activeModel,
+      };
+
+      saveCurrentSession(sessionToSave);
+      onSessionsChange?.();
     }
-  }, [confirmedEvents]);
+  }, [messages, confirmedEvents, currentSessionId, activeModel, onSessionsChange]);
 
   // Auto scroll to latest message
   useEffect(() => {
@@ -490,8 +519,13 @@ export function ChatInterface({
   };
 
   const handleClearChat = () => {
-    setMessages([]);
+    if (typeof setMessages === 'function') {
+      setMessages([]);
+    }
     setConfirmedEvents({});
+    const newId = generateSessionId();
+    setCurrentSessionId(newId);
+    setActiveSessionId(newId);
     try {
       localStorage.removeItem('calendai_chat_messages');
       localStorage.removeItem('calendai_confirmed_events');
@@ -501,6 +535,7 @@ export function ChatInterface({
     if (onClearSession) {
       onClearSession();
     }
+    onSessionsChange?.();
   };
 
   const handleConfirmSuccess = useCallback((
