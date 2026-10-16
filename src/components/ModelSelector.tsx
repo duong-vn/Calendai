@@ -146,13 +146,13 @@ export function ModelSelector({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Chọn mô hình AI (Đang chọn: ${currentModel.name})`}
-        className="group flex min-h-[30px] sm:min-h-[34px] touch-manipulation items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-white px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-medium text-[#1f1f1f] shadow-2xs transition-all hover:border-[#1a73e8] hover:bg-[#f8fafd] active:scale-95 dark:border-[#23382d] dark:bg-[#16221d] dark:text-[#f1f5f9] dark:hover:border-[#10b981] dark:hover:bg-[#1c2e26]"
+        className="group flex min-h-[30px] sm:min-h-[34px] touch-manipulation items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
       >
-        <div className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-[#1a73e8] dark:text-[#10b981] shrink-0">
+        <div className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-[#c25e2e] dark:text-[#e07a3f] shrink-0">
           {currentModel.isFree ? (
-            <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#34a853] dark:text-[#34d399]" />
+            <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#1f7560] dark:text-[#2dd4bf]" />
           ) : (
-            <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#fbbc04] dark:text-[#fbbf24]" />
+            <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#d49439] dark:text-[#fbbf24]" />
           )}
         </div>
 
@@ -162,10 +162,10 @@ export function ModelSelector({
 
         {currentModel.badge && (
           <span
-            className={`hidden xs:inline-block rounded-full px-1.5 py-0.2 text-[11px] font-semibold shrink-0 ${
+            className={`hidden xs:inline-block rounded-full px-1.5 py-0.2 text-[11px] font-bold border shrink-0 ${
               currentModel.isFree
-                ? 'bg-[#e6f4ea] text-[#137333] dark:bg-[#064e3b] dark:text-[#a7f3d0]'
-                : 'bg-[#fef7e0] text-[#b06000] dark:bg-[#332408] dark:text-[#fde047]'
+                ? 'bg-[#f0f9f4] text-[#1f7560] border-[#2d2015] dark:bg-[#152a1f] dark:text-[#2dd4bf] dark:border-[#453427]'
+                : 'bg-[#fffaf2] text-[#d49439] border-[#2d2015] dark:bg-[#211a14] dark:text-[#fbbf24] dark:border-[#453427]'
             }`}
           >
             {currentModel.badge}
@@ -173,8 +173,8 @@ export function ModelSelector({
         )}
 
         <ChevronDown
-          className={`h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#5f6368] transition-transform duration-200 dark:text-[#94a3b8] shrink-0 ${
-            isOpen ? 'rotate-180 text-[#1a73e8] dark:text-[#10b981]' : ''
+          className={`h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#786455] transition-transform duration-200 dark:text-[#ba9f88] shrink-0 ${
+            isOpen ? 'rotate-180 text-[#c25e2e] dark:text-[#e07a3f]' : ''
           }`}
         />
       </button>
@@ -190,22 +190,22 @@ export function ModelSelector({
           <div
             role="listbox"
             aria-label="Danh sách mô hình AI"
-            className="flex max-h-[85dvh] w-full flex-col rounded-t-3xl bg-white p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-t border-[#dadce0] overflow-hidden sm:max-h-none sm:w-84 sm:w-96 sm:rounded-2xl sm:p-2.5 sm:pb-2.5 sm:border sm:shadow-xl sm:backdrop-blur-md dark:bg-[#131d18] dark:border-[#23382d] dark:sm:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+            className="flex max-h-[85dvh] w-full flex-col rounded-t-3xl bg-[#fffaf2] p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-2 border-[#2d2015] overflow-hidden sm:max-h-none sm:w-84 sm:w-96 sm:rounded-2xl sm:p-3 sm:pb-3 sm:shadow-[4px_4px_0px_#2d2015] dark:bg-[#1f1813] dark:border-[#453427] dark:sm:shadow-[4px_4px_0px_#453427]"
           >
             {/* Mobile Drag Handle */}
-            <div className="w-10 h-1 bg-[#dadce0] dark:bg-[#23382d] rounded-full mx-auto mb-2.5 shrink-0 sm:hidden" />
+            <div className="w-10 h-1 bg-[#2d2015]/40 dark:bg-[#453427] rounded-full mx-auto mb-2.5 shrink-0 sm:hidden" />
 
             {/* Header */}
-            <div className="flex items-center justify-between px-1 pb-2.5 sm:pb-2">
-              <div className="flex items-center gap-1.5 text-sm sm:text-xs font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">
-                <Cpu className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
-                <span>Mô hình AI</span>
+            <div className="flex items-center justify-between px-1 pb-2.5 sm:pb-2 border-b-2 border-[#2d2015]/20 dark:border-[#453427]">
+              <div className="flex items-center gap-1.5 text-sm sm:text-xs font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
+                <Cpu className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
+                <span>Mô hình AI Hơi Nước</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 text-xs sm:text-[11px] text-[#5f6368] dark:text-[#94a3b8]">
+                <div className="flex items-center gap-1.5 text-xs sm:text-[11px] font-semibold text-[#786455] dark:text-[#ba9f88]">
                   {isLoadingModels ? (
                     <>
-                      <Loader2 className="h-3 w-3 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
+                      <Loader2 className="h-3 w-3 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
                       <span>Đang tải...</span>
                     </>
                   ) : (
@@ -216,7 +216,7 @@ export function ModelSelector({
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="rounded-full p-1 text-[#5f6368] hover:bg-[#f0f4f9] sm:hidden dark:text-[#94a3b8] dark:hover:bg-[#1a2820]"
+                  className="rounded-full p-1 text-[#786455] hover:bg-[#ede4d5] sm:hidden dark:text-[#ba9f88] dark:hover:bg-[#2a221b]"
                   aria-label="Đóng chọn mô hình"
                 >
                   <X className="h-4 w-4" />
@@ -225,198 +225,198 @@ export function ModelSelector({
             </div>
 
             {/* Search Box */}
-          <div className="relative mb-2">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#5f6368] dark:text-[#94a3b8]" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm theo tên hoặc ID..."
-              className="w-full rounded-xl border border-[#dadce0] bg-[#f8fafd] py-1.5 pl-8 pr-7 text-xs text-[#1f1f1f] placeholder:text-[#5f6368] focus:border-[#1a73e8] focus:outline-hidden dark:border-[#23382d] dark:bg-[#16221d] dark:text-[#f1f5f9] dark:placeholder:text-[#94a3b8] dark:focus:border-[#10b981]"
-            />
-            {searchQuery && (
+            <div className="relative my-2.5">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#786455] dark:text-[#ba9f88]" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm kiếm theo tên hoặc ID..."
+                className="w-full rounded-xl border-2 border-[#2d2015]/40 bg-[#f5eee1] py-1.5 pl-8 pr-7 text-xs font-medium text-[#2b1f17] placeholder:text-[#786455] focus:border-[#c25e2e] focus:outline-hidden dark:border-[#453427] dark:bg-[#16120f] dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88] dark:focus:border-[#e07a3f]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#786455] hover:text-[#2b1f17] dark:text-[#ba9f88] dark:hover:text-[#f5ebd9]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1.5 mb-2 px-0.5">
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#5f6368] hover:text-[#1f1f1f] dark:text-[#94a3b8] dark:hover:text-[#f1f5f9]"
+                onClick={() => setActiveTab('all')}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border-2 transition-all ${
+                  activeTab === 'all'
+                    ? 'border-[#2d2015] bg-[#c25e2e] text-white shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f]'
+                    : 'border-[#2d2015]/30 bg-[#ede4d5] text-[#786455] hover:bg-[#e3d7c3] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#ba9f88]'
+                }`}
               >
-                <X className="h-3.5 w-3.5" />
+                Tất cả
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('free')}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold border-2 transition-all ${
+                  activeTab === 'free'
+                    ? 'border-[#2d2015] bg-[#c25e2e] text-white shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f]'
+                    : 'border-[#2d2015]/30 bg-[#ede4d5] text-[#786455] hover:bg-[#e3d7c3] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#ba9f88]'
+                }`}
+              >
+                <Zap className="h-3 w-3" />
+                <span>Miễn phí</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('tools')}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold border-2 transition-all ${
+                  activeTab === 'tools'
+                    ? 'border-[#2d2015] bg-[#c25e2e] text-white shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f]'
+                    : 'border-[#2d2015]/30 bg-[#ede4d5] text-[#786455] hover:bg-[#e3d7c3] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#ba9f88]'
+                }`}
+              >
+                <Wrench className="h-3 w-3" />
+                <span>Tools</span>
+              </button>
+            </div>
 
-          {/* Filter Chips */}
-          <div className="flex items-center gap-1.5 mb-2 px-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('all')}
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                activeTab === 'all'
-                  ? 'bg-[#1a73e8] text-white dark:bg-[#10b981] dark:text-[#101714]'
-                  : 'bg-[#f0f4f9] text-[#5f6368] hover:bg-[#e1e3e1] dark:bg-[#16221d] dark:text-[#94a3b8] dark:hover:bg-[#1c2e26]'
-              }`}
-            >
-              Tất cả
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('free')}
-              className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                activeTab === 'free'
-                  ? 'bg-[#1a73e8] text-white dark:bg-[#10b981] dark:text-[#101714]'
-                  : 'bg-[#f0f4f9] text-[#5f6368] hover:bg-[#e1e3e1] dark:bg-[#16221d] dark:text-[#94a3b8] dark:hover:bg-[#1c2e26]'
-              }`}
-            >
-              <Zap className="h-3 w-3" />
-              <span>Miễn phí</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('tools')}
-              className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                activeTab === 'tools'
-                  ? 'bg-[#1a73e8] text-white dark:bg-[#10b981] dark:text-[#101714]'
-                  : 'bg-[#f0f4f9] text-[#5f6368] hover:bg-[#e1e3e1] dark:bg-[#16221d] dark:text-[#94a3b8] dark:hover:bg-[#1c2e26]'
-              }`}
-            >
-              <Wrench className="h-3 w-3" />
-              <span>Hỗ trợ Tool</span>
-            </button>
-          </div>
-
-          {/* Model Options List */}
-          <div className="max-h-60 overflow-y-auto pr-0.5 space-y-1">
-            {filteredModels.length === 0 ? (
-              <div className="py-6 text-center text-xs text-[#5f6368] dark:text-[#94a3b8]">
-                <p>Không tìm thấy mô hình phù hợp.</p>
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelectModel(searchQuery.trim());
-                      setIsOpen(false);
-                    }}
-                    className="mt-2 text-xs font-medium text-[#1a73e8] underline dark:text-[#34d399]"
-                  >
-                    Dùng model &quot;{searchQuery.trim()}&quot;
-                  </button>
-                )}
-              </div>
-            ) : (
-              filteredModels.map((model) => {
-                const isSelected = model.id === selectedModel;
-                return (
-                  <button
-                    key={model.id}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onClick={() => {
-                      onSelectModel(model.id);
-                      setIsOpen(false);
-                    }}
-                    className={`flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left transition-colors ${
-                      isSelected
-                        ? 'bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#103022] dark:text-[#34d399]'
-                        : 'text-[#1f1f1f] hover:bg-[#f0f4f9] dark:text-[#f1f5f9] dark:hover:bg-[#1a2820]'
-                    }`}
-                  >
-                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                      {isSelected ? (
-                        <Check className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
-                      ) : (
-                        <div className="h-2 w-2 rounded-full bg-[#dadce0] dark:bg-[#23382d]" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate text-xs font-semibold">
-                          {model.name}
-                        </span>
-                        <span className="text-[11px] text-[#5f6368] dark:text-[#94a3b8] shrink-0">
-                          • {model.provider}
-                        </span>
-
-                        <div className="ml-auto flex items-center gap-1 shrink-0">
-                          {model.supportsTools && (
-                            <span
-                              title="Hỗ trợ gọi hàm (Tool / Function calling)"
-                              className="rounded-full bg-[#e8f0fe] px-1.5 py-0.2 text-[11px] text-[#1967d2] font-medium dark:bg-[#132c21] dark:text-[#34d399]"
-                            >
-                              Tools
-                            </span>
-                          )}
-                          {model.badge && (
-                            <span
-                              className={`rounded-full px-1.5 py-0.2 text-[11px] font-semibold ${
-                                model.isFree
-                                  ? 'bg-[#e6f4ea] text-[#137333] dark:bg-[#064e3b] dark:text-[#a7f3d0]'
-                                  : 'bg-[#fef7e0] text-[#b06000] dark:bg-[#332408] dark:text-[#fde047]'
-                              }`}
-                            >
-                              {model.badge}
-                            </span>
-                          )}
-                        </div>
+            {/* Model Options List */}
+            <div className="max-h-60 overflow-y-auto pr-0.5 space-y-1">
+              {filteredModels.length === 0 ? (
+                <div className="py-6 text-center text-xs text-[#786455] dark:text-[#ba9f88]">
+                  <p>Không tìm thấy mô hình phù hợp.</p>
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectModel(searchQuery.trim());
+                        setIsOpen(false);
+                      }}
+                      className="mt-2 text-xs font-bold text-[#c25e2e] underline dark:text-[#e07a3f]"
+                    >
+                      Dùng model &quot;{searchQuery.trim()}&quot;
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filteredModels.map((model) => {
+                  const isSelected = model.id === selectedModel;
+                  return (
+                    <button
+                      key={model.id}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        onSelectModel(model.id);
+                        setIsOpen(false);
+                      }}
+                      className={`flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left transition-all ${
+                        isSelected
+                          ? 'border border-[#2d2015] bg-[#ede4d5] text-[#c25e2e] shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#2c221a] dark:text-[#e07a3f]'
+                          : 'text-[#2b1f17] hover:bg-[#f5eee1] dark:text-[#f5ebd9] dark:hover:bg-[#261f18]'
+                      }`}
+                    >
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                        {isSelected ? (
+                          <Check className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
+                        ) : (
+                          <div className="h-2 w-2 rounded-full border border-[#2d2015]/40 bg-[#ede4d5] dark:border-[#453427] dark:bg-[#2a221b]" />
+                        )}
                       </div>
 
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-[#5f6368] dark:text-[#94a3b8]">
-                        {model.id}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-xs font-bold">
+                            {model.name}
+                          </span>
+                          <span className="text-[11px] text-[#786455] dark:text-[#ba9f88] shrink-0 font-mono">
+                            • {model.provider}
+                          </span>
 
-          {/* Custom Model Toggle / Form */}
-          <div className="mt-1.5 border-t border-[#dadce0]/60 pt-1.5 dark:border-[#23382d]">
-            {!showCustomInput ? (
-              <button
-                type="button"
-                onClick={() => setShowCustomInput(true)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl py-1 text-xs font-medium text-[#1a73e8] hover:bg-[#f0f4f9] transition-colors dark:text-[#34d399] dark:hover:bg-[#1a2820]"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Nhập model AI tùy chỉnh...</span>
-              </button>
-            ) : (
-              <form onSubmit={handleApplyCustom} className="space-y-1.5 p-1">
-                <input
-                  type="text"
-                  value={customInput}
-                  onChange={(e) => setCustomInput(e.target.value)}
-                  placeholder="VD: deepseek/deepseek-chat"
-                  className="w-full rounded-lg border border-[#dadce0] bg-[#f8fafd] px-2.5 py-1.5 text-xs text-[#1f1f1f] placeholder:text-[#5f6368] focus:border-[#1a73e8] focus:outline-hidden dark:border-[#23382d] dark:bg-[#16221d] dark:text-[#f1f5f9] dark:placeholder:text-[#94a3b8] dark:focus:border-[#10b981]"
-                />
-                <div className="flex items-center justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCustomInput(false);
-                      setCustomInput('');
-                    }}
-                    className="rounded-lg px-2.5 py-1 text-xs text-[#5f6368] hover:bg-[#f0f4f9] dark:text-[#94a3b8] dark:hover:bg-[#1a2820]"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!customInput.trim()}
-                    className="rounded-lg bg-[#1a73e8] px-3 py-1 text-xs font-medium text-white hover:bg-[#1557b0] disabled:opacity-50 dark:bg-[#059669] dark:hover:bg-[#047857]"
-                  >
-                    Áp dụng
-                  </button>
-                </div>
-              </form>
-            )}
+                          <div className="ml-auto flex items-center gap-1 shrink-0">
+                            {model.supportsTools && (
+                              <span
+                                title="Hỗ trợ gọi hàm (Tool / Function calling)"
+                                className="rounded-full border border-[#2d2015]/40 bg-[#fffaf2] px-1.5 py-0.2 text-[11px] font-mono text-[#1f7560] font-bold dark:border-[#453427] dark:bg-[#16120f] dark:text-[#2dd4bf]"
+                              >
+                                Tools
+                              </span>
+                            )}
+                            {model.badge && (
+                              <span
+                                className={`rounded-full px-1.5 py-0.2 text-[11px] font-bold border ${
+                                  model.isFree
+                                    ? 'bg-[#f0f9f4] text-[#1f7560] border-[#2d2015] dark:bg-[#152a1f] dark:text-[#2dd4bf] dark:border-[#453427]'
+                                    : 'bg-[#fffaf2] text-[#d49439] border-[#2d2015] dark:bg-[#211a14] dark:text-[#fbbf24] dark:border-[#453427]'
+                                }`}
+                              >
+                                {model.badge}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="mt-0.5 line-clamp-1 text-[11px] font-mono text-[#786455] dark:text-[#ba9f88]">
+                          {model.id}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Custom Model Toggle / Form */}
+            <div className="mt-1.5 border-t-2 border-[#2d2015]/20 pt-1.5 dark:border-[#453427]">
+              {!showCustomInput ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomInput(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl py-1 text-xs font-bold text-[#c25e2e] hover:bg-[#ede4d5] transition-colors dark:text-[#e07a3f] dark:hover:bg-[#261f18]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Nhập model AI tùy chỉnh...</span>
+                </button>
+              ) : (
+                <form onSubmit={handleApplyCustom} className="space-y-1.5 p-1">
+                  <input
+                    type="text"
+                    value={customInput}
+                    onChange={(e) => setCustomInput(e.target.value)}
+                    placeholder="VD: deepseek/deepseek-chat"
+                    className="w-full rounded-lg border-2 border-[#2d2015]/40 bg-[#f5eee1] px-2.5 py-1.5 text-xs font-mono text-[#2b1f17] placeholder:text-[#786455] focus:border-[#c25e2e] focus:outline-hidden dark:border-[#453427] dark:bg-[#16120f] dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88] dark:focus:border-[#e07a3f]"
+                  />
+                  <div className="flex items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomInput(false);
+                        setCustomInput('');
+                      }}
+                      className="rounded-lg px-2.5 py-1 text-xs font-semibold text-[#786455] hover:bg-[#ede4d5] dark:text-[#ba9f88] dark:hover:bg-[#261f18]"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!customInput.trim()}
+                      className="rounded-lg border-2 border-[#2d2015] bg-[#c25e2e] px-3 py-1 text-xs font-bold text-white shadow-[1px_1px_0px_#2d2015] hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-40 dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f]"
+                    >
+                      Áp dụng
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
 }

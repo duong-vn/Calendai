@@ -50,17 +50,17 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
   })();
 
   return (
-    <div className="my-3 overflow-hidden rounded-2xl border border-[#ceead6] bg-white shadow-xs dark:border-[#23382d] dark:bg-[#131d18] dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
-      {/* Top success banner */}
-      <div className="flex items-center justify-between border-b border-[#e6f4ea] bg-[#e6f4ea]/70 px-4 py-2.5 sm:px-5 dark:border-[#23382d] dark:bg-gradient-to-r dark:from-[#0d3324] dark:to-[#11422f]">
+    <div className="my-3 overflow-hidden rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] shadow-[4px_4px_0px_#2d2015] dark:border-[#453427] dark:bg-[#1f1813] dark:shadow-[4px_4px_0px_#453427]">
+      {/* Top success banner (Stamped wax seal) */}
+      <div className="flex items-center justify-between border-b-2 border-[#2d2015] bg-[#f0f9f4] px-4 py-2.5 sm:px-5 dark:border-[#453427] dark:bg-[#152a1f]">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-[#137333] dark:text-[#10b981]" />
-          <span className="text-xs font-medium text-[#137333] dark:text-[#34d399]">
+          <CheckCircle2 className="h-4 w-4 text-[#2d8a57] dark:text-[#34d399]" />
+          <span className="text-xs font-bold text-[#2d8a57] dark:text-[#34d399]">
             Đã tạo sự kiện thành công!
           </span>
         </div>
         {isMock && (
-          <span className="rounded-full bg-[#fef7e0] px-2.5 py-0.5 text-[11px] font-medium text-[#b06000] dark:bg-[#332408] dark:text-[#fde047] dark:border dark:border-[#fbbf24]/30">
+          <span className="rounded-md border border-[#2d2015] bg-[#fffaf2] px-2 py-0.5 text-[11px] font-mono font-bold text-[#d49439] dark:border-[#fbbf24]/40 dark:bg-[#211a14] dark:text-[#fbbf24]">
             Mock Mode
           </span>
         )}
@@ -69,13 +69,13 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
       <div className="p-4 sm:p-5">
         {/* Title */}
         <div className="flex items-start gap-3">
-          <div className="mt-1 h-9 w-1 rounded-full bg-[#34a853] shrink-0 dark:bg-gradient-to-b dark:from-[#10b981] dark:to-[#34d399]" />
+          <div className="mt-1 h-9 w-1.5 rounded-full bg-[#2d8a57] shrink-0 dark:bg-[#34d399]" />
           <div>
-            <h4 className="text-base font-medium text-[#1f1f1f] sm:text-lg dark:text-[#f1f5f9]">
+            <h4 className="text-base font-bold text-[#2b1f17] sm:text-lg dark:text-[#f5ebd9]">
               {event.summary}
             </h4>
-            <div className="mt-1 flex items-center gap-2 text-xs text-[#5f6368] sm:text-sm dark:text-[#94a3b8]">
-              <Clock className="h-3.5 w-3.5 text-[#34a853] shrink-0 dark:text-[#10b981]" />
+            <div className="mt-1 flex items-center gap-2 text-xs text-[#786455] sm:text-sm dark:text-[#ba9f88]">
+              <Clock className="h-3.5 w-3.5 text-[#2d8a57] shrink-0 dark:text-[#34d399]" />
               <span>{formattedStart} (Múi giờ: {event.timeZone || 'Asia/Ho_Chi_Minh'})</span>
             </div>
           </div>
@@ -83,29 +83,29 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
 
         {/* Google Meet Card */}
         {event.hangoutLink && (
-          <div className="mt-4 rounded-xl border border-[#dadce0] bg-[#f8fafd] p-3.5 dark:border-[#23382d] dark:bg-[#152720]">
+          <div className="mt-4 rounded-xl border-2 border-[#2d2015]/30 bg-[#f5eee1] p-3.5 dark:border-[#453427] dark:bg-[#16120f]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#00897b] text-white dark:bg-[#00897b]">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#2d2015] bg-[#1f7560] text-white shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#2dd4bf] dark:text-[#14110f]">
                   <Video className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-xs font-medium text-[#3c4043] dark:text-[#f1f5f9]">
+                <span className="text-xs font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
                   Google Meet
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="flex min-h-[36px] touch-manipulation items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1 text-xs font-medium text-[#3c4043] hover:bg-[#f1f3f4] transition-all active:scale-95 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#23382d]"
+                className="flex min-h-[34px] touch-manipulation items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#ede4d5] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
               >
                 {copied ? (
                   <>
-                    <Check className="h-3 w-3 text-[#137333] dark:text-[#10b981]" />
-                    <span className="text-[#137333] dark:text-[#34d399]">Đã sao chép</span>
+                    <Check className="h-3 w-3 text-[#2d8a57] dark:text-[#34d399]" />
+                    <span className="text-[#2d8a57] dark:text-[#34d399]">Đã chép</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="h-3 w-3 text-[#5f6368] dark:text-[#94a3b8]" />
+                    <Copy className="h-3 w-3 text-[#786455] dark:text-[#ba9f88]" />
                     <span>Sao chép</span>
                   </>
                 )}
@@ -117,7 +117,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
                 href={event.hangoutLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate text-xs font-medium text-[#1a73e8] hover:underline sm:text-sm dark:text-[#2dd4bf] dark:hover:text-[#5eead4]"
+                className="truncate text-xs font-mono font-medium text-[#c25e2e] hover:underline sm:text-sm dark:text-[#e07a3f]"
               >
                 {event.hangoutLink}
               </a>
@@ -126,7 +126,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
                 href={event.hangoutLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[38px] touch-manipulation items-center justify-center gap-1.5 rounded-full bg-[#00897b] px-4 py-1.5 text-xs font-medium text-white shadow-xs hover:bg-[#00796b] transition-all active:scale-[0.98] dark:bg-gradient-to-r dark:from-[#00897b] dark:to-[#059669] dark:hover:from-[#00796b] dark:hover:to-[#047857] dark:shadow-[0_0_14px_rgba(0,137,123,0.3)]"
+                className="inline-flex min-h-[38px] touch-manipulation items-center justify-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#1f7560] px-4 py-1.5 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] hover:bg-[#165a4a] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#2dd4bf] dark:text-[#14110f] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#5eead4]"
               >
                 <Video className="h-3.5 w-3.5" />
                 <span>Vào phòng họp</span>
@@ -136,14 +136,14 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
         )}
 
         {/* Google Calendar Link Button */}
-        <div className="mt-4 flex items-center justify-between border-t border-[#f1f3f4] pt-3 dark:border-[#23382d]">
+        <div className="mt-4 flex items-center justify-between border-t-2 border-[#2d2015]/20 pt-3 dark:border-[#453427]">
           {isMock ? (
-            <span className="text-[11px] text-[#747775] dark:text-[#94a3b8]">
+            <span className="text-[11px] text-[#786455] dark:text-[#ba9f88]">
               Chế độ giả lập phục vụ kiểm thử API & UI.
             </span>
           ) : (
-            <span className="text-[11px] text-[#747775] dark:text-[#94a3b8]">
-              Đã đồng bộ trên Google Calendar.
+            <span className="text-[11px] text-[#786455] dark:text-[#ba9f88]">
+              Đã lưu trên Google Calendar.
             </span>
           )}
 
@@ -151,7 +151,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
             href={event.htmlLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#1a73e8] hover:underline dark:text-[#38bdf8] dark:hover:text-[#7dd3fc]"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c25e2e] hover:underline dark:text-[#e07a3f]"
           >
             <Calendar className="h-3.5 w-3.5" />
             <span>Mở Google Calendar</span>

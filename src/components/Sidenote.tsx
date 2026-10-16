@@ -45,16 +45,16 @@ export function Sidenote({
   };
 
   return (
-    <div className="flex h-full flex-col space-y-5 text-sm text-[#3c4043] dark:text-[#cbd5e1]">
+    <div className="flex h-full flex-col space-y-5 text-sm text-[#2b1f17] dark:text-[#f5ebd9]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#f1f3f4] dark:border-[#23382d] pb-3">
+      <div className="flex items-center justify-between border-b-2 border-[#2d2015]/20 dark:border-[#453427] pb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#132c21] dark:text-[#10b981]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border-2 border-[#2d2015] bg-[#ede4d5] text-[#c25e2e] shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#fbbf24]">
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">Khả Năng Của AI</h3>
-            <p className="text-[11px] text-[#747775] dark:text-[#94a3b8]">Hướng dẫn & tham số hỗ trợ</p>
+            <h3 className="font-bold text-[#2b1f17] dark:text-[#f5ebd9]">Cẩm Nang Steampunk</h3>
+            <p className="text-[11px] font-mono text-[#786455] dark:text-[#ba9f88]">Quy chuẩn lệnh & tham số</p>
           </div>
         </div>
 
@@ -62,7 +62,7 @@ export function Sidenote({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 min-h-[32px] min-w-[32px] touch-manipulation items-center justify-center rounded-full p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] transition-all active:scale-95 dark:text-[#94a3b8] dark:hover:bg-[#1c2e26] dark:hover:text-[#f1f5f9]"
+            className="flex h-8 w-8 min-h-[32px] min-w-[32px] touch-manipulation items-center justify-center rounded-full text-[#786455] hover:bg-[#ede4d5] transition-all active:scale-95 dark:text-[#ba9f88] dark:hover:bg-[#211a14]"
             title="Đóng bảng hướng dẫn"
             aria-label="Đóng bảng hướng dẫn"
           >
@@ -76,7 +76,7 @@ export function Sidenote({
         <button
           type="button"
           onClick={onClearChat}
-          className="flex min-h-[38px] touch-manipulation w-full items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white py-2 px-3 text-xs font-medium text-[#1a73e8] shadow-2xs transition-all hover:bg-[#f8fafd] active:scale-[0.98] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#34d399] dark:hover:bg-[#1c2e26]"
+          className="flex min-h-[38px] touch-manipulation w-full items-center justify-center gap-2 rounded-xl border-2 border-[#2d2015] bg-[#fffaf2] py-2 px-3 text-xs font-bold text-[#c25e2e] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" />
           <span>Bắt đầu cuộc trò chuyện mới</span>
@@ -85,44 +85,44 @@ export function Sidenote({
 
       {/* What AI can do */}
       <div className="space-y-2.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775] dark:text-[#a7f3d0]">
-          Những gì AI có thể làm
+        <span className="text-xs font-bold uppercase tracking-wider text-[#786455] dark:text-[#ba9f88]">
+          Cơ chế vận hành
         </span>
         <ul className="space-y-2 text-xs">
           <li className="flex items-start gap-2">
-            <Calendar className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981] shrink-0 mt-0.5" />
+            <Calendar className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f] shrink-0 mt-0.5" />
             <span>
-              <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Lên lịch thông minh</strong>: Tự suy luận ngày giờ tiếng Việt (sáng mai, chiều thứ 6 tuần tới, 30 phút nữa).
+              <strong className="text-[#2b1f17] dark:text-[#f5ebd9]">Lên lịch tự động</strong>: Tự suy luận ngày giờ tiếng Việt linh hoạt.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Users className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981] shrink-0 mt-0.5" />
+            <Users className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f] shrink-0 mt-0.5" />
             <span>
-              <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Thêm khách mời</strong>: Tự trích xuất email mời tham gia sự kiện.
+              <strong className="text-[#2b1f17] dark:text-[#f5ebd9]">Trích xuất khách mời</strong>: Tự quét danh sách email trong câu nói.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Video className="h-3.5 w-3.5 text-[#00897b] dark:text-[#2dd4bf] shrink-0 mt-0.5" />
+            <Video className="h-3.5 w-3.5 text-[#1f7560] dark:text-[#2dd4bf] shrink-0 mt-0.5" />
             <span>
-              <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Tùy chọn Google Meet</strong>: Chỉ tạo link Meet khi bạn yêu cầu (mặc định tắt nếu không nhắc đến Meet).
+              <strong className="text-[#2b1f17] dark:text-[#f5ebd9]">Google Meet thông minh</strong>: Tạo link phòng họp khi có yêu cầu.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Clock className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981] shrink-0 mt-0.5" />
+            <Clock className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f] shrink-0 mt-0.5" />
             <span>
-              <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Tra cứu lịch trình</strong>: Xem các cuộc họp sắp tới trên Google Calendar.
+              <strong className="text-[#2b1f17] dark:text-[#f5ebd9]">Đồng hồ lịch trình</strong>: Tra cứu sự kiện sắp diễn ra trên Google Calendar.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <CheckCircle2 className="h-3.5 w-3.5 text-[#34a853] dark:text-[#10b981] shrink-0 mt-0.5" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-[#2d8a57] dark:text-[#34d399] shrink-0 mt-0.5" />
             <span>
-              <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Xác nhận an toàn</strong>: Luôn hiển thị bản xem trước để bạn xác nhận trước khi lưu lên Google.
+              <strong className="text-[#2b1f17] dark:text-[#f5ebd9]">Đóng dấu xác nhận</strong>: Luôn hiển thị bản xem trước trước khi ghi lên lịch.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Cpu className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#38bdf8] shrink-0 mt-0.5" />
+            <Cpu className="h-3.5 w-3.5 text-[#d49439] dark:text-[#fbbf24] shrink-0 mt-0.5" />
             <span>
-              <strong className="text-[#1f1f1f] dark:text-[#f1f5f9]">Đổi mô hình linh hoạt</strong>: Tìm kiếm và lựa chọn bất kỳ mô hình AI nào theo nhu cầu sử dụng.
+              <strong className="text-[#2b1f17] dark:text-[#f5ebd9]">Đổi mô hình AI</strong>: Tùy biến bộ não AI theo sở thích của bạn.
             </span>
           </li>
         </ul>
@@ -130,74 +130,74 @@ export function Sidenote({
 
       {/* Supported Parameters */}
       <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#747775] dark:text-[#34d399]">
-          Các tham số khi tạo sự kiện
+        <span className="text-xs font-bold uppercase tracking-wider text-[#786455] dark:text-[#ba9f88]">
+          Các tham số lệnh
         </span>
         <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#12231b] dark:border dark:border-[#10b981]/25">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#34d399]">Tiêu đề:</span> Tên/chủ đề cuộc họp
+          <div className="rounded-xl border border-[#2d2015]/30 bg-[#f5eee1] p-2 dark:bg-[#16120f] dark:border-[#453427]">
+            <span className="font-bold text-[#c25e2e] dark:text-[#e07a3f]">Tiêu đề:</span> Tên cuộc họp
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#10222a] dark:border dark:border-[#38bdf8]/25">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#38bdf8]">Thời gian:</span> Ngày & giờ bắt đầu, kết thúc
+          <div className="rounded-xl border border-[#2d2015]/30 bg-[#f5eee1] p-2 dark:bg-[#16120f] dark:border-[#453427]">
+            <span className="font-bold text-[#d49439] dark:text-[#fbbf24]">Thời gian:</span> Ngày & giờ bắt đầu
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#201a11] dark:border dark:border-[#fbbf24]/25">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#fbbf24]">Khách mời:</span> Email người tham gia
+          <div className="rounded-xl border border-[#2d2015]/30 bg-[#f5eee1] p-2 dark:bg-[#16120f] dark:border-[#453427]">
+            <span className="font-bold text-[#2d8a57] dark:text-[#34d399]">Khách mời:</span> Email người tham gia
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#17241e] dark:border dark:border-[#23382d]">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">Mô tả:</span> Nội dung, ghi chú họp
+          <div className="rounded-xl border border-[#2d2015]/30 bg-[#f5eee1] p-2 dark:bg-[#16120f] dark:border-[#453427]">
+            <span className="font-bold text-[#2b1f17] dark:text-[#f5ebd9]">Mô tả:</span> Ghi chú cuộc họp
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#0f2420] dark:border dark:border-[#2dd4bf]/25">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#2dd4bf]">Google Meet:</span> Bật/Tắt họp online
+          <div className="rounded-xl border border-[#2d2015]/30 bg-[#f5eee1] p-2 dark:bg-[#16120f] dark:border-[#453427]">
+            <span className="font-bold text-[#1f7560] dark:text-[#2dd4bf]">Meet:</span> Bật/Tắt họp trực tuyến
           </div>
-          <div className="rounded-lg bg-[#f0f4f9] p-2 dark:bg-[#1c1827] dark:border dark:border-[#a78bfa]/25">
-            <span className="font-semibold text-[#1f1f1f] dark:text-[#a78bfa]">Múi giờ:</span> Mặc định GMT+7 (Hà Nội)
+          <div className="rounded-xl border border-[#2d2015]/30 bg-[#f5eee1] p-2 dark:bg-[#16120f] dark:border-[#453427]">
+            <span className="font-bold text-[#786455] dark:text-[#ba9f88]">Múi giờ:</span> GMT+7 (Hà Nội)
           </div>
         </div>
       </div>
 
       {/* Comprehensive Prompt Example */}
-      <div className="rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-3.5 space-y-2.5 dark:border-[#10b981]/30 dark:bg-gradient-to-br dark:from-[#13251e] dark:to-[#101915]">
+      <div className="rounded-2xl border-2 border-[#2d2015] bg-[#ede4d5] p-3.5 space-y-2.5 shadow-[3px_3px_0px_#2d2015] dark:border-[#453427] dark:bg-[#1f1813] dark:shadow-[3px_3px_0px_#453427]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1f1f1f] dark:text-[#f1f5f9]">
-            <Info className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#10b981]" />
-            <span>Ví dụ prompt đầy đủ tham số</span>
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
+            <Info className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
+            <span>Ví dụ câu lệnh hoàn chỉnh</span>
           </div>
           <button
             type="button"
             onClick={handleCopyPrompt}
-            className="flex items-center gap-1 text-[11px] font-medium text-[#1a73e8] hover:underline dark:text-[#34d399]"
-            title="Sao chép prompt"
+            className="flex items-center gap-1 text-[11px] font-bold text-[#c25e2e] hover:underline dark:text-[#e07a3f]"
+            title="Sao chép câu lệnh"
           >
             <Copy className="h-3 w-3" />
             <span>{copied ? 'Đã chép' : 'Chép'}</span>
           </button>
         </div>
 
-        <p className="rounded-xl bg-white p-2.5 text-xs text-[#1f1f1f] leading-relaxed border border-[#edf2fa] italic dark:bg-[#0c120f] dark:text-[#ecfdf5] dark:border-[#23382d]">
+        <p className="rounded-xl border-2 border-[#2d2015]/30 bg-[#fffaf2] p-2.5 text-xs text-[#2b1f17] leading-relaxed italic dark:bg-[#14110f] dark:text-[#f5ebd9] dark:border-[#453427]">
           &quot;{FULL_PROMPT_EXAMPLE}&quot;
         </p>
 
         <button
           type="button"
           onClick={() => onUsePrompt(FULL_PROMPT_EXAMPLE)}
-          className="w-full min-h-[38px] touch-manipulation rounded-xl bg-[#1a73e8] py-2 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#1557b0] active:scale-[0.98] dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+          className="w-full min-h-[38px] touch-manipulation rounded-xl border-2 border-[#2d2015] bg-[#c25e2e] py-2 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f]"
         >
           Dùng câu lệnh mẫu này
         </button>
       </div>
 
       {/* Footer legal links */}
-      <div className="pt-2 border-t border-[#f1f3f4] dark:border-[#23382d] flex items-center justify-center gap-2 text-[11px] text-[#747775] dark:text-[#94a3b8]">
+      <div className="pt-2 border-t-2 border-[#2d2015]/20 dark:border-[#453427] flex items-center justify-center gap-2 text-[11px] text-[#786455] dark:text-[#ba9f88]">
         <Link
           href="/privacy"
-          className="hover:text-[#1a73e8] dark:hover:text-[#34d399] transition-colors"
+          className="hover:text-[#c25e2e] dark:hover:text-[#e07a3f] transition-colors"
         >
           Chính sách quyền riêng tư
         </Link>
         <span>•</span>
         <Link
           href="/terms"
-          className="hover:text-[#1a73e8] dark:hover:text-[#34d399] transition-colors"
+          className="hover:text-[#c25e2e] dark:hover:text-[#e07a3f] transition-colors"
         >
           Điều khoản dịch vụ
         </Link>

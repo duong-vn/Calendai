@@ -167,15 +167,15 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8fafd] dark:bg-[#0c120f]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f5eee1] dark:bg-[#14110f]">
       {/* Toast notification snackbar */}
       {toast && (
         <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
           <div
-            className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-xs sm:text-sm font-medium shadow-md border ${
+            className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-xs sm:text-sm font-medium shadow-[0_4px_16px_rgba(43,31,23,0.18)] border-2 ${
               toast.type === 'success'
-                ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6] dark:bg-[#082f22] dark:text-[#a7f3d0] dark:border-[#10b981]/40'
-                : 'bg-[#fce8e6] text-[#c5221f] border-[#fad2cf] dark:bg-[#360d0d] dark:text-[#fca5a5] dark:border-[#7f1d1d]'
+                ? 'bg-[#f0f9f4] text-[#1f7560] border-[#2d8a57] dark:bg-[#14261d] dark:text-[#34d399] dark:border-[#2dd4bf]'
+                : 'bg-[#fdf2f0] text-[#a63024] border-[#cf3e32] dark:bg-[#2b1614] dark:text-[#f87171] dark:border-[#ef4444]'
             }`}
           >
             {toast.type === 'success' ? (

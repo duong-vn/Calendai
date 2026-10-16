@@ -122,18 +122,18 @@ export function MeetingPreviewCard({
   );
 
   return (
-    <div className="my-3 overflow-hidden rounded-2xl border border-[#dadce0] bg-white shadow-xs transition-shadow hover:shadow-sm dark:border-[#23382d] dark:bg-[#131d18] dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
-      {/* Google Calendar Top Strip */}
-      <div className="flex items-center justify-between border-b border-[#f1f3f4] bg-[#f8fafd] px-4 py-2.5 sm:px-5 dark:border-[#23382d] dark:bg-gradient-to-r dark:from-[#172c22] dark:to-[#13221b]">
+    <div className="my-3 overflow-hidden rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] shadow-[4px_4px_0px_#2d2015] transition-all dark:border-[#453427] dark:bg-[#1f1813] dark:shadow-[4px_4px_0px_#453427]">
+      {/* Google Calendar Top Strip (Steam Chrono-Dispatch Ticket) */}
+      <div className="flex items-center justify-between border-b-2 border-[#2d2015] bg-[#ede4d5] px-4 py-2.5 sm:px-5 dark:border-[#453427] dark:bg-[#2b211a]">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1a73e8] text-white dark:bg-gradient-to-br dark:from-[#059669] dark:to-[#10b981]">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#2d2015] bg-[#c25e2e] text-white shadow-[1px_1px_0px_#2d2015] dark:bg-[#e07a3f] dark:border-[#453427]">
             <Calendar className="h-3.5 w-3.5" />
           </div>
-          <span className="text-xs font-medium text-[#1a73e8] dark:text-[#34d399]">
-            Google Calendar • Bản xem trước
+          <span className="text-xs font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
+            Google Calendar • Bản xem trước vé họp
           </span>
         </div>
-        <span className="rounded-full bg-[#fef7e0] px-2.5 py-0.5 text-[11px] font-medium text-[#b06000] dark:bg-[#332408] dark:text-[#fde047] dark:border dark:border-[#fbbf24]/30">
+        <span className="rounded-md border border-[#2d2015] bg-[#fffaf2] px-2.5 py-0.5 text-[11px] font-mono font-bold text-[#d49439] uppercase tracking-wider dark:border-[#fbbf24]/40 dark:bg-[#211a14] dark:text-[#fbbf24]">
           Chờ xác nhận
         </span>
       </div>
@@ -142,13 +142,13 @@ export function MeetingPreviewCard({
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-3">
           {/* Calendar accent bar */}
-          <div className="mt-1 h-10 w-1 rounded-full bg-[#1a73e8] shrink-0 dark:bg-gradient-to-b dark:from-[#10b981] dark:to-[#38bdf8]" />
+          <div className="mt-1 h-10 w-1.5 rounded-full bg-[#c25e2e] shrink-0 dark:bg-[#e07a3f]" />
           <div className="flex-1">
-            <h4 className="text-base font-medium text-[#1f1f1f] sm:text-lg dark:text-[#f1f5f9]">
+            <h4 className="text-base font-bold text-[#2b1f17] sm:text-lg dark:text-[#f5ebd9]">
               {proposal.summary}
             </h4>
             {proposal.description && (
-              <p className="mt-1 text-xs text-[#5f6368] sm:text-sm leading-relaxed dark:text-[#94a3b8]">
+              <p className="mt-1 text-xs text-[#786455] sm:text-sm leading-relaxed dark:text-[#ba9f88]">
                 {proposal.description}
               </p>
             )}
@@ -156,28 +156,28 @@ export function MeetingPreviewCard({
         </div>
 
         {/* Details list */}
-        <div className="mt-4 space-y-2.5 rounded-xl bg-[#f8fafd] p-3.5 border border-[#edf2fa] dark:bg-[#17261f] dark:border-[#23382d]">
-          <div className="flex items-center gap-2.5 text-xs sm:text-sm font-medium text-[#3c4043] dark:text-[#f1f5f9]">
-            <Clock className="h-4 w-4 text-[#1a73e8] shrink-0 dark:text-[#10b981]" />
+        <div className="mt-4 space-y-2.5 rounded-xl bg-[#f5eee1] p-3.5 border-2 border-[#2d2015]/20 dark:bg-[#16120f] dark:border-[#453427]">
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-[#2b1f17] dark:text-[#f5ebd9]">
+            <Clock className="h-4 w-4 text-[#c25e2e] shrink-0 dark:text-[#e07a3f]" />
             <span>
               {formattedDate} • {formattedTimeRange}
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
-            <Globe className="h-4 w-4 text-[#747775] shrink-0 dark:text-[#38bdf8]" />
+          <div className="flex items-center gap-2.5 text-xs text-[#786455] dark:text-[#ba9f88]">
+            <Globe className="h-4 w-4 text-[#786455] shrink-0 dark:text-[#ba9f88]" />
             <span>Múi giờ: {proposal.timeZone || 'Asia/Ho_Chi_Minh'} (GMT+7)</span>
           </div>
 
           {/* Attendees */}
           {proposal.attendees && proposal.attendees.length > 0 && (
-            <div className="flex items-start gap-2.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
-              <Users className="h-4 w-4 text-[#747775] shrink-0 mt-0.5 dark:text-[#fbbf24]" />
+            <div className="flex items-start gap-2.5 text-xs text-[#786455] dark:text-[#ba9f88]">
+              <Users className="h-4 w-4 text-[#786455] shrink-0 mt-0.5 dark:text-[#ba9f88]" />
               <div className="flex flex-wrap gap-1.5">
                 {proposal.attendees.map((attendee) => (
                   <span
                     key={attendee.email}
-                    className="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-xs text-[#3c4043] border border-[#dadce0] dark:bg-[#1b2f25] dark:border-[#23382d] dark:text-[#cbd5e1]"
+                    className="inline-flex items-center rounded-full bg-[#fffaf2] px-2.5 py-0.5 text-xs font-mono font-medium text-[#2b1f17] border border-[#2d2015] dark:bg-[#211a14] dark:border-[#453427] dark:text-[#f5ebd9]"
                   >
                     {attendee.email}
                   </span>
@@ -192,28 +192,28 @@ export function MeetingPreviewCard({
           type="button"
           onClick={() => !isConfirmed && !loading && setCreateMeet(!createMeet)}
           disabled={isConfirmed || loading}
-          className={`mt-3 flex min-h-[44px] touch-manipulation items-center justify-between w-full rounded-xl p-3 text-xs sm:text-sm border transition-all text-left ${
+          className={`mt-3 flex min-h-[44px] touch-manipulation items-center justify-between w-full rounded-xl p-3 text-xs sm:text-sm border-2 transition-all text-left ${
             createMeet
-              ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6] hover:bg-[#d8eedd] active:scale-[0.99] dark:bg-gradient-to-r dark:from-[#083a2b] dark:to-[#0f4635] dark:text-[#34d399] dark:border-[#10b981]/50 dark:shadow-[0_0_15px_rgba(16,185,129,0.18)]'
-              : 'bg-[#f8fafd] text-[#5f6368] border-[#dadce0] hover:bg-[#f1f3f4] active:scale-[0.99] dark:bg-[#1c2e26] dark:text-[#94a3b8] dark:border-[#23382d]'
-          } ${isConfirmed || loading ? 'cursor-default' : 'cursor-pointer'}`}
+              ? 'bg-[#f0f9f4] text-[#1f7560] border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#172b22] dark:text-[#2dd4bf] dark:border-[#453427]'
+              : 'bg-[#f5eee1] text-[#786455] border-[#2d2015]/40 hover:bg-[#ede4d5] dark:bg-[#16120f] dark:text-[#ba9f88] dark:border-[#453427]'
+          } ${isConfirmed || loading ? 'cursor-default' : 'cursor-pointer active:translate-x-[1px] active:translate-y-[1px]'}`}
           title="Bấm để bật hoặc tắt tạo link Google Meet"
         >
           <div className="flex items-center gap-2">
             <Video
               className={`h-4 w-4 shrink-0 ${
-                createMeet ? 'text-[#0f9d58] dark:text-[#34d399]' : 'text-[#747775] dark:text-[#94a3b8]'
+                createMeet ? 'text-[#1f7560] dark:text-[#2dd4bf]' : 'text-[#786455] dark:text-[#ba9f88]'
               }`}
             />
-            <span className="font-medium">
+            <span className="font-bold">
               {createMeet ? 'Google Meet (Đang bật)' : 'Google Meet (Đang tắt)'}
             </span>
           </div>
           <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+            className={`rounded-full px-2 py-0.5 text-[11px] font-bold border ${
               createMeet
-                ? 'bg-[#ceead6] text-[#0d652d] dark:bg-[#064e3b] dark:text-[#a7f3d0]'
-                : 'bg-[#e8eaed] text-[#5f6368] dark:bg-[#23382d] dark:text-[#94a3b8]'
+                ? 'bg-[#2d8a57] text-white border-[#2d2015] dark:bg-[#2dd4bf] dark:text-[#14110f] dark:border-[#453427]'
+                : 'bg-[#ede4d5] text-[#786455] border-[#2d2015]/30 dark:bg-[#211a14] dark:text-[#ba9f88] dark:border-[#453427]'
             }`}
           >
             {createMeet ? 'Sẽ tạo link Meet' : 'Không tạo Meet'}
@@ -222,23 +222,23 @@ export function MeetingPreviewCard({
 
         {/* Error notification */}
         {error && (
-          <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#fce8e6] p-3 text-xs text-[#c5221f] border border-[#fad2cf] dark:border-[#7f1d1d] dark:bg-[#2b1111] dark:text-[#fca5a5]">
-            <AlertCircle className="h-4 w-4 shrink-0 text-[#ea4335] mt-0.5" />
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#fdf2f0] p-3 text-xs text-[#a63024] border-2 border-[#cf3e32] shadow-[2px_2px_0px_#cf3e32] dark:border-[#ef4444] dark:bg-[#2b1614] dark:text-[#f87171]">
+            <AlertCircle className="h-4 w-4 shrink-0 text-[#cf3e32] mt-0.5" />
             <div>
-              <span className="font-semibold">Lỗi tạo lịch: </span>
+              <span className="font-bold">Lỗi tạo lịch: </span>
               {error}
             </div>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="mt-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5 border-t border-[#f1f3f4] pt-4 dark:border-[#23382d]">
+        <div className="mt-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5 border-t-2 border-[#2d2015]/20 pt-4 dark:border-[#453427]">
           {onEditRequest && !isConfirmed && (
             <button
               type="button"
               onClick={onEditRequest}
               disabled={loading}
-              className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-4 py-2 text-xs font-medium text-[#1a73e8] hover:bg-[#f8fafd] transition-all active:scale-[0.98] sm:text-sm disabled:opacity-50 dark:border-[#23382d] dark:bg-[#17261f] dark:text-[#34d399] dark:hover:bg-[#1e332a]"
+              className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-4 py-2 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#ede4d5] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:text-sm disabled:opacity-50 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
             >
               <Edit3 className="h-3.5 w-3.5" />
               <span>Chỉnh sửa</span>
@@ -249,17 +249,17 @@ export function MeetingPreviewCard({
             type="button"
             onClick={handleConfirm}
             disabled={loading || isConfirmed}
-            className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-2 rounded-full bg-[#1a73e8] px-5 py-2 text-xs font-medium text-white shadow-xs hover:bg-[#1557b0] transition-all active:scale-[0.98] sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_16px_rgba(16,185,129,0.3)]"
+            className="inline-flex min-h-[40px] touch-manipulation items-center justify-center gap-2 rounded-full border-2 border-[#2d2015] bg-[#c25e2e] px-5 py-2 text-xs font-bold text-white shadow-[3px_3px_0px_#2d2015] hover:bg-[#a6491e] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:text-sm disabled:opacity-50 disabled:shadow-none dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f] dark:shadow-[3px_3px_0px_#453427] dark:hover:bg-[#f59e0b]"
           >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Đang tạo trên Google Calendar...</span>
+                <span>Đang in vé lên Google Calendar...</span>
               </>
             ) : isConfirmed ? (
               <>
                 <Check className="h-4 w-4" />
-                <span>Đã xác nhận tạo lịch</span>
+                <span>Đã đóng dấu tạo lịch</span>
               </>
             ) : (
               <>

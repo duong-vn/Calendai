@@ -100,11 +100,11 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b border-[#dadce0]/80 bg-white/95 px-2.5 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#23382d] dark:bg-[#0c120f]/95">
+    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b-2 border-[#2d2015] bg-[#fffaf2]/95 px-2.5 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#453427] dark:bg-[#181310]/95">
       {/* Brand logo & Model Selector */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
         <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 group shrink-0">
-          <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-white p-1 border border-[#dadce0] shadow-2xs group-hover:border-[#1a73e8] transition-all overflow-hidden shrink-0 dark:bg-gradient-to-br dark:from-[#192f25] dark:to-[#111e18] dark:border-[#23382d] dark:group-hover:border-[#10b981] dark:group-hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+          <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-[#ede4d5] p-1 border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] group-hover:border-[#c25e2e] transition-all overflow-hidden shrink-0 dark:bg-[#211a14] dark:border-[#453427] dark:group-hover:border-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]">
             <Image
               src="/assets/logo.png"
               alt="Calendai Logo"
@@ -118,13 +118,13 @@ export function Header({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <span
               id="header-app-name"
-              className="text-base sm:text-lg font-medium tracking-tight text-[#1f1f1f] dark:text-[#f1f5f9]"
+              className="text-base sm:text-lg font-bold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9]"
             >
               Calendai
             </span>
-            <span className="hidden rounded-full bg-[#e8f0fe] px-2.5 py-0.5 text-[11px] font-medium text-[#1967d2] sm:inline-flex items-center gap-1 dark:bg-gradient-to-r dark:from-[#0d2a1e] dark:to-[#123829] dark:text-[#34d399] dark:border dark:border-[#10b981]/30">
-              <Sparkles className="h-3 w-3 text-[#1a73e8] dark:text-[#34d399]" />
-              Trợ lý AI
+            <span className="hidden rounded-full bg-[#f5eee1] px-2.5 py-0.5 text-[11px] font-bold text-[#c25e2e] sm:inline-flex items-center gap-1 border border-[#2d2015] dark:bg-[#211a14] dark:text-[#e07a3f] dark:border-[#453427]">
+              <Sparkles className="h-3 w-3 text-[#d49439] dark:text-[#fbbf24]" />
+              Steampunk AI
             </span>
           </div>
         </Link>
@@ -140,28 +140,28 @@ export function Header({
         )}
       </div>
 
-      {/* Center info: Timezone (True absolute center on large screens) */}
+      {/* Center info: Timezone (Mechanical chronometer gauge) */}
       <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#f0f4f9] px-3 py-1 text-xs font-medium text-[#444746] shadow-2xs border border-[#dadce0] dark:bg-[#13231c] dark:text-[#cbd5e1] dark:border-[#23382d]">
-          <Globe className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#38bdf8]" />
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#fffaf2] px-3.5 py-1 text-xs font-semibold text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427]">
+          <Globe className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
           <span>Hà Nội (GMT+7)</span>
         </div>
       </div>
 
       {/* Right Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* Dark Mode Toggle (Loki / Doctor Doom Emerald Theme) */}
+        {/* Dark Mode Toggle */}
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399] dark:focus-visible:ring-[#10b981]"
-          title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Loki / Doom'}
-          aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Loki / Doom'}
+          className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-2 focus-visible:ring-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b] dark:focus-visible:ring-[#e07a3f]"
+          title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
+          aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
         >
           {isDark ? (
             <Sun className="h-4 w-4 text-[#fbbf24] hover:rotate-45 transition-transform" />
           ) : (
-            <Moon className="h-4 w-4 text-[#10b981] hover:-rotate-12 transition-transform" />
+            <Moon className="h-4 w-4 text-[#d49439] hover:-rotate-12 transition-transform" />
           )}
         </button>
 
@@ -170,31 +170,31 @@ export function Header({
           <button
             type="button"
             onClick={onOpenTips}
-            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#34d399] dark:focus-visible:ring-[#10b981]"
+            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
             title="Xem mẹo đặt lịch & các tham số nâng cao"
             aria-label="Xem mẹo đặt lịch"
           >
-            <Sparkles className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#fbbc04] dark:text-[#fbbf24]" />
-            <span className="hidden sm:inline">Mẹo nâng cao</span>
+            <Sparkles className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#d49439] dark:text-[#fbbf24]" />
+            <span className="hidden sm:inline">Mẹo</span>
           </button>
         )}
 
         {/* Buttons to Privacy and Terms (Desktop/Tablet only) */}
         <Link
           href="/privacy"
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#38bdf8] dark:focus-visible:ring-[#10b981]"
+          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           title="Chính sách quyền riêng tư"
         >
-          <Shield className="h-3.5 w-3.5 text-[#1a73e8] dark:text-[#38bdf8]" />
+          <Shield className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
           <span>Chính sách</span>
         </Link>
 
         <Link
           href="/terms"
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] hover:text-[#1a73e8] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26] dark:hover:text-[#a78bfa] dark:focus-visible:ring-[#10b981]"
+          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           title="Điều khoản dịch vụ"
         >
-          <FileText className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#a78bfa]" />
+          <FileText className="h-3.5 w-3.5 text-[#786455] dark:text-[#ba9f88]" />
           <span>Điều khoản</span>
         </Link>
 
@@ -202,11 +202,11 @@ export function Header({
         <button
           type="button"
           onClick={onOpenUpcoming}
-          className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#2dd4bf] dark:focus-visible:ring-[#10b981]"
+          className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#23382d] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           title="Xem lịch trình sắp tới"
           aria-label="Xem lịch trình sắp tới"
         >
-          <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#00897b] dark:text-[#2dd4bf]" />
+          <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#1f7560] dark:text-[#2dd4bf]" />
           <span className="hidden lg:inline">Lịch trình</span>
         </button>
 
@@ -215,11 +215,11 @@ export function Header({
           <button
             type="button"
             onClick={onOpenHistory}
-            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#1d2f26] dark:hover:text-[#38bdf8] dark:focus-visible:ring-[#10b981]"
+            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
             title="Lịch sử các phiên chat"
             aria-label="Lịch sử các phiên chat"
           >
-            <MessageSquare className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#1a73e8] dark:text-[#38bdf8]" />
+            <MessageSquare className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
             <span className="hidden lg:inline">Lịch sử</span>
           </button>
         )}
@@ -228,40 +228,40 @@ export function Header({
           <button
             type="button"
             onClick={onClearSession}
-            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#fce8e6] hover:border-[#fad2cf] hover:text-[#c5221f] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#ea4335] sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#f1f5f9] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#fdf2f0] hover:text-[#cf3e32] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2e1917] dark:hover:text-[#fca5a5]"
             title="Xóa session (Bắt đầu đoạn chat mới)"
             aria-label="Xóa session"
           >
-            <RotateCcw className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#5f6368] dark:text-[#fbbf24]" />
-            <span className="hidden sm:inline">Xóa session</span>
+            <RotateCcw className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#786455] dark:text-[#ba9f88]" />
+            <span className="hidden sm:inline">Làm mới</span>
           </button>
         )}
 
         {/* User Profile / Connect Google Button */}
         {isAuthenticated && user ? (
-          <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-[#dadce0] bg-[#f8fafd] py-0.5 pl-1 pr-1.5 sm:py-1 sm:pl-1.5 sm:pr-2 dark:border-[#23382d] dark:bg-gradient-to-r dark:from-[#13231c] dark:to-[#182c23]">
+          <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#ede4d5] py-0.5 pl-1 pr-1.5 sm:py-1 sm:pl-1.5 sm:pr-2 shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[2px_2px_0px_#453427]">
             {user.picture ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.picture}
                 alt={user.name}
-                className="h-6.5 w-6.5 sm:h-7 sm:w-7 rounded-full object-cover ring-1 ring-white dark:ring-[#23382d]"
+                className="h-6.5 w-6.5 sm:h-7 sm:w-7 rounded-full object-cover ring-1 ring-[#2d2015] dark:ring-[#453427]"
               />
             ) : (
-              <div className="flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[#1a73e8] text-[11px] sm:text-xs font-medium text-white dark:bg-gradient-to-br dark:from-[#059669] dark:to-[#10b981]">
+              <div className="flex h-6.5 w-6.5 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[#c25e2e] text-[11px] sm:text-xs font-bold text-white dark:bg-[#e07a3f]">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <span className="hidden max-w-[100px] truncate text-xs font-medium text-[#1f1f1f] md:inline dark:text-[#f1f5f9]">
+            <span className="hidden max-w-[100px] truncate text-xs font-bold text-[#2b1f17] md:inline dark:text-[#f5ebd9]">
               {user.name}
             </span>
-            <CheckCircle2 className="h-3.5 w-3.5 text-[#34a853] shrink-0 dark:text-[#10b981]" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-[#2d8a57] shrink-0 dark:text-[#34d399]" />
             <button
               type="button"
               onClick={onLogout}
               title="Đăng xuất"
               aria-label="Đăng xuất"
-              className="ml-0.5 sm:ml-1 rounded-full p-1 text-[#5f6368] hover:bg-[#e8eaed] transition-colors dark:text-[#94a3b8] dark:hover:bg-[#1d2f26] dark:hover:text-[#f1f5f9]"
+              className="ml-0.5 sm:ml-1 rounded-full p-1 text-[#786455] hover:bg-black/5 transition-colors dark:text-[#ba9f88] dark:hover:bg-white/10"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -269,10 +269,10 @@ export function Header({
         ) : (
           <a
             href="/api/auth/google"
-            className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#1a73e8] px-2.5 py-1.5 text-xs font-medium text-white shadow-xs transition-all hover:bg-[#1557b0] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#1a73e8] sm:px-4 dark:bg-gradient-to-r dark:from-[#059669] dark:to-[#10b981] dark:hover:from-[#047857] dark:hover:to-[#059669] dark:shadow-[0_0_14px_rgba(16,185,129,0.25)] dark:focus-visible:ring-[#10b981]"
+            className="flex items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#c25e2e] px-2.5 py-1 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:px-3.5 sm:py-1.5 dark:bg-[#e07a3f] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427] dark:text-[#14110f] dark:hover:bg-[#f59e0b]"
           >
             {/* Google G icon */}
-            <svg className="h-4 w-4 bg-white rounded-full p-0.5 shrink-0" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 bg-white rounded-full p-0.5 shrink-0 border border-[#2d2015]" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.9c2.28-2.1 3.645-5.2 3.645-9.15z"
@@ -293,7 +293,7 @@ export function Header({
             <span className="hidden sm:inline">Kết nối Google</span>
             <span className="sm:hidden">Kết nối</span>
             {!isConfigured && (
-              <span className="rounded-full bg-[#1557b0] px-1.5 py-0.2 text-[11px] text-blue-100 dark:bg-[#047857]">
+              <span className="rounded-full bg-[#2d2015] px-1.5 py-0.2 text-[11px] text-amber-200">
                 Mock
               </span>
             )}
@@ -307,7 +307,7 @@ export function Header({
             onClick={() => setIsMobileMenuOpen((prev) => !prev)}
             aria-expanded={isMobileMenuOpen}
             aria-label="Menu tùy chọn"
-            className="flex h-8.5 w-8.5 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border border-[#dadce0] bg-white text-xs font-medium text-[#3c4043] transition-all hover:bg-[#f1f3f4] active:scale-95 dark:border-[#23382d] dark:bg-[#17241e] dark:text-[#cbd5e1] dark:hover:bg-[#1d2f26]"
+            className="flex h-8.5 w-8.5 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           >
             {isMobileMenuOpen ? (
               <X className="h-4 w-4" />
@@ -320,7 +320,7 @@ export function Header({
             <div
               role="menu"
               aria-label="Menu tùy chọn"
-              className="absolute right-0 top-full mt-2 w-56 origin-top-right rounded-2xl border border-[#dadce0] bg-white p-2 shadow-xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-150 dark:border-[#23382d] dark:bg-[#16221d] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+              className="absolute right-0 top-full mt-2 w-56 origin-top-right rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-2 shadow-[4px_4px_0px_#2d2015] backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-150 dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[4px_4px_0px_#453427]"
             >
               <button
                 type="button"
@@ -329,9 +329,9 @@ export function Header({
                   setIsMobileMenuOpen(false);
                   onOpenUpcoming();
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#1f1f1f] hover:bg-[#f0f4f9] transition-colors dark:text-[#f1f5f9] dark:hover:bg-[#1c2e26]"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
               >
-                <Video className="h-4 w-4 text-[#00897b] dark:text-[#2dd4bf]" />
+                <Video className="h-4 w-4 text-[#1f7560] dark:text-[#2dd4bf]" />
                 <span>Lịch trình sắp tới</span>
               </button>
 
@@ -343,9 +343,9 @@ export function Header({
                     setIsMobileMenuOpen(false);
                     onOpenHistory();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#1f1f1f] hover:bg-[#f0f4f9] transition-colors dark:text-[#f1f5f9] dark:hover:bg-[#1c2e26]"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
                 >
-                  <MessageSquare className="h-4 w-4 text-[#1a73e8] dark:text-[#38bdf8]" />
+                  <MessageSquare className="h-4 w-4 text-[#c25e2e] dark:text-[#e07a3f]" />
                   <span>Lịch sử phiên chat</span>
                 </button>
               )}
@@ -358,9 +358,9 @@ export function Header({
                     setIsMobileMenuOpen(false);
                     onOpenTips();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#1f1f1f] hover:bg-[#f0f4f9] transition-colors dark:text-[#f1f5f9] dark:hover:bg-[#1c2e26]"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
                 >
-                  <Sparkles className="h-4 w-4 text-[#fbbc04] dark:text-[#fbbf24]" />
+                  <Sparkles className="h-4 w-4 text-[#d49439] dark:text-[#fbbf24]" />
                   <span>Mẹo nâng cao</span>
                 </button>
               )}
@@ -373,22 +373,22 @@ export function Header({
                     setIsMobileMenuOpen(false);
                     onClearSession();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#c5221f] hover:bg-[#fce8e6] transition-colors dark:text-[#fca5a5] dark:hover:bg-[#2b1111]"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#a63024] hover:bg-[#fdf2f0] transition-colors dark:text-[#fca5a5] dark:hover:bg-[#2b1111]"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  <span>Xóa session</span>
+                  <span>Làm mới hội thoại</span>
                 </button>
               )}
 
-              <div className="my-1 border-t border-[#dadce0]/60 dark:border-[#23382d]" />
+              <div className="my-1 border-t-2 border-[#2d2015]/30 dark:border-[#453427]" />
 
               <Link
                 href="/privacy"
                 role="menuitem"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#3c4043] hover:bg-[#f0f4f9] transition-colors dark:text-[#cbd5e1] dark:hover:bg-[#1c2e26]"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#786455] hover:bg-[#ede4d5] transition-colors dark:text-[#ba9f88] dark:hover:bg-[#2a221b]"
               >
-                <Shield className="h-4 w-4 text-[#1a73e8] dark:text-[#38bdf8]" />
+                <Shield className="h-4 w-4 text-[#c25e2e] dark:text-[#e07a3f]" />
                 <span>Chính sách quyền riêng tư</span>
               </Link>
 
@@ -396,9 +396,9 @@ export function Header({
                 href="/terms"
                 role="menuitem"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#3c4043] hover:bg-[#f0f4f9] transition-colors dark:text-[#cbd5e1] dark:hover:bg-[#1c2e26]"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#786455] hover:bg-[#ede4d5] transition-colors dark:text-[#ba9f88] dark:hover:bg-[#2a221b]"
               >
-                <FileText className="h-4 w-4 text-[#5f6368] dark:text-[#a78bfa]" />
+                <FileText className="h-4 w-4 text-[#786455] dark:text-[#ba9f88]" />
                 <span>Điều khoản dịch vụ</span>
               </Link>
             </div>

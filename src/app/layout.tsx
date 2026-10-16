@@ -13,8 +13,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8fafd' },
-    { media: '(prefers-color-scheme: dark)', color: '#0c120f' },
+    { media: '(prefers-color-scheme: light)', color: '#f5eee1' },
+    { media: '(prefers-color-scheme: dark)', color: '#14110f' },
   ],
 };
 
@@ -49,7 +49,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${plusJakartaSans.variable} min-h-dvh bg-[#f8fafd] text-[#1f1f1f] dark:bg-[#0c120f] dark:text-[#f1f5f9] antialiased`}>
+      <body className={`${plusJakartaSans.variable} min-h-dvh bg-[#f5eee1] text-[#2b1f17] dark:bg-[#14110f] dark:text-[#f5ebd9] antialiased`}>
         {children}
       </body>
     </html>
