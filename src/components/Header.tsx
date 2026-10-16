@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Moon,
   MoreVertical,
+  PanelLeft,
   RotateCcw,
   Shield,
   Sparkles,
@@ -27,6 +28,8 @@ interface HeaderProps {
   isConfigured: boolean;
   selectedModel?: string;
   onSelectModel?: (modelId: string) => void;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
   onOpenUpcoming: () => void;
   onOpenHistory?: () => void;
   onOpenTips?: () => void;
@@ -40,6 +43,8 @@ export function Header({
   isConfigured,
   selectedModel,
   onSelectModel,
+  isSidebarOpen,
+  onToggleSidebar,
   onOpenUpcoming,
   onOpenHistory,
   onOpenTips,
@@ -101,8 +106,20 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b-2 border-[#2d2015] bg-[#fffaf2]/95 px-3 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#453427] dark:bg-[#181310]/95">
-      {/* Brand logo */}
+      {/* Brand logo & Sidebar Toggle */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-xl border-2 border-[#2d2015] bg-[#fffaf2] text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
+            title={isSidebarOpen ? 'Đóng thanh bên' : 'Mở danh sách phiên chat'}
+            aria-label={isSidebarOpen ? 'Đóng thanh bên' : 'Mở danh sách phiên chat'}
+          >
+            <PanelLeft className="h-4 w-4 text-[#c25e2e] dark:text-[#e07a3f]" />
+          </button>
+        )}
+
         <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
           <div className="relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-[#ede4d5] p-1 border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] group-hover:border-[#c25e2e] transition-all overflow-hidden shrink-0 dark:bg-[#211a14] dark:border-[#453427] dark:group-hover:border-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]">
             <Image

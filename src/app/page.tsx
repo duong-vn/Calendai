@@ -13,6 +13,7 @@ import {
   setActiveSessionId,
 } from '@/lib/chat/session-storage';
 import { ChatInterface } from '@/components/ChatInterface';
+import { ChatSidebar } from '@/components/ChatSidebar';
 import { Header } from '@/components/Header';
 
 // Lazy-load modals to reduce initial bundle size
@@ -33,6 +34,7 @@ export default function Home() {
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -48,6 +50,13 @@ export default function Home() {
 
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Open sidebar by default on large desktop screens
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
 
   // Load chat sessions on mount
   useEffect(() => {
@@ -203,35 +212,56 @@ export default function Home() {
         isConfigured={isConfigured}
         selectedModel={selectedModel}
         onSelectModel={handleSelectModel}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => {
+          refreshSessions();
+          setIsSidebarOpen((prev) => !prev);
+        }}
         onOpenUpcoming={() => setIsUpcomingOpen(true)}
         onOpenHistory={() => {
           refreshSessions();
-          setIsHistoryOpen(true);
+          setIsSidebarOpen((prev) => !prev);
         }}
         onOpenTips={() => setIsTipsOpen((prev) => !prev)}
         onClearSession={handleClearSession}
         onLogout={handleLogout}
       />
 
-      {/* Main Chat Interface */}
-      <main className="flex-1 min-h-0 overflow-hidden">
-        <ChatInterface
-          key={chatKey}
-          isAuthenticated={isAuthenticated}
-          selectedModel={selectedModel}
-          onSelectModel={handleSelectModel}
+      {/* Main Layout Area with ChatGPT-style Left Sidebar */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
+        <ChatSidebar
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen((prev) => !prev)}
+          onCloseMobile={() => setIsSidebarOpen(false)}
+          sessions={sessions}
           activeSessionId={activeSessionId}
-          onSessionsChange={refreshSessions}
-          isTipsOpen={isTipsOpen}
-          onToggleTips={() => setIsTipsOpen((prev) => !prev)}
-          onClearSession={() => {
-            setToast({
-              type: 'success',
-              message: 'Đã tạo cuộc trò chuyện mới.',
-            });
-          }}
+          onSelectSession={handleSelectSession}
+          onNewSession={handleNewSession}
+          onDeleteSession={handleDeleteSession}
+          onOpenUpcoming={() => setIsUpcomingOpen(true)}
+          onOpenTips={() => setIsTipsOpen((prev) => !prev)}
         />
-      </main>
+
+        {/* Main Chat Interface */}
+        <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <ChatInterface
+            key={chatKey}
+            isAuthenticated={isAuthenticated}
+            selectedModel={selectedModel}
+            onSelectModel={handleSelectModel}
+            activeSessionId={activeSessionId}
+            onSessionsChange={refreshSessions}
+            isTipsOpen={isTipsOpen}
+            onToggleTips={() => setIsTipsOpen((prev) => !prev)}
+            onClearSession={() => {
+              setToast({
+                type: 'success',
+                message: 'Đã tạo cuộc trò chuyện mới.',
+              });
+            }}
+          />
+        </main>
+      </div>
 
       {/* Upcoming Events Modal Drawer */}
       <UpcomingEventsModal
@@ -239,7 +269,7 @@ export default function Home() {
         onClose={() => setIsUpcomingOpen(false)}
       />
 
-      {/* Multi-Session History Modal Drawer */}
+      {/* Multi-Session History Modal Drawer (fallback / direct open) */}
       <ChatHistoryModal
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
