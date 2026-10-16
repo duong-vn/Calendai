@@ -100,11 +100,11 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b-2 border-[#2d2015] bg-[#fffaf2]/95 px-2.5 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#453427] dark:bg-[#181310]/95">
-      {/* Brand logo & Model Selector */}
-      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
-        <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 group shrink-0">
-          <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-[#ede4d5] p-1 border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] group-hover:border-[#c25e2e] transition-all overflow-hidden shrink-0 dark:bg-[#211a14] dark:border-[#453427] dark:group-hover:border-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]">
+    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b-2 border-[#2d2015] bg-[#fffaf2]/95 px-3 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#453427] dark:bg-[#181310]/95">
+      {/* Brand logo */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
+          <div className="relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-[#ede4d5] p-1 border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] group-hover:border-[#c25e2e] transition-all overflow-hidden shrink-0 dark:bg-[#211a14] dark:border-[#453427] dark:group-hover:border-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]">
             <Image
               src="/assets/logo.png"
               alt="Calendai Logo"
@@ -128,76 +128,10 @@ export function Header({
             </span>
           </div>
         </Link>
-
-        {/* Model Selector in Header */}
-        {onSelectModel && (
-          <div className="shrink min-w-0">
-            <ModelSelector
-              selectedModel={selectedModel || ''}
-              onSelectModel={onSelectModel}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Center info: Timezone (Mechanical chronometer gauge) */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#fffaf2] px-3.5 py-1 text-xs font-semibold text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427]">
-          <Globe className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
-          <span>Hà Nội (GMT+7)</span>
-        </div>
       </div>
 
       {/* Right Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* Dark Mode Toggle */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-2 focus-visible:ring-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b] dark:focus-visible:ring-[#e07a3f]"
-          title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
-          aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
-        >
-          {isDark ? (
-            <Sun className="h-4 w-4 text-[#fbbf24] hover:rotate-45 transition-transform" />
-          ) : (
-            <Moon className="h-4 w-4 text-[#d49439] hover:-rotate-12 transition-transform" />
-          )}
-        </button>
-
-        {/* Button: Mẹo nâng cao (Desktop / Tablet) */}
-        {onOpenTips && (
-          <button
-            type="button"
-            onClick={onOpenTips}
-            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
-            title="Xem mẹo đặt lịch & các tham số nâng cao"
-            aria-label="Xem mẹo đặt lịch"
-          >
-            <Sparkles className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#d49439] dark:text-[#fbbf24]" />
-            <span className="hidden sm:inline">Mẹo</span>
-          </button>
-        )}
-
-        {/* Buttons to Privacy and Terms (Desktop/Tablet only) */}
-        <Link
-          href="/privacy"
-          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
-          title="Chính sách quyền riêng tư"
-        >
-          <Shield className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
-          <span>Chính sách</span>
-        </Link>
-
-        <Link
-          href="/terms"
-          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
-          title="Điều khoản dịch vụ"
-        >
-          <FileText className="h-3.5 w-3.5 text-[#786455] dark:text-[#ba9f88]" />
-          <span>Điều khoản</span>
-        </Link>
-
         {/* Button: Lịch trình (Desktop / Tablet) */}
         <button
           type="button"
@@ -224,6 +158,39 @@ export function Header({
           </button>
         )}
 
+        {/* Button: Mẹo nâng cao (Desktop / Tablet) */}
+        {onOpenTips && (
+          <button
+            type="button"
+            onClick={onOpenTips}
+            className="hidden md:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+            title="Xem mẹo đặt lịch & các tham số nâng cao"
+            aria-label="Xem mẹo đặt lịch"
+          >
+            <Sparkles className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#d49439] dark:text-[#fbbf24]" />
+            <span className="hidden lg:inline">Mẹo</span>
+          </button>
+        )}
+
+        {/* Buttons to Privacy and Terms (Desktop/Tablet only) */}
+        <Link
+          href="/privacy"
+          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+          title="Chính sách quyền riêng tư"
+        >
+          <Shield className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
+          <span>Chính sách</span>
+        </Link>
+
+        <Link
+          href="/terms"
+          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+          title="Điều khoản dịch vụ"
+        >
+          <FileText className="h-3.5 w-3.5 text-[#786455] dark:text-[#ba9f88]" />
+          <span>Điều khoản</span>
+        </Link>
+
         {onClearSession && (
           <button
             type="button"
@@ -233,9 +200,24 @@ export function Header({
             aria-label="Xóa session"
           >
             <RotateCcw className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#786455] dark:text-[#ba9f88]" />
-            <span className="hidden sm:inline">Làm mới</span>
+            <span className="hidden lg:inline">Làm mới</span>
           </button>
         )}
+
+        {/* Dark Mode Toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-2 focus-visible:ring-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b] dark:focus-visible:ring-[#e07a3f]"
+          title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
+          aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
+        >
+          {isDark ? (
+            <Sun className="h-4 w-4 text-[#fbbf24] hover:rotate-45 transition-transform" />
+          ) : (
+            <Moon className="h-4 w-4 text-[#d49439] hover:-rotate-12 transition-transform" />
+          )}
+        </button>
 
         {/* User Profile / Connect Google Button */}
         {isAuthenticated && user ? (

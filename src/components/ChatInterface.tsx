@@ -12,6 +12,7 @@ import {
   ArrowUp,
   Calendar,
   Clock,
+  Globe,
   Loader2,
   RotateCcw,
   Sparkles,
@@ -33,6 +34,7 @@ import {
   MeetingPreviewCard,
   type MeetingProposalData,
 } from './MeetingPreviewCard';
+import { ModelSelector } from './ModelSelector';
 
 // Lazy-load drawer only when opened
 const Sidenote = dynamic(
@@ -712,7 +714,35 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar (Typewriter Console styling) */}
-        <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 backdrop-blur-md transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
+        <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 backdrop-blur-md transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
+          {/* Workbench Control Bar: Model Selector, Tips & Chronometer Timezone */}
+          <div className="mx-auto flex max-w-3xl items-center justify-between mb-2 px-1">
+            <div className="flex items-center gap-2">
+              {onSelectModel && (
+                <ModelSelector
+                  selectedModel={activeModel}
+                  onSelectModel={onSelectModel}
+                />
+              )}
+              <button
+                type="button"
+                onClick={toggleTips}
+                className="flex min-h-[30px] sm:min-h-[34px] touch-manipulation items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2.5 py-0.5 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
+                title="Xem mẹo đặt lịch & tham số"
+                aria-label="Xem mẹo đặt lịch"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-[#d49439] dark:text-[#fbbf24]" />
+                <span className="hidden xs:inline">Mẹo đặt lịch</span>
+              </button>
+            </div>
+
+            {/* Chronometer Timezone Badge */}
+            <div className="flex items-center gap-1.5 rounded-full border-2 border-[#2d2015]/30 bg-[#f5eee1] px-2.5 py-0.5 text-[11px] font-mono font-semibold text-[#786455] dark:border-[#453427] dark:bg-[#16120f] dark:text-[#ba9f88]">
+              <Globe className="h-3 w-3 text-[#c25e2e] dark:text-[#e07a3f]" />
+              <span>Hà Nội (GMT+7)</span>
+            </div>
+          </div>
+
           <form
             onSubmit={onFormSubmit}
             className="mx-auto flex max-w-3xl items-end rounded-3xl border-2 border-[#2d2015] bg-[#fffaf2] px-3 sm:px-4 py-2 shadow-[3px_3px_0px_#2d2015] focus-within:shadow-[4px_4px_0px_#c25e2e] transition-all dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[3px_3px_0px_#453427] dark:focus-within:border-[#e07a3f] dark:focus-within:shadow-[4px_4px_0px_#e07a3f]"
