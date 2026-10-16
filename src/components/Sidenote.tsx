@@ -53,7 +53,7 @@ export function Sidenote({
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="font-bold text-[#2b1f17] dark:text-[#f5ebd9]">Cẩm Nang Steampunk</h3>
+            <h3 className="font-bold text-[#2b1f17] dark:text-[#f5ebd9]">Cẩm Nang Trợ Lý</h3>
             <p className="text-[11px] font-mono text-[#786455] dark:text-[#ba9f88]">Quy chuẩn lệnh & tham số</p>
           </div>
         </div>

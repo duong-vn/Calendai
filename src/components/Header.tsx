@@ -124,7 +124,7 @@ export function Header({
             </span>
             <span className="hidden rounded-full bg-[#f5eee1] px-2.5 py-0.5 text-[11px] font-bold text-[#c25e2e] sm:inline-flex items-center gap-1 border border-[#2d2015] dark:bg-[#211a14] dark:text-[#e07a3f] dark:border-[#453427]">
               <Sparkles className="h-3 w-3 text-[#d49439] dark:text-[#fbbf24]" />
-              Steampunk AI
+              Trợ lý AI
             </span>
           </div>
         </Link>
@@ -209,8 +209,8 @@ export function Header({
           type="button"
           onClick={toggleTheme}
           className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-2 focus-visible:ring-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b] dark:focus-visible:ring-[#e07a3f]"
-          title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
-          aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối Steampunk'}
+          title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối'}
+          aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối'}
         >
           {isDark ? (
             <Sun className="h-4 w-4 text-[#fbbf24] hover:rotate-45 transition-transform" />

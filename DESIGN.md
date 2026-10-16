@@ -1,6 +1,6 @@
 ---
 name: Calendai
-description: Trợ lý AI tiếng Việt đặt lịch phong cách Steampunk Cartoon Atelier cổ điển và độc đáo
+description: Trợ lý AI tiếng Việt đặt lịch phong cách Cartoon Atelier cổ điển và độc đáo
 colors:
   primary: "#c25e2e"
   primary-dark: "#e07a3f"
@@ -87,13 +87,13 @@ components:
     backgroundColor: "{colors.primary-hover}"
 ---
 
-# Design System: Calendai (Steampunk Cartoon Atelier)
+# Design System: Calendai (Cartoon Atelier)
 
 ## Overview
 
-**Creative North Star: "Chrono-Clockwork Steam-Atelier"**
+**Creative North Star: "Chrono-Clockwork Atelier"**
 
-Một thế giới giao diện độc bản hòa quyện giữa phim hoạt hình vẽ tay thập niên 1930 (Golden Age rubber-hose cartoon, Cuphead) và xưởng máy hơi nước Victorian Steampunk (bánh răng đồng, vạch chỉ thị cơ khí, giấy da cổ ố vàng, bóng đèn dây tóc vonfram và viền mực đậm nét).
+Một thế giới giao diện độc bản hòa quyện giữa phim hoạt hình vẽ tay thập niên 1930 (Golden Age rubber-hose cartoon, Cuphead) và xưởng máy hơi nước Victorian (bánh răng đồng, vạch chỉ thị cơ khí, giấy da cổ ố vàng, bóng đèn dây tóc vonfram và viền mực đậm nét).
 
 **Key Visual Identifiers:**
 - **Inked Cartoon Outlines (Nét viền mực đậm đà)**: Mọi thẻ, nút bấm và khung chat đều được bao quanh bởi viền mực đậm `border-2 border-[#2d2015]` (dark: `border-[#453427]`), mang lại cảm giác hoạt hình vẽ tay hoạt họa sống động.

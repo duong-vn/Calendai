@@ -589,7 +589,7 @@ export function ChatInterface({
               </div>
             )}
 
-            {/* Steampunk Cartoon Workshop Welcome Hero when empty */}
+            {/* Cartoon Workshop Welcome Hero when empty */}
             {messages.length === 0 && (
               <div className="my-8 flex flex-col items-start justify-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ede4d5] border-2 border-[#2d2015] shadow-[3px_3px_0px_#2d2015] mb-5 dark:bg-[#211a14] dark:border-[#d49439] dark:shadow-[3px_3px_0px_#d49439]">

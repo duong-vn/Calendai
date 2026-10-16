@@ -105,7 +105,7 @@ body::after {
   background-image: radial-gradient(#3a2e24 0.75px, transparent 0.75px);
 }
 
-/* Vintage Steampunk Brass & Copper custom scrollbar */
+/* Vintage Brass & Copper custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

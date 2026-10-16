@@ -185,7 +185,7 @@ export function ModelSelector({
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsOpen(false);
           }}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-xs sm:absolute sm:inset-auto sm:top-full sm:left-0 sm:mt-2 sm:block sm:bg-transparent sm:backdrop-blur-none sm:p-0 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-xs sm:absolute sm:inset-auto sm:bottom-full sm:left-0 sm:mb-2 sm:block sm:bg-transparent sm:backdrop-blur-none sm:p-0 animate-in fade-in duration-150"
         >
           <div
             role="listbox"
@@ -199,7 +199,7 @@ export function ModelSelector({
             <div className="flex items-center justify-between px-1 pb-2.5 sm:pb-2 border-b-2 border-[#2d2015]/20 dark:border-[#453427]">
               <div className="flex items-center gap-1.5 text-sm sm:text-xs font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
                 <Cpu className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
-                <span>Mô hình AI Hơi Nước</span>
+                <span>Mô hình AI</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 text-xs sm:text-[11px] font-semibold text-[#786455] dark:text-[#ba9f88]">
