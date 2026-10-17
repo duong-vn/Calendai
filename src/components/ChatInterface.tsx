@@ -70,13 +70,13 @@ const MARKDOWN_COMPONENTS = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[#1a73e8] underline hover:text-[#1557b0] dark:text-[#38bdf8] dark:hover:text-[#7dd3fc]"
+      className="text-[#c25e2e] font-semibold underline decoration-[#c25e2e]/60 hover:text-[#a6491e] dark:text-[#e07a3f] dark:decoration-[#e07a3f]/60 dark:hover:text-[#f39c6b]"
     >
       {children}
     </a>
   ),
   code: ({ children }: { children?: React.ReactNode }) => (
-    <code className="rounded bg-[#f0f4f9] px-1.5 py-0.5 text-xs text-[#1a73e8] font-mono dark:bg-[#1c2e26] dark:text-[#34d399] dark:border dark:border-[#23382d]">
+    <code className="rounded-md border border-[#2d2015]/30 bg-[#ede4d5] px-1.5 py-0.5 text-xs text-[#c25e2e] font-mono dark:border-[#453427] dark:bg-[#2a221b] dark:text-[#e07a3f]">
       {children}
     </code>
   ),
@@ -153,26 +153,26 @@ const ChatMessageItem = memo(function ChatMessageItem({
         {/* Empty Assistant State: only show thinking while loading, or retry if real error */}
         {isEmptyAssistant && (
           isLoading && isLast ? (
-            <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#5f6368] dark:text-[#94a3b8]">
+            <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#786455] dark:text-[#ba9f88]">
               <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse dark:bg-[#10b981]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:150ms] dark:bg-[#38bdf8]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-[#1a73e8] animate-pulse [animation-delay:300ms] dark:bg-[#fbbf24]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#c25e2e] animate-pulse dark:bg-[#e07a3f]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#d49439] animate-pulse [animation-delay:150ms] dark:bg-[#fbbf24]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#1f7560] animate-pulse [animation-delay:300ms] dark:bg-[#2dd4bf]" />
               </span>
-              <span className="font-medium text-[#444746] dark:text-[#a7f3d0]">
+              <span className="font-medium text-[#2b1f17] dark:text-[#f5ebd9]">
                 Calendai đang suy nghĩ...
               </span>
             </div>
           ) : error && isLast ? (
-            <div className="flex items-center justify-between gap-3 text-xs text-[#5f6368] dark:text-[#94a3b8]">
+            <div className="flex items-center justify-between gap-3 text-xs text-[#786455] dark:text-[#ba9f88]">
               <div className="flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-[#ea4335] shrink-0" />
+                <AlertCircle className="h-3.5 w-3.5 text-[#c25e2e] shrink-0" />
                 <span>Chưa nhận được phản hồi từ trợ lý AI.</span>
               </div>
               <button
                 type="button"
                 onClick={onReload}
-                className="font-medium text-[#1a73e8] hover:underline shrink-0 dark:text-[#34d399]"
+                className="font-medium text-[#c25e2e] hover:underline shrink-0 dark:text-[#e07a3f]"
               >
                 Thử lại
               </button>
@@ -213,9 +213,9 @@ const ChatMessageItem = memo(function ChatMessageItem({
             return (
               <div
                 key={toolCallId}
-                className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#1a73e8] dark:bg-[#17241e] dark:text-[#34d399] dark:border dark:border-[#23382d]"
+                className="flex items-center gap-2 rounded-xl border-2 border-[#2d2015] bg-[#ede4d5]/60 p-3 text-xs text-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#e07a3f]"
               >
-                <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
+                <Loader2 className="h-4 w-4 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
                 <span>Đang chuẩn bị thẻ xem trước Google Calendar...</span>
               </div>
             );
@@ -240,7 +240,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
                 return (
                   <div
                     key={toolCallId}
-                    className="rounded-xl bg-[#fef7e0] p-3 text-xs text-[#b06000] border border-[#feefc3] dark:bg-[#332408] dark:text-[#fde047] dark:border-[#523b0c]"
+                    className="rounded-xl border-2 border-[#2d2015] bg-[#fffaf2] p-3 text-xs text-[#c25e2e] shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]"
                   >
                     {res.error || 'Không thể lấy danh sách sự kiện.'}
                   </div>
@@ -250,10 +250,10 @@ const ChatMessageItem = memo(function ChatMessageItem({
               return (
                 <div
                   key={toolCallId}
-                  className="my-2 space-y-2 rounded-2xl border border-[#dadce0] bg-[#f8fafd] p-4 dark:border-[#23382d] dark:bg-[#16221d]"
+                  className="my-2 space-y-2 rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-4 shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[2px_2px_0px_#453427]"
                 >
-                  <div className="flex items-center gap-2 text-xs font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
-                    <Calendar className="h-4 w-4 text-[#1a73e8] dark:text-[#10b981]" />
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
+                    <Calendar className="h-4 w-4 text-[#c25e2e] dark:text-[#e07a3f]" />
                     <span>Sự kiện sắp diễn ra trên Google Calendar:</span>
                   </div>
                   {res.events && res.events.length > 0 ? (
@@ -261,10 +261,10 @@ const ChatMessageItem = memo(function ChatMessageItem({
                       {res.events.map((evt) => (
                         <div
                           key={evt.id}
-                          className="flex items-center justify-between rounded-xl bg-white p-2.5 text-xs border border-[#dadce0] dark:bg-[#17241e] dark:border-[#23382d]"
+                          className="flex items-center justify-between rounded-xl bg-[#ede4d5]/50 p-2.5 text-xs border border-[#2d2015]/30 dark:bg-[#2a221b] dark:border-[#453427]"
                         >
                           <div className="truncate pr-2">
-                            <span className="font-medium text-[#1f1f1f] dark:text-[#f1f5f9]">
+                            <span className="font-medium text-[#2b1f17] dark:text-[#f5ebd9]">
                               {evt.summary}
                             </span>
                           </div>
@@ -273,7 +273,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
                               href={evt.hangoutLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="shrink-0 flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-0.5 text-[11px] font-medium text-[#137333] hover:underline dark:bg-[#082f22] dark:text-[#34d399] dark:border dark:border-[#10b981]/30"
+                              className="shrink-0 flex items-center gap-1 rounded-full border border-[#2d2015] bg-[#ede4d5] px-2.5 py-0.5 text-[11px] font-bold text-[#1f7560] hover:bg-[#fffaf2] transition-colors dark:border-[#453427] dark:bg-[#211a14] dark:text-[#2dd4bf] dark:hover:bg-[#2a221b]"
                             >
                               <Video className="h-3 w-3" />
                               <span>Meet</span>
@@ -283,12 +283,12 @@ const ChatMessageItem = memo(function ChatMessageItem({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-[#5f6368] italic dark:text-[#94a3b8]">
+                    <p className="text-xs text-[#786455] italic dark:text-[#ba9f88]">
                       Không có sự kiện nào sắp tới trong khoảng thời gian này.
                     </p>
                   )}
                   {res.note && (
-                    <p className="text-[11px] text-[#747775] italic dark:text-[#94a3b8]">
+                    <p className="text-[11px] text-[#786455] italic dark:text-[#ba9f88]">
                       {res.note}
                     </p>
                   )}
@@ -299,9 +299,9 @@ const ChatMessageItem = memo(function ChatMessageItem({
             return (
               <div
                 key={toolCallId}
-                className="flex items-center gap-2 rounded-xl bg-[#f0f4f9] p-3 text-xs text-[#5f6368] dark:bg-[#17241e] dark:text-[#94a3b8] dark:border dark:border-[#23382d]"
+                className="flex items-center gap-2 rounded-xl border-2 border-[#2d2015] bg-[#ede4d5]/50 p-3 text-xs text-[#786455] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#ba9f88]"
               >
-                <Loader2 className="h-4 w-4 animate-spin text-[#1a73e8] dark:text-[#10b981]" />
+                <Loader2 className="h-4 w-4 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
                 <span>Đang tra cứu Google Calendar...</span>
               </div>
             );
@@ -568,7 +568,7 @@ export function ChatInterface({
   }, [setInput]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[#f8fafd] dark:bg-[#0c120f]">
+    <div className="flex h-full w-full overflow-hidden bg-transparent">
       {/* Main Chat Stream Area */}
       <div className="flex flex-1 flex-col h-full min-w-0">
         {/* Scrollable messages container */}
@@ -810,7 +810,7 @@ export function ChatInterface({
 
       {/* Desktop Right Sidenote Sidebar (Slide in when isTipsOpen is true) */}
       {isTipsOpen && (
-        <aside className="hidden lg:flex w-84 xl:w-92 flex-col border-l border-[#dadce0] bg-white h-full overflow-y-auto p-5 shrink-0 animate-in slide-in-from-right duration-200 dark:border-[#23382d] dark:bg-[#16221d]">
+        <aside className="hidden lg:flex w-84 xl:w-92 flex-col border-l-2 border-[#2d2015] bg-[#fffaf2] h-full overflow-y-auto p-5 shrink-0 animate-in slide-in-from-right duration-200 dark:border-[#453427] dark:bg-[#181310]">
           <Sidenote
             onUsePrompt={handlePromptClick}
             onClearChat={handleClearChat}
@@ -823,8 +823,8 @@ export function ChatInterface({
       {/* Mobile Sidenote Modal / Bottom Sheet Drawer */}
       {isTipsOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs lg:hidden animate-in fade-in duration-150">
-          <div className="flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-3xl sm:rounded-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-t sm:border border-[#dadce0] overflow-y-auto dark:bg-[#16221d] dark:border-[#23382d]">
-            <div className="w-10 h-1 bg-[#dadce0] dark:bg-[#23382d] rounded-full mx-auto mb-3 shrink-0 sm:hidden" />
+          <div className="flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-3xl sm:rounded-3xl bg-[#fffaf2] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-t-2 sm:border-2 border-[#2d2015] overflow-y-auto dark:bg-[#181310] dark:border-[#453427]">
+            <div className="w-10 h-1 bg-[#2d2015]/40 dark:bg-[#453427] rounded-full mx-auto mb-3 shrink-0 sm:hidden" />
             <Sidenote
               onUsePrompt={(prompt) => {
                 handlePromptClick(prompt);
