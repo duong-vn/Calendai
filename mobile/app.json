@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Calendai",
+    "slug": "calendai-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#18181b",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.calendai.mobile"
+    },
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#18181b"
+      },
+      "package": "com.calendai.mobile"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9f845fa7-7fea-487c-9784-3e30aea3163a"
+      }
+    },
+    "owner": "tuan_duon"
+  }
+}

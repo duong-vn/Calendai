@@ -14,6 +14,8 @@ import {
   Clock,
   Globe,
   Loader2,
+  Mic,
+  MicOff,
   RotateCcw,
   Sparkles,
   User,
@@ -347,6 +349,32 @@ const QUICK_PROMPTS = [
   },
 ];
 
+interface SpeechRecognitionEventLike extends Event {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+    length: number;
+  };
+}
+
+interface SpeechRecognitionLike extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
 interface ChatInterfaceProps {
   isAuthenticated: boolean;
   selectedModel?: string;
@@ -451,6 +479,79 @@ export function ChatInterface({
       textareaRef.current.style.height = 'auto';
     }
   };
+
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const win = window as unknown as {
+        SpeechRecognition?: SpeechRecognitionConstructor;
+        webkitSpeechRecognition?: SpeechRecognitionConstructor;
+      };
+      setIsSpeechSupported(Boolean(win.SpeechRecognition || win.webkitSpeechRecognition));
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+
+  const toggleVoiceRecognition = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const win = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionClass) {
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognitionClass();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = 'vi-VN';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEventLike) => {
+        const results = event.results;
+        const latestResult = results[results.length - 1];
+        const transcript = latestResult?.[0]?.transcript?.trim();
+        if (transcript) {
+          setInput((prev) => (prev ? `${prev.trim()} ${transcript}` : transcript));
+          setTimeout(adjustTextareaHeight, 50);
+        }
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  }, [isListening, setInput]);
 
   // Restore chat session from localStorage on mount or when activeSessionId changes
   useEffect(() => {
@@ -770,6 +871,35 @@ export function ChatInterface({
               className="flex-1 resize-none bg-transparent py-1.5 text-sm text-[#2b1f17] placeholder:text-[#786455] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:opacity-50 max-h-36 overflow-y-auto leading-relaxed dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88]"
               style={{ height: 'auto' }}
             />
+
+            {/* Voice-to-Text Microphone Button */}
+            {isSpeechSupported && (
+              <button
+                type="button"
+                onClick={toggleVoiceRecognition}
+                title={
+                  isListening
+                    ? 'Đang lắng nghe tiếng Việt... Nhấn để dừng'
+                    : 'Nói để đặt lịch (Nhận diện giọng nói tiếng Việt)'
+                }
+                aria-label={
+                  isListening
+                    ? 'Dừng nhận diện giọng nói'
+                    : 'Nói để đặt lịch'
+                }
+                className={`flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 transition-all active:translate-x-[1px] active:translate-y-[1px] mb-0.5 ml-1.5 ${
+                  isListening
+                    ? 'border-[#cf3e32] bg-[#cf3e32] text-white shadow-[0_0_12px_rgba(207,62,50,0.6)] animate-pulse'
+                    : 'border-[#2d2015] bg-[#ede4d5] text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#fffaf2] hover:text-[#c25e2e] dark:border-[#453427] dark:bg-[#2a221b] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#211a14] dark:hover:text-[#e07a3f]'
+                }`}
+              >
+                {isListening ? (
+                  <MicOff className="h-4 w-4 animate-bounce" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </button>
+            )}
 
             <button
               type="submit"
