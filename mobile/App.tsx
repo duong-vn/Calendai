@@ -27,48 +27,41 @@ export default function App() {
   const [activeProposal, setActiveProposal] = useState<MeetingProposal | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const [assistantNote, setAssistantNote] = useState<string>(
-    'Chào bạn! Tôi là trợ lý Calendai. Chạm vào mic hoặc nhập lệnh để lên lịch cuộc họp Google Calendar nhé.'
+    'Đang kết nối máy chủ để tải lịch hôm nay...'
   );
 
   const loadData = useCallback(async () => {
     setIsRefreshing(true);
-    const [authRes, eventsRes] = await Promise.all([
-      fetchAuthStatus(),
-      fetchUpcomingEvents(),
-    ]);
-    setAuth(authRes);
-    setEvents(eventsRes.events || []);
-    setIsRefreshing(false);
+    try {
+      const [authRes, eventsRes] = await Promise.all([
+        fetchAuthStatus(),
+        fetchUpcomingEvents(),
+      ]);
+      setAuth(authRes);
+      if (eventsRes.error) {
+        setAssistantNote(eventsRes.error);
+      } else {
+        setEvents(eventsRes.events.filter((event) => {
+          const start = event.isAllDay ? event.start.slice(0, 10) : new Date(event.start).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+          const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+          return start === today;
+        }));
+        setAssistantNote('Đã tải lịch hôm nay. Trò chuyện AI trên mobile chưa được kết nối.');
+      }
+    } catch {
+      setAuth(null);
+      setAssistantNote('Không thể kết nối máy chủ. Kiểm tra mạng và địa chỉ API.');
+    } finally {
+      setIsRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Handle user speech or quick command
-  const handleUserMessage = async (text: string) => {
-    setAssistantNote(`Đang xử lý: "${text}"...`);
-
-    // Simulated parser & proposal for instant feedback
-    setTimeout(() => {
-      const now = new Date();
-      const startTime = new Date(now.getTime() + 2 * 3600000); // 2 hours later
-      const endTime = new Date(startTime.getTime() + 3600000);
-
-      const newProposal: MeetingProposal = {
-        proposalId: `prop-${Date.now()}`,
-        title: text.length > 30 ? `${text.slice(0, 30)}...` : text,
-        start: startTime.toISOString(),
-        end: endTime.toISOString(),
-        createMeet: true,
-        attendees: ['team@calendai.vn'],
-      };
-
-      setActiveProposal(newProposal);
-      setAssistantNote(
-        `Đã tạo bản thảo cho "${newProposal.title}". Bạn hãy kiểm tra và xác nhận nhé!`
-      );
-    }, 1000);
+  const handleUserMessage = async (_text: string) => {
+    setAssistantNote('Trò chuyện AI trên mobile chưa được kết nối. Vui lòng dùng giao diện web để đề xuất và xác nhận lịch.');
   };
 
   const handleConfirmMeeting = async () => {
@@ -84,18 +77,8 @@ export default function App() {
       Alert.alert('Thành công', 'Đã thêm cuộc họp vào Google Calendar!');
       setAssistantNote('Đã tạo cuộc họp và link Google Meet thành công! 📅');
     } else {
-      // Mock success for local demo
-      const mockEvent: CalendarEvent = {
-        id: `event-${Date.now()}`,
-        summary: activeProposal.title,
-        start: { dateTime: activeProposal.start },
-        end: { dateTime: activeProposal.end },
-        hangoutLink: 'https://meet.google.com/new-meeting-link',
-      };
-      setEvents((prev) => [mockEvent, ...prev]);
-      setActiveProposal(null);
-      Alert.alert('Thành công', 'Đã thêm cuộc họp vào Google Calendar!');
-      setAssistantNote('Đã tạo cuộc họp và link Google Meet thành công! 📅');
+      Alert.alert('Chưa tạo được lịch', result.error || 'Vui lòng thử lại.');
+      setAssistantNote('Chưa tạo được cuộc họp. Bản thảo được giữ lại để bạn thử lại.');
     }
   };
 
@@ -103,6 +86,7 @@ export default function App() {
     weekday: 'long',
     day: 'numeric',
     month: 'numeric',
+    timeZone: 'Asia/Ho_Chi_Minh',
   });
 
   return (
@@ -124,7 +108,7 @@ export default function App() {
             ]}
           />
           <Text style={styles.authText}>
-            {auth?.authenticated ? 'Google Sync' : 'Demo Mode'}
+            {auth?.authenticated ? 'Đã kết nối Google' : 'Chưa kết nối'}
           </Text>
         </View>
       </View>

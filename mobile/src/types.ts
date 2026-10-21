@@ -2,14 +2,9 @@ export interface CalendarEvent {
   id: string;
   summary: string;
   description?: string;
-  start: {
-    dateTime?: string;
-    date?: string;
-  };
-  end: {
-    dateTime?: string;
-    date?: string;
-  };
+  start: string;
+  end: string;
+  isAllDay?: boolean;
   hangoutLink?: string;
   conferenceData?: unknown;
 }

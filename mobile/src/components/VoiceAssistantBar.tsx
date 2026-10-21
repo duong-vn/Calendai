@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 
 interface VoiceAssistantBarProps {
@@ -25,7 +26,6 @@ export function VoiceAssistantBar({
   isLoading,
 }: VoiceAssistantBarProps) {
   const [inputText, setInputText] = useState('');
-  const [isListening, setIsListening] = useState(false);
 
   const handleSend = () => {
     if (!inputText.trim() || isLoading) return;
@@ -38,19 +38,7 @@ export function VoiceAssistantBar({
   };
 
   const handleToggleVoice = () => {
-    if (isListening) {
-      setIsListening(false);
-      return;
-    }
-
-    // Toggle listening state
-    setIsListening(true);
-
-    // Mock voice transcription delay for demo if native voice engine isn't mounted yet
-    setTimeout(() => {
-      setIsListening(false);
-      setInputText('Họp khẩn cấp dự án chiều nay lúc 15h');
-    }, 2500);
+    Alert.alert('Chưa hỗ trợ giọng nói', 'Bản mobile này chưa tích hợp nhận diện giọng nói. Bạn có thể dùng nút mic trên bàn phím điện thoại.');
   };
 
   return (
@@ -79,23 +67,18 @@ export function VoiceAssistantBar({
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleToggleVoice}
-          style={[
-            styles.micButton,
-            isListening && styles.micButtonListening,
-          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Thông tin nhận diện giọng nói"
+          style={styles.micButton}
         >
-          <Text style={styles.micIcon}>{isListening ? '🔴' : '🎙️'}</Text>
+          <Text style={styles.micIcon}>🎙️</Text>
         </TouchableOpacity>
 
         {/* Text Input */}
         <TextInput
           value={inputText}
           onChangeText={setInputText}
-          placeholder={
-            isListening
-              ? 'Đang lắng nghe tiếng Việt...'
-              : 'Nói hoặc nhập yêu cầu đặt lịch...'
-          }
+          placeholder="Nhập yêu cầu đặt lịch..."
           placeholderTextColor="#71717a"
           style={styles.input}
           editable={!isLoading}

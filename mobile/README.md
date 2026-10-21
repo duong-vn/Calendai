@@ -1,28 +1,30 @@
 # Calendai Mobile (Expo / React Native)
 
-Ứng dụng di động Calendai - Trợ lý đặt lịch hẹn tiếng Việt kết hợp Google Calendar & Google Meet (Kiến trúc Phương án C: Agenda Dashboard).
+Giao diện Agenda Dashboard cho Calendai. Đây chưa phải ứng dụng có đầy đủ chức năng của web.
 
-## Tính năng
-- **Agenda Dashboard**: Xem trực tiếp danh sách các cuộc họp trong ngày, tích hợp mở link Google Meet 1-chạm.
-- **Voice Assistant & Quick Chips**: Nút Mic nhận diện giọng nói tiếng Việt và các lệnh gợi ý nhanh (họp nhóm, gặp đối tác, tra cứu lịch).
-- **Chrono-Confirm**: Modal xác nhận tạo sự kiện chuẩn Human-in-the-loop trước khi lưu lên Google Calendar.
-- **Kết nối Backend Next.js**: Đồng bộ với các API `/api/calendar/upcoming`, `/api/calendar/confirm`, `/api/auth/google/status`.
+## Trạng thái tích hợp
 
-## Hướng dẫn chạy
+- Đọc lịch qua `/api/calendar/upcoming` và trạng thái qua `/api/auth/google/status`.
+- Chỉ hiển thị cuộc họp hôm nay theo múi giờ `Asia/Ho_Chi_Minh`.
+- Không hiển thị dữ liệu mẫu hoặc báo thành công khi API thất bại.
+- Luồng đăng nhập Google native, trò chuyện AI và nhận diện giọng nói native **chưa được tích hợp**. Đăng nhập trong trình duyệt không tự chia sẻ phiên với ứng dụng native.
+- Giao diện xác nhận và hàm gọi `/api/calendar/confirm` được giữ lại, nhưng chưa có bản thảo thật từ AI trên mobile. Dùng web để đề xuất và xác nhận lịch.
+- Có thể sử dụng nhập giọng nói từ bàn phím điện thoại; nút mic trong app chỉ thông báo giới hạn hiện tại.
 
-1. Cài đặt dependency:
+## Chạy cục bộ
+
 ```bash
 cd mobile
 npm install
-```
-
-2. Khởi động app:
-```bash
 npm start
 ```
 
-3. Mở ứng dụng:
-- Dùng app **Expo Go** trên điện thoại (quét mã QR trên màn hình).
-- Hoặc bấm `a` để chạy trên Android Emulator, `i` trên iOS Simulator.
+Đặt biến môi trường công khai `EXPO_PUBLIC_API_URL` thành URL backend trước khi khởi động hoặc build. Máy thật không truy cập được backend máy tính qua `localhost`; dùng địa chỉ LAN khi phát triển hoặc HTTPS public khi build APK. Biến này chỉ chứa URL công khai, không chứa thông tin xác thực.
 
-*Lưu ý khi test máy thật:* Trong `src/services/api.ts`, thay `http://localhost:3000` thành IP mạng LAN máy tính của bạn (VD: `http://192.168.1.x:3000`).
+## Build APK
+
+```bash
+npx eas-cli build -p android --profile preview
+```
+
+Cấu hình `preview` trong `eas.json` xuất APK cài trực tiếp. Build thành công không chứng minh chức năng đăng nhập/AI/giọng nói đã được tích hợp.

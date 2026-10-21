@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Linking } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Linking, Alert } from 'react-native';
 import type { CalendarEvent } from '../types';
 
 interface AgendaCardProps {
@@ -7,23 +7,22 @@ interface AgendaCardProps {
 }
 
 export function AgendaCard({ event }: AgendaCardProps) {
-  const startTime = event.start.dateTime
-    ? new Date(event.start.dateTime).toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : 'Cả ngày';
+  const startTime = event.isAllDay ? 'Cả ngày' : new Date(event.start).toLocaleTimeString('vi-VN', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh',
+  });
+  const endTime = event.isAllDay ? '' : new Date(event.end).toLocaleTimeString('vi-VN', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh',
+  });
 
-  const endTime = event.end.dateTime
-    ? new Date(event.end.dateTime).toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '';
-
-  const handleOpenMeet = () => {
-    if (event.hangoutLink) {
-      Linking.openURL(event.hangoutLink);
+  const handleOpenMeet = async () => {
+    try {
+      const url = new URL(event.hangoutLink || '');
+      if (url.protocol !== 'https:' || url.hostname !== 'meet.google.com') {
+        throw new Error('Liên kết Google Meet không hợp lệ.');
+      }
+      await Linking.openURL(url.toString());
+    } catch {
+      Alert.alert('Không thể mở Google Meet', 'Vui lòng kiểm tra liên kết và thử lại.');
     }
   };
 

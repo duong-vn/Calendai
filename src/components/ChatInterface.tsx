@@ -350,8 +350,10 @@ const QUICK_PROMPTS = [
 ];
 
 interface SpeechRecognitionEventLike extends Event {
+  resultIndex: number;
   results: {
     [index: number]: {
+      isFinal: boolean;
       [index: number]: {
         transcript: string;
       };
@@ -369,7 +371,7 @@ interface SpeechRecognitionLike extends EventTarget {
   abort: () => void;
   onstart: (() => void) | null;
   onend: (() => void) | null;
-  onerror: ((event: Event) => void) | null;
+  onerror: ((event: Event & { error: string }) => void) | null;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
 }
 
@@ -462,6 +464,7 @@ export function ChatInterface({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (!isLoading && input.trim()) {
+        cancelVoiceRecognition();
         const fakeEvent = {
           preventDefault: () => {},
         } as unknown as React.FormEvent<HTMLFormElement>;
@@ -474,6 +477,7 @@ export function ChatInterface({
   };
 
   const onFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    cancelVoiceRecognition();
     handleSubmit(e);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -482,29 +486,67 @@ export function ChatInterface({
 
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const win = window as unknown as {
-        SpeechRecognition?: SpeechRecognitionConstructor;
-        webkitSpeechRecognition?: SpeechRecognitionConstructor;
-      };
-      setIsSpeechSupported(Boolean(win.SpeechRecognition || win.webkitSpeechRecognition));
-    }
+  const releaseRecognition = useCallback((abort: boolean) => {
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!recognition) return;
 
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
+    recognition.onstart = null;
+    recognition.onend = null;
+    recognition.onerror = null;
+    recognition.onresult = null;
+    if (abort) {
+      try {
+        recognition.abort();
+      } catch {
+        // Some browsers throw once the native recognizer has already ended.
+        // Its handlers are detached regardless, so stale results cannot edit input.
       }
-    };
+    }
   }, []);
 
+  const cancelVoiceRecognition = useCallback(() => {
+    releaseRecognition(true);
+    setIsListening(false);
+  }, [releaseRecognition]);
+
+  useEffect(() => {
+    const win = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    setIsSpeechSupported(Boolean(win.SpeechRecognition || win.webkitSpeechRecognition));
+
+    return () => releaseRecognition(true);
+  }, [releaseRecognition]);
+
+  useEffect(() => {
+    cancelVoiceRecognition();
+  }, [propActiveSessionId, cancelVoiceRecognition]);
+
+  useEffect(() => {
+    if (isLoading) cancelVoiceRecognition();
+  }, [isLoading, cancelVoiceRecognition]);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input]);
+
   const toggleVoiceRecognition = useCallback(() => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
+    if (isLoading) return;
+
+    // The ref owns pending-start and pending-stop states too. React state alone
+    // permits overlapping recognizers before the browser emits start/end events.
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        cancelVoiceRecognition();
+        setSpeechError('Không thể dừng nhận diện giọng nói. Vui lòng thử lại.');
+      }
       return;
     }
 
@@ -513,45 +555,69 @@ export function ChatInterface({
       webkitSpeechRecognition?: SpeechRecognitionConstructor;
     };
     const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
+    if (!SpeechRecognitionClass) return;
 
-    if (!SpeechRecognitionClass) {
-      return;
-    }
-
+    setSpeechError(null);
     try {
       const recognition = new SpeechRecognitionClass();
       recognition.continuous = true;
       recognition.interimResults = false;
       recognition.lang = 'vi-VN';
 
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
-
       recognition.onresult = (event: SpeechRecognitionEventLike) => {
-        const results = event.results;
-        const latestResult = results[results.length - 1];
-        const transcript = latestResult?.[0]?.transcript?.trim();
-        if (transcript) {
-          setInput((prev) => (prev ? `${prev.trim()} ${transcript}` : transcript));
-          setTimeout(adjustTextareaHeight, 50);
+        if (recognitionRef.current !== recognition) return;
+        const transcripts: string[] = [];
+        for (let index = event.resultIndex; index < event.results.length; index++) {
+          const result = event.results[index];
+          const transcript = result?.[0]?.transcript?.trim();
+          if (result?.isFinal && transcript) transcripts.push(transcript);
+        }
+        if (transcripts.length > 0) {
+          setInput((prev) => [prev.trim(), ...transcripts].filter(Boolean).join(' '));
         }
       };
 
-      recognition.onerror = () => {
-        setIsListening(false);
+      recognition.onerror = (event) => {
+        if (recognitionRef.current !== recognition) return;
+        cancelVoiceRecognition();
+        switch (event.error) {
+          case 'aborted':
+            break;
+          case 'not-allowed':
+            setSpeechError('Vui lòng cấp quyền truy cập micro trong trình duyệt để nhập bằng giọng nói.');
+            break;
+          case 'audio-capture':
+            setSpeechError('Không tìm thấy micro. Vui lòng kiểm tra thiết bị và thử lại.');
+            break;
+          case 'no-speech':
+            setSpeechError('Chưa nghe rõ giọng nói. Vui lòng thử nói lại.');
+            break;
+          case 'network':
+            setSpeechError('Không thể nhận diện giọng nói. Vui lòng kiểm tra kết nối mạng và thử lại.');
+            break;
+          case 'service-not-allowed':
+          case 'language-not-supported':
+            setSpeechError('Trình duyệt không hỗ trợ nhận diện giọng nói tiếng Việt. Vui lòng nhập bằng bàn phím.');
+            break;
+          default:
+            setSpeechError('Nhận diện giọng nói gặp lỗi. Vui lòng thử lại hoặc nhập bằng bàn phím.');
+        }
       };
 
       recognition.onend = () => {
+        if (recognitionRef.current !== recognition) return;
+        releaseRecognition(false);
         setIsListening(false);
       };
 
       recognitionRef.current = recognition;
+      setIsListening(true);
       recognition.start();
     } catch {
-      setIsListening(false);
+      cancelVoiceRecognition();
+      setSpeechError('Không thể bắt đầu nhận diện giọng nói. Vui lòng kiểm tra quyền truy cập micro và thử lại.');
     }
-  }, [isListening, setInput]);
+  }, [isLoading, setInput, cancelVoiceRecognition, releaseRecognition]);
 
   // Restore chat session from localStorage on mount or when activeSessionId changes
   useEffect(() => {
@@ -628,6 +694,7 @@ export function ChatInterface({
   };
 
   const handleClearChat = () => {
+    cancelVoiceRecognition();
     if (typeof setMessages === 'function') {
       setMessages([]);
     }
@@ -877,6 +944,8 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={toggleVoiceRecognition}
+                disabled={isLoading}
+                aria-pressed={isListening}
                 title={
                   isListening
                     ? 'Đang lắng nghe tiếng Việt... Nhấn để dừng'
@@ -914,6 +983,12 @@ export function ChatInterface({
               )}
             </button>
           </form>
+
+          {speechError && (
+            <p role="alert" className="mx-auto mt-2 max-w-3xl text-xs text-[#a63024] dark:text-[#f87171]">
+              {speechError}
+            </p>
+          )}
 
           <div className="mx-auto mt-2 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#786455] sm:flex-row dark:text-[#ba9f88]">
             <span className="text-center sm:text-left">
