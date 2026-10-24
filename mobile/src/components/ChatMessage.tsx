@@ -9,11 +9,12 @@ import { openLink } from '../services/links';
 import { AgendaCard } from './AgendaCard';
 import { ProposalCard } from './ProposalModal';
 
-export function ChatMessage({ message, confirmed, submitted, disabled, onSubmit, onCreated, onEdit }: {
+export function ChatMessage({ message, confirmed, submitted, disabled, streaming = false, onSubmit, onCreated, onEdit }: {
   message: Message;
   confirmed: Record<string, CalendarEvent>;
   submitted: Record<string, MeetingProposal>;
   disabled: boolean;
+  streaming?: boolean;
   onSubmit: (proposal: MeetingProposal) => Promise<void>;
   onCreated: (id: string, event: CalendarEvent) => Promise<void>;
   onEdit: (proposal: MeetingProposal) => void;
@@ -38,7 +39,13 @@ export function ChatMessage({ message, confirmed, submitted, disabled, onSubmit,
       }} rules={{ image: () => null }}>{message.content}</Markdown>
     </View>}
     {message.toolInvocations?.map(tool => {
-      if (tool.state !== 'result') return <Copy key={tool.toolCallId} style={{ color: colors.muted }}>Đang chuẩn bị {tool.toolName === 'proposeMeeting' ? 'bản thảo cuộc họp' : 'dữ liệu lịch'}…</Copy>;
+      if (tool.state !== 'result') {
+        if (streaming) return <Copy key={tool.toolCallId} style={{ color: colors.muted }}>Đang chuẩn bị {tool.toolName === 'proposeMeeting' ? 'bản thảo cuộc họp' : 'dữ liệu lịch'}…</Copy>;
+        return <View key={tool.toolCallId} style={{ width: '100%', gap: 6, marginVertical: 4 }}>
+          <Copy style={{ color: colors.danger }}>Chưa hoàn tất {tool.toolName === 'proposeMeeting' ? 'tạo bản thảo cuộc họp' : 'tải dữ liệu lịch'}.</Copy>
+          <Copy style={{ color: colors.muted }}>Hãy nhắn yêu cầu lại để trợ lý tiếp tục.</Copy>
+        </View>;
+      }
       if (tool.toolName === 'proposeMeeting') {
         try {
           const proposal = parseProposal(tool.result);

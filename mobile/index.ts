@@ -1,11 +1,9 @@
 import { registerRootComponent } from 'expo';
+import structuredClone from '@ungap/structured-clone';
 
-// Polyfill structuredClone for Hermes engine on React Native
+// Hermes does not provide structuredClone on Expo SDK 52.
 if (typeof globalThis.structuredClone !== 'function') {
-  globalThis.structuredClone = function <T>(value: T): T {
-    if (value === undefined) return undefined as unknown as T;
-    return JSON.parse(JSON.stringify(value)) as T;
-  };
+  globalThis.structuredClone = <T>(value: T): T => structuredClone(value);
 }
 
 import App from './App';

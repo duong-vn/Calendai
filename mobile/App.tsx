@@ -72,6 +72,8 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [active, setActive] = useState<ChatSession>(newConversation);
   const [loaded, setLoaded] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const historyWritable = useRef(false);
   const [error, setError] = useState('');
   const [models, setModels] = useState<ModelOption[]>([]);
   const [model, setModel] = useState('');
@@ -89,8 +91,9 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
   const modelAbort = useRef<AbortController | null>(null);
   const updateActive = (next: ChatSession) => { activeRef.current = next; setActive(next); };
   const commit = useCallback(async (next: ChatSession) => {
+    if (!historyWritable.current) throw new Error('Chưa đọc được lịch sử. Dữ liệu cũ được giữ nguyên.');
     if (deletedIds.current.has(next.id)) return;
-    const all = [next, ...sessionsRef.current.filter(item => item.id !== next.id)].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 50);
+    const all = [next, ...sessionsRef.current.filter(item => item.id !== next.id && !deletedIds.current.has(item.id))].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 50);
     sessionsRef.current = all;
     if (alive.current) setSessions(all);
     try { await saveHistory(user?.id || null, all); }
@@ -108,13 +111,24 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
       setModel(saved && result.models.some(item => item.id === saved) ? saved : result.defaultModel);
     } catch { if (alive.current && !controller.signal.aborted) setModelsError('Không tải được danh sách mô hình. Bạn vẫn có thể dùng mô hình mặc định của máy chủ.'); }
   }, [user?.id]);
-  useEffect(() => {
-    void loadHistory(user?.id || null).then(items => {
+  const restoreHistory = async () => {
+    setHistoryError('');
+    setLoaded(false);
+    try {
+      const items = await loadHistory(user?.id || null);
       if (!alive.current) return;
       sessionsRef.current = items; setSessions(items);
       if (items[0]) updateActive(items[0]);
-      setLoaded(true);
-    }).catch(() => { if (alive.current) setError('Không đọc được lịch sử. Để tránh ghi đè dữ liệu, hãy đóng và mở lại ứng dụng.'); });
+      historyWritable.current = true;
+    } catch {
+      if (alive.current) setHistoryError('Không đọc được lịch sử. Dữ liệu cũ được giữ nguyên; hãy thử đọc lại.');
+    } finally {
+      if (alive.current) setLoaded(true);
+    }
+  };
+  useEffect(() => {
+    alive.current = true;
+    void restoreHistory();
     void loadModels();
     if (user) {
       const controller = new AbortController();
@@ -137,13 +151,13 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
   const openPage = (next: Page) => { setPage(next); if (next === 'upcoming' && user) { void loadEvents(); } };
   const deleteConversation = (id: string) => Alert.alert('Xóa cuộc trò chuyện?', 'Chỉ xóa lịch sử trên thiết bị, không xóa sự kiện trên Google Calendar.', [{ text: 'Giữ lại', style: 'cancel' }, { text: 'Xóa', style: 'destructive', onPress: () => {
     deletedIds.current.add(id);
-    if (activeRef.current.id === id) updateActive(newConversation());
     const next = sessionsRef.current.filter(item => item.id !== id);
-    void saveHistory(user?.id || null, next).then(() => {
-      if (!alive.current) return;
-      sessionsRef.current = next; setSessions(next);
-      if (activeRef.current.id === id) updateActive(newConversation());
-    }).catch(() => { if (alive.current) setError('Không xóa được lịch sử. Vui lòng thử lại.'); });
+    sessionsRef.current = next;
+    setSessions(next);
+    if (activeRef.current.id === id) updateActive(newConversation());
+    void saveHistory(user?.id || null, next).catch(() => {
+      if (alive.current) setError('Không xóa được lịch sử. Vui lòng thử lại.');
+    });
   } }]);
   const history = <View style={{ gap: 14 }}>
     <Action label="Cuộc trò chuyện mới" icon={Plus} primary onPress={() => { updateActive(newConversation()); setPage(null); }} />
@@ -169,7 +183,7 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
     <View style={{ flex: 1, flexDirection: 'row' }}>
       {wide && <ScrollView style={{ width: 290, flexGrow: 0, borderRightWidth: 2, borderColor: colors.border, backgroundColor: colors.surface }} contentContainerStyle={{ padding: 16 }}>{history}</ScrollView>}
       <View style={{ flex: 1 }}>
-        {!loaded ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.accent} /><Copy>Đang đọc lịch sử…</Copy></View> : <Conversation key={active.id} initial={active} user={user} model={model} modelLabel={models.find(item => item.id === model)?.name || 'Mặc định máy chủ'} onModel={() => openPage('models')} onChange={commit} login={login} blocked={page !== null} />}
+        {!loaded ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.accent} /><Copy>Đang đọc lịch sử…</Copy></View> : historyError ? <Panel style={{ margin: 20, gap: 12 }}><Copy accessibilityRole="alert" style={{ color: colors.danger }}>{historyError}</Copy><Action label="Thử đọc lại lịch sử" onPress={() => { void restoreHistory(); }} /></Panel> : <Conversation key={active.id} initial={active} user={user} model={model} modelLabel={models.find(item => item.id === model)?.name || 'Mặc định máy chủ'} onModel={() => openPage('models')} onChange={commit} login={login} blocked={page !== null} />}
       </View>
     </View>
     <Sheet title="Cuộc trò chuyện" visible={page === 'history'} onClose={() => setPage(null)}>{history}</Sheet>
@@ -273,7 +287,7 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
         <View style={{ gap: 10 }}>{PROMPTS.map(prompt => <TouchableOpacity key={prompt} accessibilityRole="button" onPress={() => setInput(prompt)} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surface, padding: 14, minHeight: 50, flexDirection: 'row', gap: 8, alignItems: 'center' }}><Copy style={{ flex: 1 }}>{prompt}</Copy><ChevronRight size={18} color={colors.accent} /></TouchableOpacity>)}</View>
         <Copy style={{ color: colors.muted, fontSize: 11 }}>Giờ Việt Nam · Chỉ tạo lịch sau khi bạn xác nhận</Copy>
       </View>}
-      {messages.map(message => <ChatMessage key={message.id} message={message} confirmed={confirmed} submitted={submitted} disabled={isLoading || blocked} onSubmit={async proposal => {
+      {messages.map(message => <ChatMessage key={message.id} message={message} confirmed={confirmed} submitted={submitted} disabled={isLoading || blocked} streaming={isLoading && message.id === messages[messages.length - 1]?.id} onSubmit={async proposal => {
         submittedRef.current = { ...submittedRef.current, [proposal.proposalId]: proposal }; setSubmitted(submittedRef.current); await persist();
       }} onCreated={async (id, event) => {
         confirmedRef.current = { ...confirmedRef.current, [id]: event }; setConfirmed(confirmedRef.current); await persist();

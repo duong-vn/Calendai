@@ -6,6 +6,7 @@ declare module 'react-test-renderer' {
   export interface ReactTestRenderer {
     root: ReactTestInstance;
     unmount(): void;
+    update(element: import('react').ReactElement): void;
     toJSON(): any;
   }
   export function create(element: any): ReactTestRenderer;

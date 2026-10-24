@@ -31,6 +31,17 @@ it('requests permission only on tap, adds Vietnamese speech to draft without sen
   act(() => tree.unmount());
   expect(ExpoSpeechRecognitionModule.abort).toHaveBeenCalled();
 });
+it('sends a private draft without logging its contents', () => {
+  const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  const onSend = jest.fn();
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<VoiceAssistantBar value="Cuộc hẹn riêng tư" onChange={jest.fn()} onSend={onSend} isLoading={false} disabled={false} onStop={jest.fn()} modelLabel="Mặc định" onModel={jest.fn()} />); });
+  act(() => tree.root.findAllByType(IconButton).find(button => button.props.label === 'Gửi tin nhắn')!.props.onPress());
+  expect(onSend).toHaveBeenCalledTimes(1);
+  expect(log).not.toHaveBeenCalled();
+  act(() => tree.unmount());
+  log.mockRestore();
+});
 it('does not start after permission resolves if app goes to background', async () => {
   let background!: (state: AppStateStatus) => void;
   jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, listener) => { background = listener; return { remove: jest.fn() }; });

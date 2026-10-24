@@ -7,10 +7,13 @@ import { Action, Copy, Panel, useTheme } from '../theme';
 import { openLink, safeHttpsUrl } from '../services/links';
 
 export function formatDateTime(input: string, timeZone = 'Asia/Ho_Chi_Minh'): string {
+  const timestamp = Date.parse(input);
+  if (!Number.isFinite(timestamp)) return input;
+  const date = new Date(timestamp);
   try {
-    return new Intl.DateTimeFormat('vi-VN', { timeZone: timeZone || 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(input));
+    return new Intl.DateTimeFormat('vi-VN', { timeZone: timeZone || 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
   } catch {
-    return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(input));
+    return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
   }
 }
 
