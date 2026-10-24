@@ -36,10 +36,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# IDE
+.idea/
+
 # mobile & expo
 /mobile/node_modules
 /mobile/.expo
 /mobile/dist
+/mobile/android/
 
 # superpowers
 .superpowers/
