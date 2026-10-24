@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   AlertCircle,
   Calendar,
@@ -77,10 +77,12 @@ export function MeetingPreviewCard({
   const [error, setError] = useState<string | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [createMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
+  const confirmationPending = useRef(false);
 
   const handleConfirm = async () => {
-    if (loading || isConfirmed) return;
+    if (confirmationPending.current || isConfirmed) return;
 
+    confirmationPending.current = true;
     setLoading(true);
     setError(null);
 
@@ -111,6 +113,7 @@ export function MeetingPreviewCard({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi tạo lịch.');
     } finally {
+      confirmationPending.current = false;
       setLoading(false);
     }
   };

@@ -1,0 +1,26 @@
+diff --git a/node_modules/expo/android/src/main/java/expo/modules/fetch/ExpoFetchModule.kt b/node_modules/expo/android/src/main/java/expo/modules/fetch/ExpoFetchModule.kt
+index 3ac7994..c215746 100644
+--- a/node_modules/expo/android/src/main/java/expo/modules/fetch/ExpoFetchModule.kt
++++ b/node_modules/expo/android/src/main/java/expo/modules/fetch/ExpoFetchModule.kt
+@@ -24,6 +24,8 @@ class ExpoFetchModule : Module() {
+   private val client by lazy {
+     OkHttpClientProvider.createClient(reactContext)
+       .newBuilder()
++      .followRedirects(false)
++      .followSslRedirects(false)
+       .addInterceptor(OkHttpFileUrlInterceptor(reactContext))
+       .build()
+   }
+diff --git a/node_modules/expo/ios/Fetch/ExpoURLSessionTask.swift b/node_modules/expo/ios/Fetch/ExpoURLSessionTask.swift
+index 6386f79..9ff2af1 100644
+--- a/node_modules/expo/ios/Fetch/ExpoURLSessionTask.swift
++++ b/node_modules/expo/ios/Fetch/ExpoURLSessionTask.swift
+@@ -60,7 +60,7 @@ internal final class ExpoURLSessionTask: NSObject, URLSessionTaskDelegate, URLSessi
+     completionHandler: @escaping (URLRequest?) -> Void
+   ) {
+     self.delegate.urlSession(self, didRedirect: response)
+-    completionHandler(request)
++    completionHandler(nil)
+   }
+
+   func urlSession(

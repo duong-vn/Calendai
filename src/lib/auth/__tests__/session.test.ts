@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { decryptSession, encryptSession } from '../session';
+import { EncryptJWT } from 'jose';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { decryptMobileSession, decryptSession, encryptMobileSession, encryptSession, MOBILE_SESSION_AUDIENCE, SESSION_EXPIRATION_SECONDS } from '../session';
+import type { MobileSessionData } from '../types';
 import type { SessionData } from '../types';
 
 describe('Auth Session Layer (JWE with jose)', () => {
@@ -20,6 +22,69 @@ describe('Auth Session Layer (JWE with jose)', () => {
     },
     createdAt: Date.now(),
   };
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  async function customJwe(session: unknown, audience?: string, purpose?: string) {
+    const key = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secretKey)));
+    let jwt = new EncryptJWT({ session, ...(purpose ? { purpose } : {}) })
+      .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
+      .setIssuedAt()
+      .setExpirationTime(Math.floor((Date.now() + SESSION_EXPIRATION_SECONDS * 1000) / 1000));
+    if (audience) jwt = jwt.setAudience(audience);
+    return jwt.encrypt(key);
+  }
+
+  function mobileSession(): MobileSessionData {
+    return {
+      ...sampleSession,
+      createdAt: Date.now(),
+      kind: 'mobile',
+      expiresAt: Date.now() + SESSION_EXPIRATION_SECONDS * 1000,
+      tokens: { ...sampleSession.tokens, refreshToken: 'refresh-value' },
+    };
+  }
+
+  it('keeps legacy web cookies compatible and rejects malformed runtime payloads', async () => {
+    expect(await decryptSession(await customJwe(sampleSession), secretKey)).toEqual(sampleSession);
+    expect(await decryptSession(await customJwe({ user: { id: 'forged' } }), secretKey)).toBeNull();
+  });
+
+  it('separates mobile purpose/audience from web sessions', async () => {
+    const session = mobileSession();
+    const value = await encryptMobileSession(session, secretKey);
+    expect(await decryptMobileSession(value, secretKey)).toEqual(session);
+    expect(await decryptSession(value, secretKey)).toBeNull();
+    expect(await decryptMobileSession(await encryptSession(sampleSession, secretKey), secretKey)).toBeNull();
+    expect(await decryptMobileSession(await customJwe(session, 'other-app', 'mobile-session'), secretKey)).toBeNull();
+    expect(await decryptMobileSession(await customJwe(session, MOBILE_SESSION_AUDIENCE, 'web-session'), secretKey)).toBeNull();
+    await expect(encryptSession(session, secretKey)).rejects.toThrow();
+  });
+
+  it('rejects mobile malformed payloads, missing refresh grants and extended horizons', async () => {
+    const session = mobileSession();
+    expect(await decryptMobileSession(await customJwe({ ...session, user: {} }, MOBILE_SESSION_AUDIENCE, 'mobile-session'), secretKey)).toBeNull();
+    expect(await decryptMobileSession(await customJwe({ ...session, tokens: { ...session.tokens, refreshToken: undefined } }, MOBILE_SESSION_AUDIENCE, 'mobile-session'), secretKey)).toBeNull();
+    await expect(encryptMobileSession({ ...session, expiresAt: session.expiresAt + 1000 }, secretKey)).rejects.toThrow();
+  });
+
+  it('expires mobile sessions at the absolute 30-day horizon', async () => {
+    vi.useFakeTimers();
+    const session = mobileSession();
+    const value = await encryptMobileSession(session, secretKey);
+    vi.setSystemTime(session.expiresAt + 1);
+    expect(await decryptMobileSession(value, secretKey)).toBeNull();
+  });
+
+  it('refuses default, missing and obviously weak production session keys', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    await expect(encryptSession(sampleSession, 'calendai_default_development_session_secret_32chars_min')).rejects.toThrow();
+    await expect(encryptSession(sampleSession, 'a'.repeat(40))).rejects.toThrow();
+    await expect(encryptSession(sampleSession, '')).rejects.toThrow();
+  });
 
   it('encrypts and decrypts session data correctly', async () => {
     const encrypted = await encryptSession(sampleSession, secretKey);

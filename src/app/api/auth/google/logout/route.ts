@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
-import { clearServerSession } from '@/lib/auth/server-session';
+import { authErrorResponse, clearServerSession, getServerSession } from '@/lib/auth/server-session';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    await clearServerSession();
-    return NextResponse.json({ success: true, message: 'Đã đăng xuất thành công' });
+    if (request?.headers.has('authorization')) {
+      // Stateless mobile logout is local deletion, not revocation of every issued JWE.
+      await getServerSession(request);
+    } else {
+      await clearServerSession();
+    }
+    return NextResponse.json({ success: true, message: 'Đã đăng xuất thành công' }, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Logout failed';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const response = authErrorResponse(error);
+    if (response) return response;
+    return NextResponse.json({ success: false, error: 'Không thể đăng xuất. Vui lòng thử lại sau.' }, {
+      status: 500, headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }

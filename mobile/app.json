@@ -3,12 +3,12 @@
     "name": "Calendai",
     "slug": "calendai-mobile",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#18181b",
+      "backgroundColor": "#f5eee1",
       "resizeMode": "contain"
     },
     "ios": {
@@ -21,9 +21,10 @@
     ],
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#18181b"
+        "backgroundColor": "#f5eee1"
       },
-      "package": "com.calendai.mobile"
+      "package": "com.calendai.mobile",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "extra": {
       "eas": {

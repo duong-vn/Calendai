@@ -1,111 +1,28 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Linking, Alert } from 'react-native';
-import type { CalendarEvent } from '../types';
+import { Alert, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { CalendarCheck, Copy as CopyIcon, ExternalLink, Video } from 'lucide-react-native';
+import { type CalendarEvent } from '../types';
+import { Action, Copy, Panel, useTheme } from '../theme';
+import { openLink, safeHttpsUrl } from '../services/links';
 
-interface AgendaCardProps {
-  event: CalendarEvent;
+export function formatDateTime(input: string, timeZone = 'Asia/Ho_Chi_Minh'): string {
+  return new Intl.DateTimeFormat('vi-VN', { timeZone, weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(input));
 }
 
-export function AgendaCard({ event }: AgendaCardProps) {
-  const startTime = event.isAllDay ? 'Cả ngày' : new Date(event.start).toLocaleTimeString('vi-VN', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh',
-  });
-  const endTime = event.isAllDay ? '' : new Date(event.end).toLocaleTimeString('vi-VN', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh',
-  });
-
-  const handleOpenMeet = async () => {
-    try {
-      const url = new URL(event.hangoutLink || '');
-      if (url.protocol !== 'https:' || url.hostname !== 'meet.google.com') {
-        throw new Error('Liên kết Google Meet không hợp lệ.');
-      }
-      await Linking.openURL(url.toString());
-    } catch {
-      Alert.alert('Không thể mở Google Meet', 'Vui lòng kiểm tra liên kết và thử lại.');
-    }
-  };
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.leftBorder} />
-      <View style={styles.content}>
-        <View style={styles.timeRow}>
-          <Text style={styles.timeText}>
-            {startTime} {endTime ? `- ${endTime}` : ''}
-          </Text>
-          {event.hangoutLink && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleOpenMeet}
-              style={styles.meetBadge}
-            >
-              <Text style={styles.meetText}>Google Meet 🔗</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        <Text style={styles.summaryText}>{event.summary}</Text>
-        {event.description ? (
-          <Text style={styles.descText} numberOfLines={2}>
-            {event.description}
-          </Text>
-        ) : null}
-      </View>
-    </View>
-  );
+export function AgendaCard({ event, created = false, requestedMeet = false }: { event: CalendarEvent; created?: boolean; requestedMeet?: boolean }) {
+  const { colors } = useTheme();
+  const meet = event.hangoutLink && safeHttpsUrl(event.hangoutLink, 'meet');
+  const calendar = event.htmlLink && safeHttpsUrl(event.htmlLink, 'calendar');
+  const run = (promise: Promise<unknown>) => { void promise.catch(() => Alert.alert('Không thể mở liên kết', 'Vui lòng kiểm tra mạng và thử lại.')); };
+  return <Panel style={{ gap: 10, borderColor: created ? colors.teal : colors.border }}>
+    {created && <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><CalendarCheck size={18} color={colors.teal} /><Copy strong style={{ color: colors.teal }}>Đã tạo trên Google Calendar</Copy></View>}
+    <Copy strong style={{ fontSize: 17 }}>{event.summary}</Copy>
+    <Copy style={{ color: colors.accent }}>{event.isAllDay ? `${event.start.slice(0, 10)} · Cả ngày` : `${formatDateTime(event.start, event.timeZone)}\nđến ${formatDateTime(event.end, event.timeZone)}`}</Copy>
+    <Copy style={{ color: colors.muted, fontSize: 12 }}>{event.timeZone || 'Asia/Ho_Chi_Minh'}</Copy>
+    {!!event.description && <Copy>{event.description}</Copy>}
+    {created && requestedMeet && !meet && <Copy style={{ color: colors.muted }}>{event.meetStatus === 'failure' ? 'Sự kiện đã tạo, nhưng Google chưa tạo được Meet. Mở Calendar để kiểm tra.' : 'Sự kiện đã tạo. Google chưa trả link Meet; vui lòng kiểm tra lại trong Calendar.'}</Copy>}
+    {meet && <><Action label="Tham gia Google Meet" icon={Video} onPress={() => run(openLink(meet, 'meet'))} /><Action label="Sao chép link Meet" icon={CopyIcon} onPress={() => run(Clipboard.setStringAsync(meet).then(() => Alert.alert('Đã sao chép', 'Link Google Meet đã được sao chép.')))} /></>}
+    {calendar && <Action label="Mở Google Calendar" icon={ExternalLink} onPress={() => run(openLink(calendar, 'calendar'))} />}
+  </Panel>;
 }
-
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#18181b',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#27272a',
-    marginVertical: 6,
-    overflow: 'hidden',
-  },
-  leftBorder: {
-    width: 4,
-    backgroundColor: '#10b981',
-  },
-  content: {
-    flex: 1,
-    padding: 12,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  timeText: {
-    color: '#10b981',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  meetBadge: {
-    backgroundColor: '#064e3b',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#059669',
-  },
-  meetText: {
-    color: '#6ee7b7',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  summaryText: {
-    color: '#f4f4f5',
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  descText: {
-    color: '#a1a1aa',
-    fontSize: 12,
-    marginTop: 4,
-  },
-});

@@ -1,211 +1,67 @@
-import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  Modal,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import type { MeetingProposal } from '../types';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Switch, View } from 'react-native';
+import { Calendar, Check, Edit3 } from 'lucide-react-native';
+import type { CalendarEvent, MeetingProposal } from '../types';
+import { Action, Copy, Panel, useTheme } from '../theme';
+import { mobileApi } from '../services/api';
+import { AgendaCard, formatDateTime } from './AgendaCard';
 
-interface ProposalModalProps {
-  proposal: MeetingProposal | null;
-  visible: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
+// Inline ticket, not an interrupting modal: the draft stays next to its conversation.
+export function ProposalCard({ proposal, submitted, event, disabled, onSubmit, onCreated, onEdit }: {
+  proposal: MeetingProposal;
+  submitted?: MeetingProposal;
+  event?: CalendarEvent;
+  disabled: boolean;
+  onSubmit: (proposal: MeetingProposal) => Promise<void>;
+  onCreated: (proposalId: string, event: CalendarEvent) => Promise<void>;
+  onEdit: () => void;
+}) {
+  const { colors } = useTheme();
+  const [createMeet, setCreateMeet] = useState(proposal.createMeet);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const busy = useRef(false);
+  const controller = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => () => { mounted.current = false; controller.current?.abort(); }, []);
+  const draft = submitted || { ...proposal, createMeet };
+  const confirm = async () => {
+    if (busy.current || disabled || event) return;
+    busy.current = true;
+    setLoading(true);
+    setError('');
+    const abort = new AbortController();
+    controller.current = abort;
+    try {
+      // Persist the exact payload before any network side effect; retries never mutate it.
+      await onSubmit(draft);
+      if (!mounted.current || abort.signal.aborted) return;
+      const created = await mobileApi.confirm(draft, abort.signal);
+      if (mounted.current) await onCreated(draft.proposalId, created);
+    } catch (failure) {
+      if (mounted.current && !abort.signal.aborted) setError(failure instanceof Error ? failure.message : 'Chưa tạo được lịch. Vui lòng thử lại cùng bản thảo.');
+    } finally {
+      busy.current = false;
+      if (mounted.current) setLoading(false);
+    }
+  };
+  if (event) return <AgendaCard event={event} created requestedMeet={draft.createMeet} />;
+  return <Panel style={{ gap: 12 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Calendar size={20} color={colors.accent} /><Copy strong style={{ color: colors.accent }}>Vé họp · Chờ xác nhận</Copy></View>
+    <Copy strong style={{ fontSize: 18 }}>{draft.summary}</Copy>
+    {!!draft.description && <Copy style={{ color: colors.muted }}>{draft.description}</Copy>}
+    <View style={{ backgroundColor: colors.raised, borderRadius: 10, padding: 12, gap: 6 }}>
+      <Copy strong>{formatDateTime(draft.startDateTime, draft.timeZone)}</Copy>
+      <Copy>đến {formatDateTime(draft.endDateTime, draft.timeZone)}</Copy>
+      <Copy style={{ color: colors.muted, fontSize: 12 }}>{draft.timeZone}</Copy>
+      <Copy style={{ color: colors.muted }}>Khách mời: {draft.attendees.length ? draft.attendees.map(a => a.email).join(', ') : 'Không có'}</Copy>
+    </View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Copy strong style={{ flex: 1 }}>Tạo Google Meet</Copy><Switch accessibilityLabel="Tạo link Google Meet" value={draft.createMeet} onValueChange={setCreateMeet} disabled={loading || !!submitted || disabled} trackColor={{ true: colors.teal }} /></View>
+    {submitted && <Copy style={{ color: colors.muted, fontSize: 12 }}>Bản thảo đã gửi được giữ nguyên để thử lại an toàn. Muốn đổi nội dung, hãy yêu cầu một bản thảo mới.</Copy>}
+    {!!error && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Copy>}
+    {loading && <ActivityIndicator color={colors.accent} accessibilityLabel="Đang tạo lịch" />}
+    <Action label={loading ? 'Đang xác nhận…' : submitted ? 'Thử xác nhận lại' : 'Xác nhận tạo lịch'} icon={Check} primary disabled={loading || disabled} onPress={() => { void confirm(); }} />
+    <Action label="Chỉnh sửa qua trò chuyện" icon={Edit3} disabled={loading || disabled} onPress={onEdit} />
+    <Copy style={{ color: colors.muted, fontSize: 11 }}>Chỉ khi bạn xác nhận, Calendai mới tạo lịch và gửi lời mời.</Copy>
+  </Panel>;
 }
-
-export function ProposalModal({
-  proposal,
-  visible,
-  onConfirm,
-  onCancel,
-  isLoading,
-}: ProposalModalProps) {
-  if (!proposal) return null;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onCancel}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>⚙️ XÁC NHẬN CUỘC HỌP</Text>
-            <Text style={styles.badge}>CHRONO-CONFIRM</Text>
-          </View>
-
-          {/* Details */}
-          <View style={styles.body}>
-            <Text style={styles.label}>Tiêu đề:</Text>
-            <Text style={styles.valueTitle}>{proposal.title}</Text>
-
-            <Text style={styles.label}>Thời gian:</Text>
-            <Text style={styles.value}>
-              {new Date(proposal.start).toLocaleString('vi-VN')}
-            </Text>
-
-            {proposal.createMeet !== false && (
-              <View style={styles.meetRow}>
-                <Text style={styles.meetIcon}>📹</Text>
-                <Text style={styles.meetLabel}>Tự động tạo link Google Meet</Text>
-              </View>
-            )}
-
-            {proposal.attendees && proposal.attendees.length > 0 && (
-              <View style={{ marginTop: 8 }}>
-                <Text style={styles.label}>Khách mời:</Text>
-                <Text style={styles.value}>{proposal.attendees.join(', ')}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Action buttons */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onCancel}
-              disabled={isLoading}
-            >
-              <Text style={styles.cancelText}>Hủy bỏ</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.confirmButton}
-              onPress={onConfirm}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#09090b" size="small" />
-              ) : (
-                <Text style={styles.confirmText}>Tạo lịch ngay 📅</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#18181b',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#eab308',
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#27272a',
-    paddingBottom: 10,
-    marginBottom: 12,
-  },
-  headerTitle: {
-    color: '#eab308',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  badge: {
-    fontSize: 10,
-    backgroundColor: '#27272a',
-    color: '#a1a1aa',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    fontWeight: '600',
-  },
-  body: {
-    marginVertical: 4,
-  },
-  label: {
-    color: '#71717a',
-    fontSize: 11,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    marginTop: 6,
-  },
-  valueTitle: {
-    color: '#f4f4f5',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  value: {
-    color: '#d4d4d8',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  meetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#064e3b',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#059669',
-  },
-  meetIcon: {
-    fontSize: 14,
-    marginRight: 6,
-  },
-  meetLabel: {
-    color: '#a7f3d0',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 18,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#27272a',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-  },
-  cancelText: {
-    color: '#a1a1aa',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  confirmButton: {
-    flex: 1.5,
-    backgroundColor: '#eab308',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  confirmText: {
-    color: '#09090b',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-});

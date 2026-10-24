@@ -75,6 +75,17 @@ describe('MeetingPreviewCard Component', () => {
     });
   });
 
+  it('does not send duplicate confirmations while the first request is pending', () => {
+    const mockFetch = vi.fn().mockReturnValue(new Promise(() => {}));
+    vi.stubGlobal('fetch', mockFetch);
+    render(<MeetingPreviewCard proposal={mockProposal} onConfirmSuccess={vi.fn()} />);
+    const button = screen.getByText('Xác nhận tạo lịch');
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).proposalId).toBe(mockProposal.proposalId);
+  });
+
   it('displays error message when confirmation API fails', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,

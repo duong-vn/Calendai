@@ -1,9 +1,36 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getChatModel, getAIProvider } from '../provider';
 import { buildSystemPrompt, getVietnamTimeContext } from '../system-prompt';
 import { ProposeMeetingSchema, createCalendarTools } from '../tools';
 
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
 describe('AI & LLM Integration Layer', () => {
+  it('uses the requested daysAhead interval for Calendar lookup', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(Response.json({ items: [] }));
+    vi.stubGlobal('fetch', mockFetch);
+    const session = {
+      user: { id: 'person', email: 'person@example.com', name: 'Người dùng' },
+      tokens: { accessToken: 'access', expiresAt: Date.now() + 3600000, tokenType: 'Bearer' as const, scope: 'calendar' },
+      createdAt: Date.now(),
+    };
+    const before = Date.now();
+    await createCalendarTools(session, 'access').listUpcomingEvents.execute?.({ maxResults: 3, daysAhead: 2 }, { toolCallId: 'lookup', messages: [] });
+    const url = new URL(mockFetch.mock.calls[0][0]);
+    const deadline = Date.parse(url.searchParams.get('timeMax') || '');
+    expect(deadline).toBeGreaterThanOrEqual(before + 2 * 86400000);
+    expect(deadline).toBeLessThanOrEqual(Date.now() + 2 * 86400000);
+    expect(url.searchParams.get('maxResults')).toBe('3');
+  });
+
+  it('does not use mock Calendar data in production tools', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('GOOGLE_CLIENT_ID', '');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', '');
+    const result = await createCalendarTools().listUpcomingEvents.execute?.({ maxResults: 3, daysAhead: 2 }, { toolCallId: 'lookup', messages: [] });
+    expect(result).toMatchObject({ success: false });
+    expect(result).not.toHaveProperty('isMock', true);
+  });
   it('correctly provides Vietnam timezone context', () => {
     const testDate = new Date('2026-10-12T02:00:00Z'); // 09:00 AM UTC+7
     const context = getVietnamTimeContext(testDate);
@@ -44,14 +71,14 @@ describe('AI & LLM Integration Layer', () => {
     expect(invalidParsed.success).toBe(false);
   });
 
-  it('executes proposeMeeting tool safely and adjusts end time if earlier than start', async () => {
+  it('rejects invalid proposal times rather than silently replacing them', async () => {
     const tools = createCalendarTools();
     const execute = tools.proposeMeeting.execute;
     expect(execute).toBeDefined();
 
     if (execute) {
       // Start time later than end time
-      const result = await execute({
+      await expect(execute({
         summary: 'Họp Bất Thường',
         description: 'Chi tiết',
         startDateTime: '2026-10-12T10:00:00+07:00',
@@ -59,14 +86,25 @@ describe('AI & LLM Integration Layer', () => {
         timeZone: 'Asia/Ho_Chi_Minh',
         attendees: [],
         createMeet: true,
-      }, { toolCallId: 'call-1', messages: [] });
-
-      expect(result.proposalId).toBeDefined();
-      expect(result.summary).toBe('Họp Bất Thường');
-      expect(new Date(result.endDateTime).getTime()).toBeGreaterThan(
-        new Date(result.startDateTime).getTime()
-      );
+      }, { toolCallId: 'call-1', messages: [] })).rejects.toThrow('Thời gian kết thúc phải sau thời gian bắt đầu');
     }
+  });
+
+  it('only prepares a valid preview with a server-generated proposal ID', async () => {
+    const execute = createCalendarTools().proposeMeeting.execute;
+    expect(execute).toBeDefined();
+    if (!execute) return;
+    const result = await execute({
+      summary: 'Họp dự án',
+      description: '',
+      startDateTime: '2026-10-12T09:00:00+07:00',
+      endDateTime: '2026-10-12T10:00:00+07:00',
+      timeZone: 'Asia/Ho_Chi_Minh',
+      attendees: [],
+      createMeet: false,
+    }, { toolCallId: 'call-2', messages: [] });
+    expect(result).toMatchObject({ status: 'proposed', createMeet: false, startDateTime: '2026-10-12T02:00:00.000Z', endDateTime: '2026-10-12T03:00:00.000Z' });
+    expect(result.proposalId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('configures AI provider with generic environment specs', () => {

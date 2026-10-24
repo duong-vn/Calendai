@@ -135,6 +135,17 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
           </div>
         )}
 
+        {!event.hangoutLink && event.conferenceStatus === 'pending' && (
+          <p role="status" className="mt-3 text-xs text-[#786455] dark:text-[#ba9f88]">
+            Sự kiện đã được lưu. Google Meet đang được tạo; bạn có thể kiểm tra lại trong Google Calendar.
+          </p>
+        )}
+        {!event.hangoutLink && event.conferenceStatus === 'failure' && (
+          <p role="alert" className="mt-3 text-xs text-[#a63024] dark:text-[#f87171]">
+            Sự kiện đã được lưu nhưng chưa tạo được Google Meet. Vui lòng thêm liên kết trong Google Calendar.
+          </p>
+        )}
+
         {/* Google Calendar Link Button */}
         <div className="mt-4 flex items-center justify-between border-t-2 border-[#2d2015]/20 pt-3 dark:border-[#453427]">
           {isMock ? (

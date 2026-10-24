@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   CalendarEventResult,
   CreateCalendarEventInput,
@@ -43,6 +44,9 @@ interface GoogleApiEventResponse {
     responseStatus?: string;
   }>;
   conferenceData?: GoogleApiConferenceData;
+  extendedProperties?: {
+    private?: Record<string, string>;
+  };
   error?: {
     code?: number;
     message?: string;
@@ -58,13 +62,33 @@ interface GoogleApiEventsListResponse {
   };
 }
 
+export class CalendarProposalConflictError extends Error {
+  constructor() {
+    super('Mã đề xuất đã được sử dụng cho sự kiện khác. Vui lòng tạo đề xuất mới.');
+    this.name = 'CalendarProposalConflictError';
+  }
+}
+
+interface CalendarOperation {
+  accountId: string;
+  proposalId: string;
+}
+
+function digest(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
 export async function createGoogleCalendarEvent(
   accessToken: string,
-  input: CreateCalendarEventInput
+  input: CreateCalendarEventInput,
+  operation?: CalendarOperation
 ): Promise<CalendarEventResult> {
   const timeZone = input.timeZone || 'Asia/Ho_Chi_Minh';
   const shouldCreateMeet = input.createMeet !== false;
-  const requestId = crypto.randomUUID();
+  const eventId = operation
+    ? digest(JSON.stringify(['calendai-confirm-v1', operation.accountId, operation.proposalId]))
+    : undefined;
+  const requestId = eventId ?? crypto.randomUUID();
 
   const url = `${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events?conferenceDataVersion=1`;
 
@@ -95,21 +119,68 @@ export async function createGoogleCalendarEvent(
     };
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
+  const privateProperties = eventId && operation ? {
+    calendaiOperation: eventId,
+    calendaiOwner: digest(operation.accountId),
+    calendaiPayload: digest(JSON.stringify(requestBody)),
+  } : undefined;
 
-  const data = (await response.json()) as GoogleApiEventResponse;
-
-  if (!response.ok || data.error) {
-    const errorMsg = data.error?.message || response.statusText;
-    throw new Error(`Google Calendar API Error (${response.status}): ${errorMsg}`);
+  if (eventId && privateProperties) {
+    requestBody.id = eventId;
+    requestBody.extendedProperties = { private: privateProperties };
   }
+
+  const reconcile = async (cause: unknown, collision = false): Promise<GoogleApiEventResponse> => {
+    const existingResponse = await fetch(`${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events/${eventId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!existingResponse.ok) {
+      if (collision && (existingResponse.status === 404 || existingResponse.status === 410)) {
+        throw new CalendarProposalConflictError();
+      }
+      throw cause;
+    }
+    const existing = await existingResponse.json() as GoogleApiEventResponse;
+    const metadata = existing.extendedProperties?.private;
+    if (existing.error || existing.id !== eventId || existing.status === 'cancelled' ||
+      !privateProperties || metadata?.calendaiOperation !== privateProperties.calendaiOperation ||
+      metadata?.calendaiOwner !== privateProperties.calendaiOwner ||
+      metadata?.calendaiPayload !== privateProperties.calendaiPayload) {
+      throw new CalendarProposalConflictError();
+    }
+    return existing;
+  };
+
+  const data = await (async (): Promise<GoogleApiEventResponse> => {
+    let response: Response;
+    let inserted: GoogleApiEventResponse;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(15000),
+      });
+      inserted = await response.json() as GoogleApiEventResponse;
+    } catch (error) {
+      if (eventId) return reconcile(error);
+      throw error;
+    }
+
+    if (!response.ok || inserted.error) {
+      const errorMsg = inserted.error?.message || response.statusText;
+      const error = new Error(`Google Calendar API Error (${response.status}): ${errorMsg}`);
+      if (eventId && (response.status === 409 || response.status >= 500)) {
+        return reconcile(error, response.status === 409);
+      }
+      throw error;
+    }
+    return inserted;
+  })();
 
   // Trích xuất Meet link
   let hangoutLink = data.hangoutLink;

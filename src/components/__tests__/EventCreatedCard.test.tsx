@@ -47,6 +47,18 @@ describe('EventCreatedCard Component', () => {
     expect(writeTextMock).toHaveBeenCalledWith('https://meet.google.com/uvw-xyza-bcd');
   });
 
+  it('distinguishes a saved event from pending Google Meet creation', () => {
+    render(<EventCreatedCard event={{ ...mockEvent, hangoutLink: undefined, conferenceStatus: 'pending' }} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Google Meet đang được tạo');
+    expect(screen.queryByText('Vào phòng họp')).not.toBeInTheDocument();
+  });
+
+  it('reports Meet failure without claiming the Calendar event failed', () => {
+    render(<EventCreatedCard event={{ ...mockEvent, hangoutLink: undefined, conferenceStatus: 'failure' }} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Sự kiện đã được lưu');
+    expect(screen.getByText('Mở Google Calendar')).toBeInTheDocument();
+  });
+
   it('displays Mock Mode badge when created in mock mode', () => {
     render(<EventCreatedCard event={mockEvent} isMock={true} />);
     expect(screen.getByText('Mock Mode')).toBeInTheDocument();

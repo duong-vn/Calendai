@@ -11,8 +11,8 @@ Calendai là ứng dụng web trợ lý lịch trình AI ưu tiên tiếng Việ
 - **Xác nhận trước khi tạo lịch (Human-in-the-Loop)**: AI hiển thị thẻ xem trước (Meeting Preview Card) gồm tiêu đề, thời gian, múi giờ Việt Nam (`Asia/Ho_Chi_Minh`), người tham gia và trạng thái Google Meet trước khi người dùng bấm "Xác nhận tạo lịch".
 - **Bảo mật chuẩn mực**:
   - Google OAuth 2.0 Authorization Code flow với mã xác thực CSRF state.
-  - Lưu trữ session mã hóa server-side bằng JWE (AES-256-GCM) qua cookie HTTP-Only.
-  - Tokens và secrets không bao giờ bị rò rỉ ra client hoặc đưa vào prompt của LLM.
+  - Backend mã hóa session bằng JWE (AES-256-GCM). Web giữ trong cookie HttpOnly; app native giữ phiên JWE riêng trong SecureStore.
+  - Google token chỉ được xử lý dạng rõ ở backend; bản mã phiên được giữ trên thiết bị. API key và client secret không được gửi xuống frontend/APK hoặc vào prompt của LLM.
 - **Chế độ Mock thông minh**: Cho phép trải nghiệm toàn bộ luồng chat, xem trước thẻ cuộc họp và danh sách sự kiện ngay cả khi chưa kết nối Google Cloud credentials.
 - **Tra cứu lịch sắp tới**: Xem nhanh các sự kiện sắp diễn ra trên Google Calendar kèm nút vào phòng họp Meet.
 - **Responsive & Chuẩn Accessibility**: Tối ưu giao diện mượt mà trên cả máy tính và thiết bị di động, chuẩn WCAG 2.1 AA.
@@ -105,7 +105,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 SESSION_SECRET=chuoi_bi_mat_ngau_nhien_toi_thieu_32_ky_tu_123456
 ```
 
-> **Lưu ý**: Nếu chưa cấu hình `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET`, ứng dụng sẽ tự động kích hoạt **Chế độ Mock** để bạn kiểm thử toàn bộ giao diện và chức năng mà không gặp lỗi. Xem hướng dẫn tạo credentials tại `docs/HUMAN_ACTIONS.md`.
+> **Lưu ý**: Khi phát triển cục bộ, chưa cấu hình Google có thể dùng lịch mẫu. Production và request Bearer mobile không tạo/đọc lịch mẫu thay cho Google Calendar thật. Xem hướng dẫn Google Cloud tại `docs/HUMAN_ACTIONS.md`. Production cần `SESSION_SECRET` ngẫu nhiên tối thiểu 32 ký tự, không dùng khóa development/mẫu.
+
+### Ứng dụng Expo native
+
+Code tại [`mobile/`](mobile/README.md), dùng cùng backend `https://calendai.tduong.online`. Google Sign-In SDK nhận server authorization code, gửi tới `POST /api/auth/mobile/exchange`; backend đổi với Google và trả phiên mobile JWE. App giữ phiên trong SecureStore và gọi API bằng Bearer. `POST /api/auth/mobile/refresh` trả phiên mới nhưng không kéo dài hạn tuyệt đối đăng nhập 30 ngày. Không dùng Redis/DB phiên.
+
+Cần Google OAuth Android client gắn đúng package và SHA-1 chứng chỉ ký APK, cùng web client tương ứng backend. Không chỉ cấu hình URL là đăng nhập native được. Logout xóa phiên ở thiết bị; không thu hồi mọi JWE đã cấp hoặc quyền Google. Chi tiết cấu hình và kiểm thử thiết bị nằm trong README mobile.
 
 ### 4. Khởi chạy ứng dụng
 

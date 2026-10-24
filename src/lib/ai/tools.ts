@@ -3,33 +3,11 @@ import { z } from 'zod';
 import type { SessionData } from '@/lib/auth/types';
 import { listGoogleCalendarEvents } from '@/lib/calendar/google-calendar-service';
 import { listMockCalendarEvents } from '@/lib/calendar/mock-calendar-service';
+import { MeetingProposalSchema } from '@/lib/calendar/proposal-schema';
 import { isGoogleConfigured } from '@/lib/env';
 
-export const AttendeeSchema = z.object({
-  email: z.string().email('Địa chỉ email người tham gia không hợp lệ'),
-  name: z.string().optional(),
-});
-
-export const ProposeMeetingSchema = z.object({
-  summary: z
-    .string()
-    .min(1, 'Tiêu đề cuộc họp không được để trống')
-    .describe('Tiêu đề cuộc họp hoặc hoạt động (tự suy luận ngắn gọn từ lời người dùng nếu không có tiêu đề chính thức)'),
-  description: z.string().optional().default(''),
-  startDateTime: z
-    .string()
-    .describe('Thời gian bắt đầu dạng ISO 8601 có offset +07:00 (ví dụ: 2026-10-12T09:00:00+07:00)'),
-  endDateTime: z
-    .string()
-    .describe('Thời gian kết thúc dạng ISO 8601 có offset +07:00 (mặc định sau startDateTime 60 phút nếu chưa rõ thời lượng)'),
-  timeZone: z.string().default('Asia/Ho_Chi_Minh'),
-  attendees: z.array(AttendeeSchema).optional().default([]),
-  createMeet: z
-    .boolean()
-    .default(false)
-    .describe('Tạo Google Meet link (mặc định false, chỉ bật true khi người dùng yêu cầu họp online/Meet)'),
-});
-
+export { AttendeeSchema } from '@/lib/calendar/proposal-schema';
+export const ProposeMeetingSchema = MeetingProposalSchema;
 export type ProposeMeetingInput = z.infer<typeof ProposeMeetingSchema>;
 
 export const ListUpcomingEventsSchema = z.object({
@@ -47,29 +25,13 @@ export function createCalendarTools(
         'Đề xuất tạo cuộc họp và hiển thị Thẻ xem trước (Preview Card) trên giao diện. Kích hoạt ngay khi có thông tin cơ bản về ngày giờ và hoạt động/chủ đề (tiêu đề có thể tự suy luận ngắn gọn, các tham số khác áp dụng giá trị mặc định).',
       parameters: ProposeMeetingSchema,
       execute: async (args) => {
-        const proposalId = crypto.randomUUID();
-
-        // Kiểm tra startDateTime và endDateTime
-        let start = new Date(args.startDateTime);
-        let end = new Date(args.endDateTime);
-
-        // Fallback an toàn nếu parse không hợp lệ
-        if (isNaN(start.getTime())) {
-          start = new Date(Date.now() + 60 * 60 * 1000); // 1 tiếng sau
-        }
-        if (isNaN(end.getTime()) || end.getTime() <= start.getTime()) {
-          end = new Date(start.getTime() + 30 * 60 * 1000); // 30 phút sau start
-        }
+        const proposal = ProposeMeetingSchema.parse(args);
 
         return {
-          proposalId,
-          summary: args.summary,
-          description: args.description || '',
-          startDateTime: start.toISOString(),
-          endDateTime: end.toISOString(),
-          timeZone: args.timeZone || 'Asia/Ho_Chi_Minh',
-          attendees: args.attendees || [],
-          createMeet: Boolean(args.createMeet),
+          ...proposal,
+          proposalId: crypto.randomUUID(),
+          startDateTime: new Date(proposal.startDateTime).toISOString(),
+          endDateTime: new Date(proposal.endDateTime).toISOString(),
           status: 'proposed',
           message: 'Đã chuẩn bị thông tin cuộc họp. Vui lòng xác nhận để hoàn tất tạo trên Google Calendar.',
         };
@@ -84,6 +46,7 @@ export function createCalendarTools(
           if (session && accessToken) {
             const events = await listGoogleCalendarEvents(accessToken, {
               maxResults: args.maxResults,
+              timeMax: new Date(Date.now() + args.daysAhead * 24 * 60 * 60 * 1000).toISOString(),
             });
 
             return {
@@ -93,7 +56,7 @@ export function createCalendarTools(
             };
           }
 
-          if (!isGoogleConfigured()) {
+          if (process.env.NODE_ENV !== 'production' && !isGoogleConfigured()) {
             const mockEvents = await listMockCalendarEvents();
             return {
               success: true,
@@ -108,10 +71,10 @@ export function createCalendarTools(
             success: false,
             error: 'Chưa kết nối tài khoản Google. Vui lòng kết nối tài khoản ở góc trên trang web.',
           };
-        } catch (error) {
+        } catch {
           return {
             success: false,
-            error: error instanceof Error ? error.message : 'Không thể lấy dữ liệu lịch.',
+            error: 'Không thể lấy dữ liệu lịch. Vui lòng thử lại hoặc kết nối lại tài khoản Google.',
           };
         }
       },

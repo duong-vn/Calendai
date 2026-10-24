@@ -1,28 +1,9 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import { getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
-import { createGoogleCalendarEvent } from '@/lib/calendar/google-calendar-service';
+import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
+import { CalendarProposalConflictError, createGoogleCalendarEvent } from '@/lib/calendar/google-calendar-service';
 import { createMockCalendarEvent } from '@/lib/calendar/mock-calendar-service';
+import { MeetingProposalSchema } from '@/lib/calendar/proposal-schema';
 import { isGoogleConfigured } from '@/lib/env';
-
-const ConfirmMeetingSchema = z.object({
-  summary: z.string().min(1, 'Tiêu đề cuộc họp không được để trống'),
-  description: z.string().optional().default(''),
-  startDateTime: z.string().min(1, 'Thời gian bắt đầu không hợp lệ'),
-  endDateTime: z.string().min(1, 'Thời gian kết thúc không hợp lệ'),
-  timeZone: z.string().default('Asia/Ho_Chi_Minh'),
-  attendees: z
-    .array(
-      z.object({
-        email: z.string().email('Email người tham gia không hợp lệ'),
-        name: z.string().optional(),
-      })
-    )
-    .optional()
-    .default([]),
-  createMeet: z.boolean().default(true),
-  proposalId: z.string().optional(),
-});
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +15,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const parseResult = ConfirmMeetingSchema.safeParse(json);
+    // Preserve the legacy confirmation default; the proposal tool defaults to no Meet.
+    const legacyInput = typeof json === 'object' && !Array.isArray(json)
+      ? { createMeet: true, ...json }
+      : json;
+    const parseResult = MeetingProposalSchema.safeParse(legacyInput);
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => i.message).join(', ');
       return NextResponse.json(
@@ -44,20 +29,20 @@ export async function POST(request: Request) {
     }
 
     const input = parseResult.data;
-    const session = await getServerSession();
+    const session = await getServerSession(request);
 
     // Nếu đã đăng nhập tài khoản Google thực tế
     if (session) {
-      const { accessToken } = await getValidAccessToken(session);
+      const { accessToken } = await getValidAccessToken(session, request);
       const event = await createGoogleCalendarEvent(accessToken, {
         summary: input.summary,
         description: input.description,
         startDateTime: input.startDateTime,
         endDateTime: input.endDateTime,
         timeZone: input.timeZone,
-        attendees: input.attendees,
+        attendees: input.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
         createMeet: input.createMeet,
-      });
+      }, input.proposalId ? { accountId: session.user.id, proposalId: input.proposalId } : undefined);
 
       return NextResponse.json({
         success: true,
@@ -67,14 +52,14 @@ export async function POST(request: Request) {
     }
 
     // Nếu chưa đăng nhập và Google chưa được cấu hình -> hỗ trợ mock cho local development/testing
-    if (!isGoogleConfigured()) {
+    if (!request.headers.has('authorization') && process.env.NODE_ENV !== 'production' && !isGoogleConfigured()) {
       const mockEvent = await createMockCalendarEvent({
         summary: input.summary,
         description: input.description,
         startDateTime: input.startDateTime,
         endDateTime: input.endDateTime,
         timeZone: input.timeZone,
-        attendees: input.attendees,
+        attendees: input.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
         createMeet: input.createMeet,
       });
 
@@ -97,7 +82,12 @@ export async function POST(request: Request) {
       { status: 401 }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Lỗi hệ thống khi tạo lịch.';
+    const authResponse = authErrorResponse(error);
+    if (authResponse) return authResponse;
+    if (error instanceof CalendarProposalConflictError) {
+      return NextResponse.json({ success: false, error: error.message, code: 'PROPOSAL_CONFLICT' }, { status: 409 });
+    }
+    const message = 'Chưa xác định được kết quả tạo lịch. Vui lòng thử lại cùng bản thảo hoặc kiểm tra Google Calendar.';
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 }
