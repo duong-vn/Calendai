@@ -18,7 +18,11 @@ export const nativeFetch: Fetcher = async (input, init) => {
   if (new URL(url).origin !== API_ORIGIN || !url.startsWith(`${API_ORIGIN}/api/`)) {
     throw new Error('Đã chặn yêu cầu đến địa chỉ API không tin cậy.');
   }
-  const response = await expoFetch(url, { ...init, body: init?.body ?? undefined, signal: init?.signal ?? undefined, credentials: 'omit' });
+  const method = (init?.method || 'GET').toUpperCase();
+  const body = (method === 'POST' || method === 'PUT' || method === 'PATCH') && (init?.body === undefined || init?.body === null)
+    ? '{}'
+    : init?.body ?? undefined;
+  const response = await expoFetch(url, { ...init, body, signal: init?.signal ?? undefined, credentials: 'omit' });
   if (response.status >= 300 && response.status < 400 || response.redirected || response.url && new URL(response.url).origin !== API_ORIGIN) {
     throw new Error('Máy chủ chuyển hướng yêu cầu. Vui lòng kiểm tra địa chỉ API chính thức.');
   }
