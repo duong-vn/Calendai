@@ -108,7 +108,7 @@ export function parseEvent(value: unknown): CalendarEvent {
 
 export function parseProposal(value: unknown): MeetingProposal {
   if (!isRecord(value) || typeof value.proposalId !== 'string' || !value.proposalId || value.proposalId.length > 200 ||
-      typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 1000 ||
+      typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 200 ||
       typeof value.startDateTime !== 'string' || typeof value.endDateTime !== 'string' ||
       !/(Z|[+-]\d{2}:\d{2})$/.test(value.startDateTime) || !/(Z|[+-]\d{2}:\d{2})$/.test(value.endDateTime) ||
       !Number.isFinite(Date.parse(value.startDateTime)) || Date.parse(value.endDateTime) <= Date.parse(value.startDateTime) ||

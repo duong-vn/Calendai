@@ -165,7 +165,7 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
       <IconButton icon={dark ? Sun : Moon} label={dark ? 'Đổi sang giao diện sáng' : 'Đổi sang giao diện tối'} onPress={() => changeTheme(dark ? 'light' : 'dark')} />
       <IconButton icon={user ? Settings2 : LogIn} label={user ? 'Tài khoản Google' : 'Đăng nhập Google'} onPress={() => openPage('account')} />
     </View>
-    {(authError || error) && <View style={{ backgroundColor: colors.raised, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', gap: 8, alignItems: 'center' }}><Copy accessibilityRole="alert" style={{ flex: 1, color: colors.danger, fontSize: 12 }}>{authError || error}</Copy><IconButton icon={X} label="Đóng thông báo" onPress={() => { setError(''); clearError(); }} /></View>}
+    {Boolean(authError || error) && <View style={{ backgroundColor: colors.raised, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', gap: 8, alignItems: 'center' }}><Copy accessibilityRole="alert" style={{ flex: 1, color: colors.danger, fontSize: 12 }}>{authError || error}</Copy><IconButton icon={X} label="Đóng thông báo" onPress={() => { setError(''); clearError(); }} /></View>}
     <View style={{ flex: 1, flexDirection: 'row' }}>
       {wide && <ScrollView style={{ width: 290, flexGrow: 0, borderRightWidth: 2, borderColor: colors.border, backgroundColor: colors.surface }} contentContainerStyle={{ padding: 16 }}>{history}</ScrollView>}
       <View style={{ flex: 1 }}>
@@ -275,7 +275,7 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
         confirmedRef.current = { ...confirmedRef.current, [id]: event }; setConfirmed(confirmedRef.current); await persist();
       }} onEdit={proposal => { setInput(`Hãy tạo bản thảo mới cho “${proposal.summary}”, tôi muốn chỉnh: `); scroll.current?.scrollToEnd({ animated: true }); }} />)}
       {isLoading && <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}><ActivityIndicator color={colors.accent} /><Copy style={{ color: colors.muted }}>Calendai đang suy nghĩ…</Copy></View>}
-      {(error || localError) && <Panel style={{ gap: 12 }}><Copy accessibilityRole="alert" style={{ color: colors.danger }}>{localError || 'Chưa nhận được phản hồi. Kiểm tra kết nối hoặc đăng nhập lại, rồi thử lại.'}</Copy><Action label="Thử lại phản hồi" disabled={isLoading || !user} onPress={() => { setLocalError(''); void reload({ body: model ? { model } : {} }).catch(() => setLocalError('Vẫn chưa nhận được phản hồi. Vui lòng thử lại sau.')); }} /></Panel>}
+      {Boolean(error || localError) && <Panel style={{ gap: 12 }}><Copy accessibilityRole="alert" style={{ color: colors.danger }}>{localError || 'Chưa nhận được phản hồi. Kiểm tra kết nối hoặc đăng nhập lại, rồi thử lại.'}</Copy><Action label="Thử lại phản hồi" disabled={isLoading || !user} onPress={() => { setLocalError(''); void reload({ body: model ? { model } : {} }).catch(() => setLocalError('Vẫn chưa nhận được phản hồi. Vui lòng thử lại sau.')); }} /></Panel>}
     </ScrollView>
     <VoiceAssistantBar value={input} onChange={setInput} onSend={() => { void send(); }} isLoading={isLoading} disabled={!user} onStop={stop} modelLabel={modelLabel} onModel={onModel} voiceEnabled={!blocked} />
   </View>;

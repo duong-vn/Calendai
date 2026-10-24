@@ -123,17 +123,19 @@ export class AuthClient {
         response = await this.fetcher(input, { ...init, headers });
       } else {
         if (account === this.current?.user.id) await this.clear();
-        // Return a fresh error response object with the already-parsed JSON body so callers can read it.
         const errorBody = JSON.stringify(data || { error: 'Unauthorized' });
-        response = new Response(errorBody, {
+        return new Response(errorBody, {
           status: 401,
           statusText: 'Unauthorized',
           headers: { 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 401 && account === this.current?.user.id) await this.clear();
+      if (response.status === 401 && account === this.current?.user.id) {
+        await this.clear();
+        return response;
+      }
     }
-    if (account !== this.current?.user.id) {
+    if (this.current !== null && account !== this.current.user.id) {
       await response.body?.cancel();
       throw new ApiError('Phiên đã hết hạn hoặc tài khoản đã thay đổi. Vui lòng đăng nhập lại.', 401);
     }

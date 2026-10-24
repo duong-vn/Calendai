@@ -7,13 +7,17 @@ import { Action, Copy, Panel, useTheme } from '../theme';
 import { openLink, safeHttpsUrl } from '../services/links';
 
 export function formatDateTime(input: string, timeZone = 'Asia/Ho_Chi_Minh'): string {
-  return new Intl.DateTimeFormat('vi-VN', { timeZone, weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(input));
+  try {
+    return new Intl.DateTimeFormat('vi-VN', { timeZone: timeZone || 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(input));
+  } catch {
+    return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(input));
+  }
 }
 
 export function AgendaCard({ event, created = false, requestedMeet = false }: { event: CalendarEvent; created?: boolean; requestedMeet?: boolean }) {
   const { colors } = useTheme();
-  const meet = event.hangoutLink && safeHttpsUrl(event.hangoutLink, 'meet');
-  const calendar = event.htmlLink && safeHttpsUrl(event.htmlLink, 'calendar');
+  const meet = event.hangoutLink ? safeHttpsUrl(event.hangoutLink, 'meet') : null;
+  const calendar = event.htmlLink ? safeHttpsUrl(event.htmlLink, 'calendar') : null;
   const run = (promise: Promise<unknown>) => { void promise.catch(() => Alert.alert('Không thể mở liên kết', 'Vui lòng kiểm tra mạng và thử lại.')); };
   return <Panel style={{ gap: 10, borderColor: created ? colors.teal : colors.border }}>
     {created && <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><CalendarCheck size={18} color={colors.teal} /><Copy strong style={{ color: colors.teal }}>Đã tạo trên Google Calendar</Copy></View>}

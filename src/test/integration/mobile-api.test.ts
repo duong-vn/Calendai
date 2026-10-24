@@ -20,5 +20,6 @@ describe('Shared mobile Calendar payload boundaries', () => {
     expect(() => parseEvent({ id: 'event-1', summary: 'Họp', start: {}, end: {} })).toThrow();
     expect(() => parseProposal({ ...proposal, endDateTime: proposal.startDateTime })).toThrow();
     expect(() => parseProposal({ ...proposal, startDateTime: '2026-10-21T09:00:00' })).toThrow();
+    expect(() => parseProposal({ ...proposal, summary: 'a'.repeat(201) })).toThrow();
   });
 });
