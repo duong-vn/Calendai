@@ -168,13 +168,14 @@ export async function signInGoogle(): Promise<boolean> {
     await authClient.exchange(code);
     return true;
   } catch (error) {
+    console.error('[Calendai Google Sign-in Error]:', error);
     if (isErrorWithCode(error)) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) return false;
       if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) throw new Error('Thiết bị cần Google Play Services để đăng nhập.');
-      throw new Error('Không thể đăng nhập Google. Kiểm tra OAuth client ID, SHA-1 và quyền Calendar rồi thử lại.');
+      throw new Error(`[Lỗi Google SDK ${error.code}]: ${error.message}`);
     }
     if (error instanceof ApiError) throw error;
-    if (error instanceof Error && (error.message.startsWith('Google chưa') || error.message.startsWith('Máy chủ trả'))) throw error;
+    if (error instanceof Error) throw error;
     throw new Error('Không thể hoàn tất đăng nhập. Kiểm tra mạng và cấu hình Google rồi thử lại.');
   }
 }

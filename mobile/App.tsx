@@ -254,10 +254,14 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
   }, [stop, persist, snapshot]);
   useEffect(() => { if (blocked) stop(); }, [blocked, stop]);
   const send = async (text = input) => {
-    if (!text.trim() || isLoading || !user || sendGuard.current) return;
+    const content = text.trim();
+    if (!content || isLoading || sendGuard.current) return;
     sendGuard.current = true; setLocalError(''); setInput('');
-    try { await append({ role: 'user', content: text.trim() }, { body: model ? { model } : {} }); }
-    catch { if (mounted.current) setLocalError('Chưa gửi được tin nhắn. Bạn có thể thử lại.'); }
+    try { await append({ role: 'user', content }, { body: model ? { model } : {} }); }
+    catch (err) {
+      console.error('[Calendai Send Message Error]:', err);
+      if (mounted.current) setLocalError(err instanceof Error ? err.message : 'Chưa gửi được tin nhắn. Bạn có thể thử lại.');
+    }
     finally { sendGuard.current = false; }
   };
   return <View style={{ flex: 1 }}>
@@ -269,14 +273,19 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
         <View style={{ gap: 10 }}>{PROMPTS.map(prompt => <TouchableOpacity key={prompt} accessibilityRole="button" onPress={() => setInput(prompt)} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surface, padding: 14, minHeight: 50, flexDirection: 'row', gap: 8, alignItems: 'center' }}><Copy style={{ flex: 1 }}>{prompt}</Copy><ChevronRight size={18} color={colors.accent} /></TouchableOpacity>)}</View>
         <Copy style={{ color: colors.muted, fontSize: 11 }}>Giờ Việt Nam · Chỉ tạo lịch sau khi bạn xác nhận</Copy>
       </View>}
-      {messages.map(message => <ChatMessage key={message.id} message={message} confirmed={confirmed} submitted={submitted} disabled={isLoading || !user || blocked} onSubmit={async proposal => {
+      {messages.map(message => <ChatMessage key={message.id} message={message} confirmed={confirmed} submitted={submitted} disabled={isLoading || blocked} onSubmit={async proposal => {
         submittedRef.current = { ...submittedRef.current, [proposal.proposalId]: proposal }; setSubmitted(submittedRef.current); await persist();
       }} onCreated={async (id, event) => {
         confirmedRef.current = { ...confirmedRef.current, [id]: event }; setConfirmed(confirmedRef.current); await persist();
       }} onEdit={proposal => { setInput(`Hãy tạo bản thảo mới cho “${proposal.summary}”, tôi muốn chỉnh: `); scroll.current?.scrollToEnd({ animated: true }); }} />)}
       {isLoading && <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}><ActivityIndicator color={colors.accent} /><Copy style={{ color: colors.muted }}>Calendai đang suy nghĩ…</Copy></View>}
-      {Boolean(error || localError) && <Panel style={{ gap: 12 }}><Copy accessibilityRole="alert" style={{ color: colors.danger }}>{localError || 'Chưa nhận được phản hồi. Kiểm tra kết nối hoặc đăng nhập lại, rồi thử lại.'}</Copy><Action label="Thử lại phản hồi" disabled={isLoading || !user} onPress={() => { setLocalError(''); void reload({ body: model ? { model } : {} }).catch(() => setLocalError('Vẫn chưa nhận được phản hồi. Vui lòng thử lại sau.')); }} /></Panel>}
+      {Boolean(error || localError) && <Panel style={{ gap: 12 }}>
+        <Copy accessibilityRole="alert" style={{ color: colors.danger }}>
+          {localError || (error instanceof Error ? error.message : String(error)) || 'Chưa nhận được phản hồi. Kiểm tra kết nối hoặc đăng nhập lại, rồi thử lại.'}
+        </Copy>
+        <Action label="Thử lại phản hồi" disabled={isLoading} onPress={() => { setLocalError(''); void reload({ body: model ? { model } : {} }).catch(err => setLocalError(err instanceof Error ? err.message : 'Vẫn chưa nhận được phản hồi. Vui lòng thử lại sau.')); }} />
+      </Panel>}
     </ScrollView>
-    <VoiceAssistantBar value={input} onChange={setInput} onSend={() => { void send(); }} isLoading={isLoading} disabled={!user} onStop={stop} modelLabel={modelLabel} onModel={onModel} voiceEnabled={!blocked} />
+    <VoiceAssistantBar value={input} onChange={setInput} onSend={() => { void send(); }} isLoading={isLoading} disabled={false} onStop={stop} modelLabel={modelLabel} onModel={onModel} voiceEnabled={!blocked} />
   </View>;
 }
