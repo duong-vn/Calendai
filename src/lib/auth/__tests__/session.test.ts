@@ -39,11 +39,12 @@ describe('Auth Session Layer (JWE with jose)', () => {
   }
 
   function mobileSession(): MobileSessionData {
+    const now = Date.now();
     return {
       ...sampleSession,
-      createdAt: Date.now(),
+      createdAt: now,
       kind: 'mobile',
-      expiresAt: Date.now() + SESSION_EXPIRATION_SECONDS * 1000,
+      expiresAt: now + (SESSION_EXPIRATION_SECONDS - 60) * 1000,
       tokens: { ...sampleSession.tokens, refreshToken: 'refresh-value' },
     };
   }
@@ -68,7 +69,7 @@ describe('Auth Session Layer (JWE with jose)', () => {
     const session = mobileSession();
     expect(await decryptMobileSession(await customJwe({ ...session, user: {} }, MOBILE_SESSION_AUDIENCE, 'mobile-session'), secretKey)).toBeNull();
     expect(await decryptMobileSession(await customJwe({ ...session, tokens: { ...session.tokens, refreshToken: undefined } }, MOBILE_SESSION_AUDIENCE, 'mobile-session'), secretKey)).toBeNull();
-    await expect(encryptMobileSession({ ...session, expiresAt: session.expiresAt + 1000 }, secretKey)).rejects.toThrow();
+    await expect(encryptMobileSession({ ...session, expiresAt: session.createdAt + SESSION_EXPIRATION_SECONDS * 1000 + 1000 }, secretKey)).rejects.toThrow();
   });
 
   it('expires mobile sessions at the absolute 30-day horizon', async () => {

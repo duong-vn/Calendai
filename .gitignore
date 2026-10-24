@@ -27,6 +27,7 @@ yarn-error.log*
 .env*.local
 .env
 !.env.example
+!mobile/.env.example
 
 # vercel
 .vercel
