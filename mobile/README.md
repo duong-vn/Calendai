@@ -47,7 +47,7 @@ SDK gọi `offlineAccess: true`, `forceCodeForRefreshToken: true` và yêu cầu
 
 - Google Sign-In `13.2.0`: maintained package, peer Expo >=50, native Google SDK, serverAuthCode/offline access; không có API tương đương trong React Native stdlib. API Android Original dựa trên Google Sign-In cũ vẫn hoạt động nhưng SDK upstream đã deprecated; không tự đổi sang một auth primitive hoặc ID-token-only. Nâng khi gói hỗ trợ Expo52-compatible thay thế đủ server code + Calendar scopes.
 - `expo-secure-store@14.0.1`: Keychain/Keystore, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`; AsyncStorage không phù hợp cho JWE. SecureStore chỉ chứa session + profile/expiry phục vụ restore, không chứa lịch sử chat.
-- AsyncStorage `1.23.1`: lịch sử/preferences theo **origin + user.id**, guest riêng; tối đa 50 hội thoại. Lưu trên thiết bị, không đồng bộ web và không mã hóa nội dung chat. Người dùng có thể xóa từng chat; không xóa Calendar event.
+- AsyncStorage `1.23.1`: lịch sử/preferences theo **origin + user.id**, guest riêng; index hiển thị tối đa 50 hội thoại. Nội dung v2 lưu riêng từng phiên, chỉ tải phiên được chọn và ghi phiên thay đổi. Lần đầu chuyển v1 sang v2 giữ nguyên bản v1 để khôi phục; nội dung ngoài index chưa tự dọn nên 50 phiên không phải giới hạn dung lượng. Lưu trên thiết bị, không đồng bộ web và không mã hóa nội dung chat. Xóa chat hiện bỏ khỏi index, không xóa Calendar event; chưa phải xóa an toàn toàn bộ bản sao cục bộ.
 - `expo-speech-recognition@1.1.1`: dòng hỗ trợ Expo52 chính thức (v2 trở lên dành SDK53+), native permissions/engine; không cài voice library cũ không hỗ trợ SDK. Mic chỉ bắt đầu sau tap, xin quyền lúc dùng, đổ vào draft không tự gửi. Dừng/hủy khi background, mở sheet/chuyển chat, logout, unmount. Không đảm bảo offline hoặc engine tiếng Việt trên mọi thiết bị.
 - `@ronradtke/react-native-markdown-display@9.0.3`: maintained fork renderer native (không WebView), HTTPS links được kiểm tra, không tải ảnh Markdown từ xa; renderer không thực thi HTML/JS.
 - Safe-area-context `4.12.0`, Expo Clipboard `7.0.1`, Expo Font `13.0.4` và Plus Jakarta Sans `0.4.2`: insets/copy link/font local có dấu tiếng Việt; stdlib không cung cấp các native integrations này. UI giữ native font scaling, keyboard resize/avoidance và nút chạm ≥46dp.
@@ -75,7 +75,15 @@ Google Sign-In/speech **không chạy trong Expo Go**. Dùng development build (
 npx eas-cli build -p android --profile preview
 ```
 
-Profile preview xuất APK cài trực tiếp; development dùng dev client. Không cần tự tạo project cloud có phí. Khi mở Metro, dừng bằng Ctrl+C sau khi dùng; không để server tạm chạy ngầm.
+Profile preview xuất APK release cài trực tiếp, không dùng dev client và không cần Metro; versionCode tự tăng theo EAS remote version. Profile này lấy biến từ EAS environment `preview`. Trước khi build:
+
+1. Đặt `EXPO_PUBLIC_API_URL` và `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` trong EAS environment `preview`. Đây là cấu hình công khai; không đưa khóa AI, Google client secret hoặc session secret vào app. Không dựa vào file môi trường cục bộ để cấu hình cloud build.
+2. Đăng ký OAuth Android client với package `com.calendai.mobile` và SHA-1 của chứng chỉ ký APK EAS. SHA-1 debug trên máy ảo có thể khác bản APK này.
+3. Nếu cập nhật bản đã cài, dùng cùng khóa ký. Nếu Android báo chữ ký không khớp, không gỡ bản cũ khi chưa bảo toàn dữ liệu; gỡ app sẽ xóa lịch sử cục bộ.
+4. Chạy lệnh build ở trên từ `mobile/`, tải APK từ liên kết EAS trả về và cho phép cài ứng dụng từ nguồn đó trên điện thoại. Không chọn profile development cho bản dùng độc lập.
+5. Sau cài đặt: đăng nhập, gửi tin nhắn, thử mic, tạo một lịch thử sau khi kiểm tra bản thảo, rồi đóng/mở lại app để kiểm tra phiên và lịch sử.
+
+Cloud build sẽ dừng sớm nếu thiếu Web client ID hoặc API origin không hợp lệ. Khi mở Metro cho development, dừng bằng Ctrl+C sau khi dùng; không để server tạm chạy ngầm.
 
 ## Kiểm chứng thực tế
 

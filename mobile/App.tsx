@@ -1,16 +1,17 @@
-import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Platform, ScrollView, TextInput, TouchableOpacity, useColorScheme, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { ActivityIndicator, Alert, AppState, FlatList, KeyboardAvoidingView, Platform, ScrollView, TextInput, TouchableOpacity, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans';
 import { useChat } from 'ai/react';
+import type { Message } from 'ai';
 import { CalendarDays, Check, ChevronRight, Clock3, HelpCircle, LogIn, LogOut, Menu, Moon, Plus, Settings2, Sparkles, Sun, Trash2, X } from 'lucide-react-native';
 import { Action, Copy, IconButton, mono, palettes, Panel, ThemeContext, useTheme } from './src/theme';
 import { authClient, signInGoogle, signOutGoogle } from './src/services/auth';
 import { API_ORIGIN } from './src/services/transport';
 import { fetchModels, mobileApi } from './src/services/api';
-import { historyKey, loadHistory, newConversation, saveHistory } from './src/services/history';
+import { historyKey, loadHistory, loadConversation, newConversation, saveConversation, deleteConversation as deleteHistoryConversation, type HistoryEntry } from './src/services/history';
 import { openLink } from './src/services/links';
 import type { CalendarEvent, ChatSession, MeetingProposal, ModelOption, UserProfile } from './src/types';
 import { AgendaCard } from './src/components/AgendaCard';
@@ -18,6 +19,7 @@ import { ChatMessage } from './src/components/ChatMessage';
 import { Sheet } from './src/components/Sheet';
 import { VoiceAssistantBar } from './src/components/VoiceAssistantBar';
 
+const messageKey = (message: Message) => message.id;
 const PROMPTS = ['Họp nhóm lúc 9h sáng mai trong 1 tiếng, có Google Meet', 'Xem các cuộc họp sắp tới', 'Hẹn cà phê chiều thứ Sáu lúc 15h'];
 type Page = 'history' | 'models' | 'upcoming' | 'help' | 'account' | null;
 type ThemeMode = 'system' | 'light' | 'dark';
@@ -53,7 +55,8 @@ export default function App() {
     setMode(next);
     void AsyncStorage.setItem('calendai.theme.v1', next).catch(() => setError('Chưa lưu được tùy chọn giao diện.'));
   };
-  return <SafeAreaProvider><ThemeContext.Provider value={{ colors: dark ? palettes.dark : palettes.light, dark, fonts }}>
+  const theme = useMemo(() => ({ colors: dark ? palettes.dark : palettes.light, dark, fonts }), [dark, fonts]);
+  return <SafeAreaProvider><ThemeContext.Provider value={theme}>
     <SafeAreaView style={{ flex: 1, backgroundColor: dark ? palettes.dark.bg : palettes.light.bg }}>
       <StatusBar style={dark ? 'light' : 'dark'} />
       {!ready || !fonts && !fontError ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }}><ActivityIndicator color={dark ? palettes.dark.accent : palettes.light.accent} /><Copy>Đang mở Calendai…</Copy></View> :
@@ -69,7 +72,7 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
   const { width } = useWindowDimensions();
   const wide = width >= 850;
   const [page, setPage] = useState<Page>(null);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessions, setSessions] = useState<HistoryEntry[]>([]);
   const [active, setActive] = useState<ChatSession>(newConversation);
   const [loaded, setLoaded] = useState(false);
   const [historyError, setHistoryError] = useState('');
@@ -89,14 +92,32 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
   const activeRef = useRef(active);
   const calendarAbort = useRef<AbortController | null>(null);
   const modelAbort = useRef<AbortController | null>(null);
-  const updateActive = (next: ChatSession) => { activeRef.current = next; setActive(next); };
+  const selection = useRef(0);
+  const updateActive = (next: ChatSession) => { ++selection.current; activeRef.current = next; setActive(next); setHistoryError(''); setLoaded(true); };
+  const openConversation = async (id: string) => {
+    if (loaded && !historyError && activeRef.current.id === id) { setPage(null); return; }
+    const revision = ++selection.current;
+    setPage(null);
+    setLoaded(false);
+    setHistoryError('');
+    try {
+      const conversation = await loadConversation(user?.id || null, id);
+      if (!alive.current || revision !== selection.current || deletedIds.current.has(id)) return;
+      activeRef.current = conversation; setActive(conversation);
+    } catch {
+      if (alive.current && revision === selection.current) setHistoryError('Không đọc được cuộc trò chuyện. Dữ liệu cũ được giữ nguyên; hãy thử đọc lại.');
+    } finally {
+      if (alive.current && revision === selection.current) setLoaded(true);
+    }
+  };
   const commit = useCallback(async (next: ChatSession) => {
     if (!historyWritable.current) throw new Error('Chưa đọc được lịch sử. Dữ liệu cũ được giữ nguyên.');
-    if (deletedIds.current.has(next.id)) return;
-    const all = [next, ...sessionsRef.current.filter(item => item.id !== next.id && !deletedIds.current.has(item.id))].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 50);
+    if (deletedIds.current.has(next.id) || !next.messages.length) return;
+    const entry: HistoryEntry = { id: next.id, title: next.title, updatedAt: next.updatedAt };
+    const all = [entry, ...sessionsRef.current.filter(item => item.id !== next.id && !deletedIds.current.has(item.id))].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 50);
     sessionsRef.current = all;
     if (alive.current) setSessions(all);
-    try { await saveHistory(user?.id || null, all); }
+    try { await saveConversation(user?.id || null, next); }
     catch (failure) { if (alive.current) setError('Chưa lưu được lịch sử trên thiết bị. Vui lòng thử lại trước khi rời ứng dụng.'); throw failure; }
   }, [user?.id]);
   const loadModels = useCallback(async () => {
@@ -112,18 +133,23 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
     } catch { if (alive.current && !controller.signal.aborted) setModelsError('Không tải được danh sách mô hình. Bạn vẫn có thể dùng mô hình mặc định của máy chủ.'); }
   }, [user?.id]);
   const restoreHistory = async () => {
+    const revision = ++selection.current;
     setHistoryError('');
     setLoaded(false);
     try {
       const items = await loadHistory(user?.id || null);
-      if (!alive.current) return;
+      if (!alive.current || revision !== selection.current) return;
       sessionsRef.current = items; setSessions(items);
-      if (items[0]) updateActive(items[0]);
       historyWritable.current = true;
+      if (items[0]) {
+        const conversation = await loadConversation(user?.id || null, items[0].id);
+        if (!alive.current || revision !== selection.current) return;
+        activeRef.current = conversation; setActive(conversation);
+      }
     } catch {
-      if (alive.current) setHistoryError('Không đọc được lịch sử. Dữ liệu cũ được giữ nguyên; hãy thử đọc lại.');
+      if (alive.current && revision === selection.current) setHistoryError('Không đọc được lịch sử. Dữ liệu cũ được giữ nguyên; hãy thử đọc lại.');
     } finally {
-      if (alive.current) setLoaded(true);
+      if (alive.current && revision === selection.current) setLoaded(true);
     }
   };
   useEffect(() => {
@@ -155,7 +181,7 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
     sessionsRef.current = next;
     setSessions(next);
     if (activeRef.current.id === id) updateActive(newConversation());
-    void saveHistory(user?.id || null, next).catch(() => {
+    void deleteHistoryConversation(user?.id || null, id).catch(() => {
       if (alive.current) setError('Không xóa được lịch sử. Vui lòng thử lại.');
     });
   } }]);
@@ -164,7 +190,7 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
     <Copy style={{ color: colors.muted, fontSize: 12 }}>Lưu trên thiết bị · {user?.email || 'Khách'} · Không đồng bộ với web</Copy>
     {sessions.length === 0 && <Copy style={{ color: colors.muted }}>Chưa có cuộc trò chuyện nào.</Copy>}
     {sessions.map(item => <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: item.id === active.id ? colors.raised : 'transparent', borderRadius: 10 }}>
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Mở ${item.title}`} onPress={() => { updateActive(item); setPage(null); }} style={{ flex: 1, padding: 12, minHeight: 48 }}><Copy numberOfLines={2} strong={item.id === active.id}>{item.title}</Copy><Copy style={{ color: colors.muted, fontSize: 11 }}>{new Date(item.updatedAt).toLocaleDateString('vi-VN')}</Copy></TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Mở ${item.title}`} onPress={() => { void openConversation(item.id); }} style={{ flex: 1, padding: 12, minHeight: 48 }}><Copy numberOfLines={2} strong={item.id === active.id}>{item.title}</Copy><Copy style={{ color: colors.muted, fontSize: 11 }}>{new Date(item.updatedAt).toLocaleDateString('vi-VN')}</Copy></TouchableOpacity>
       <IconButton icon={Trash2} label={`Xóa ${item.title}`} onPress={() => deleteConversation(item.id)} />
     </View>)}
     <Action label="Lịch sắp tới" icon={CalendarDays} onPress={() => openPage('upcoming')} />
@@ -230,7 +256,10 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
   const [confirmed, setConfirmed] = useState(initial.confirmed);
   const [submitted, setSubmitted] = useState(initial.submitted);
   const [localError, setLocalError] = useState('');
-  const scroll = useRef<ScrollView>(null);
+  const [meetChoices, setMeetChoices] = useState<Record<string, boolean>>({});
+  const onMeetChange = useCallback((id: string, value: boolean) => setMeetChoices(current => ({ ...current, [id]: value })), []);
+  const scroll = useRef<FlatList<Message>>(null);
+  const nearBottom = useRef(true);
   const mounted = useRef(true);
   const confirmedRef = useRef(confirmed);
   const submittedRef = useRef(submitted);
@@ -241,7 +270,7 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
   const { messages, input, setInput, append, reload, stop, isLoading, error } = useChat({
     api: `${API_ORIGIN}/api/chat`, id: `${user?.id || 'guest'}:${initial.id}`,
     initialMessages: initial.messages, fetch: authClient.fetch, credentials: 'omit',
-    body: model ? { model } : {}, maxSteps: 5, streamProtocol: 'data', keepLastMessageOnError: true,
+    body: model ? { model } : {}, experimental_throttle: 60, maxSteps: 5, streamProtocol: 'data', keepLastMessageOnError: true,
   });
   messagesRef.current = messages;
   const snapshot = useCallback((): ChatSession => {
@@ -273,25 +302,40 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
     sendGuard.current = true; setLocalError(''); setInput('');
     try { await append({ role: 'user', content }, { body: model ? { model } : {} }); }
     catch (err) {
-      console.error('[Calendai Send Message Error]:', err);
       if (mounted.current) setLocalError(err instanceof Error ? err.message : 'Chưa gửi được tin nhắn. Bạn có thể thử lại.');
     }
     finally { sendGuard.current = false; }
   };
+  const onSubmit = useCallback(async (proposal: MeetingProposal) => {
+    submittedRef.current = { ...submittedRef.current, [proposal.proposalId]: proposal };
+    setSubmitted(submittedRef.current);
+    await persist();
+  }, [persist]);
+  const onCreated = useCallback(async (id: string, event: CalendarEvent) => {
+    confirmedRef.current = { ...confirmedRef.current, [id]: event };
+    setConfirmed(confirmedRef.current);
+    await persist();
+  }, [persist]);
+  const onEdit = useCallback((proposal: MeetingProposal) => {
+    setInput(`Hãy tạo bản thảo mới cho “${proposal.summary}”, tôi muốn chỉnh: `);
+    nearBottom.current = true;
+    scroll.current?.scrollToEnd({ animated: true });
+  }, [setInput]);
+  const renderMessage = useCallback(({ item }: { item: Message }) => <ChatMessage message={item} meetChoices={meetChoices} onMeetChange={onMeetChange} confirmed={confirmed} submitted={submitted} disabled={isLoading || blocked} streaming={isLoading && item.id === messages[messages.length - 1]?.id} onSubmit={onSubmit} onCreated={onCreated} onEdit={onEdit} />, [confirmed, submitted, isLoading, blocked, messages, meetChoices, onMeetChange, onSubmit, onCreated, onEdit]);
   return <View style={{ flex: 1 }}>
-    <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 30, flexGrow: 1, maxWidth: 900, width: '100%', alignSelf: 'center' }} onContentSizeChange={() => { if (isLoading) scroll.current?.scrollToEnd({ animated: false }); }}>
-      {messages.length === 0 && <View style={{ flex: 1, justifyContent: 'center', gap: 24, paddingVertical: 24 }}>
+    <FlatList ref={scroll} data={messages} renderItem={renderMessage} keyExtractor={messageKey}
+      initialNumToRender={12} maxToRenderPerBatch={8} windowSize={7} removeClippedSubviews={false}
+      keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingBottom: 30, flexGrow: 1, maxWidth: 900, width: '100%', alignSelf: 'center' }}
+      onScroll={({ nativeEvent }) => { nearBottom.current = nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height - nativeEvent.contentOffset.y < 100; }} scrollEventThrottle={100}
+      onContentSizeChange={() => { if (nearBottom.current) scroll.current?.scrollToEnd({ animated: false }); }}
+      ListEmptyComponent={ <View style={{ flex: 1, justifyContent: 'center', gap: 24, paddingVertical: 24 }}>
         <View style={{ width: 64, height: 64, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.raised, borderRadius: 20, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] }}><Sparkles color={colors.accent} size={30} /></View>
         <View style={{ gap: 12 }}><Copy strong accessibilityRole="header" style={{ fontSize: 32, lineHeight: 40, letterSpacing: -1 }}>Hôm nay, bạn muốn{`\n`}lên lịch gì?</Copy><Copy style={{ color: colors.muted, fontSize: 15 }}>Chỉ cần một lời nhắn. Calendai chuẩn bị cuộc hẹn, bạn là người xác nhận.</Copy></View>
         {!user && <Action label="Kết nối Google Calendar" icon={LogIn} primary onPress={login} />}
         <View style={{ gap: 10 }}>{PROMPTS.map(prompt => <TouchableOpacity key={prompt} accessibilityRole="button" onPress={() => setInput(prompt)} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.surface, padding: 14, minHeight: 50, flexDirection: 'row', gap: 8, alignItems: 'center' }}><Copy style={{ flex: 1 }}>{prompt}</Copy><ChevronRight size={18} color={colors.accent} /></TouchableOpacity>)}</View>
         <Copy style={{ color: colors.muted, fontSize: 11 }}>Giờ Việt Nam · Chỉ tạo lịch sau khi bạn xác nhận</Copy>
       </View>}
-      {messages.map(message => <ChatMessage key={message.id} message={message} confirmed={confirmed} submitted={submitted} disabled={isLoading || blocked} streaming={isLoading && message.id === messages[messages.length - 1]?.id} onSubmit={async proposal => {
-        submittedRef.current = { ...submittedRef.current, [proposal.proposalId]: proposal }; setSubmitted(submittedRef.current); await persist();
-      }} onCreated={async (id, event) => {
-        confirmedRef.current = { ...confirmedRef.current, [id]: event }; setConfirmed(confirmedRef.current); await persist();
-      }} onEdit={proposal => { setInput(`Hãy tạo bản thảo mới cho “${proposal.summary}”, tôi muốn chỉnh: `); scroll.current?.scrollToEnd({ animated: true }); }} />)}
+      ListFooterComponent={<>
       {isLoading && <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}><ActivityIndicator color={colors.accent} /><Copy style={{ color: colors.muted }}>Calendai đang suy nghĩ…</Copy></View>}
       {Boolean(error || localError) && <Panel style={{ gap: 12 }}>
         <Copy accessibilityRole="alert" style={{ color: colors.danger }}>
@@ -299,7 +343,7 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
         </Copy>
         <Action label="Thử lại phản hồi" disabled={isLoading} onPress={() => { setLocalError(''); void reload({ body: model ? { model } : {} }).catch(err => setLocalError(err instanceof Error ? err.message : 'Vẫn chưa nhận được phản hồi. Vui lòng thử lại sau.')); }} />
       </Panel>}
-    </ScrollView>
+      </>} />
     <VoiceAssistantBar value={input} onChange={setInput} onSend={() => { void send(); }} isLoading={isLoading} disabled={false} onStop={stop} modelLabel={modelLabel} onModel={onModel} voiceEnabled={!blocked} />
   </View>;
 }

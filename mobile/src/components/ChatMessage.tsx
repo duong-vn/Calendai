@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { Alert, View } from 'react-native';
 import type { Message } from 'ai';
 import Markdown from '@ronradtke/react-native-markdown-display';
@@ -9,34 +9,39 @@ import { openLink } from '../services/links';
 import { AgendaCard } from './AgendaCard';
 import { ProposalCard } from './ProposalModal';
 
-export function ChatMessage({ message, confirmed, submitted, disabled, streaming = false, onSubmit, onCreated, onEdit }: {
+const markdownRules = { image: () => null };
+
+export const ChatMessage = memo(function ChatMessage({ message, confirmed, submitted, disabled, streaming = false, meetChoices, onMeetChange, onSubmit, onCreated, onEdit }: {
   message: Message;
   confirmed: Record<string, CalendarEvent>;
   submitted: Record<string, MeetingProposal>;
   disabled: boolean;
   streaming?: boolean;
+  meetChoices?: Record<string, boolean>;
+  onMeetChange?: (id: string, value: boolean) => void;
   onSubmit: (proposal: MeetingProposal) => Promise<void>;
   onCreated: (id: string, event: CalendarEvent) => Promise<void>;
   onEdit: (proposal: MeetingProposal) => void;
 }) {
   const { colors, fonts } = useTheme();
+  const markdownStyle = useMemo(() => ({
+    body: { color: colors.ink, fontSize: 14, lineHeight: 23, fontFamily: fonts ? 'Jakarta' : undefined },
+    heading1: { color: colors.ink, fontSize: 23 }, heading2: { color: colors.ink, fontSize: 20 }, heading3: { color: colors.ink, fontSize: 17 },
+    strong: { color: colors.ink, fontFamily: fonts ? 'JakartaBold' : undefined },
+    link: { color: colors.accent, textDecorationLine: 'underline' as const },
+    code_inline: { color: colors.accent, backgroundColor: colors.raised },
+    fence: { color: colors.ink, backgroundColor: colors.raised, borderColor: colors.border },
+    code_block: { color: colors.ink, backgroundColor: colors.raised, borderColor: colors.border },
+    blockquote: { backgroundColor: colors.raised, borderColor: colors.brass },
+    table: { borderColor: colors.border }, th: { padding: 6 }, td: { padding: 6 }, tr: { borderColor: colors.border },
+  }), [colors, fonts]);
   const user = message.role === 'user';
   const Icon = user ? UserRound : Sparkles;
   if (!message.content && !message.toolInvocations?.length) return null;
   return <View style={{ gap: 8, alignItems: user ? 'flex-end' : 'flex-start', marginBottom: 22 }}>
     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Icon size={17} color={colors.accent} /><Copy strong style={{ fontSize: 12, color: colors.muted }}>{user ? 'Bạn' : 'Calendai'}</Copy></View>
     {!!message.content && <View style={{ maxWidth: '100%', borderWidth: 2, borderColor: colors.border, borderRadius: 18, backgroundColor: user ? colors.user : colors.surface, paddingHorizontal: 14, paddingVertical: 6 }}>
-      <Markdown onLinkPress={url => { void openLink(url).catch(() => Alert.alert('Không mở được liên kết', 'Chỉ hỗ trợ đường dẫn HTTPS hợp lệ.')); return false; }} style={{
-        body: { color: colors.ink, fontSize: 14, lineHeight: 23, fontFamily: fonts ? 'Jakarta' : undefined },
-        heading1: { color: colors.ink, fontSize: 23 }, heading2: { color: colors.ink, fontSize: 20 }, heading3: { color: colors.ink, fontSize: 17 },
-        strong: { color: colors.ink, fontFamily: fonts ? 'JakartaBold' : undefined },
-        link: { color: colors.accent, textDecorationLine: 'underline' },
-        code_inline: { color: colors.accent, backgroundColor: colors.raised },
-        fence: { color: colors.ink, backgroundColor: colors.raised, borderColor: colors.border },
-        code_block: { color: colors.ink, backgroundColor: colors.raised, borderColor: colors.border },
-        blockquote: { backgroundColor: colors.raised, borderColor: colors.brass },
-        table: { borderColor: colors.border }, th: { padding: 6 }, td: { padding: 6 }, tr: { borderColor: colors.border },
-      }} rules={{ image: () => null }}>{message.content}</Markdown>
+      <Markdown onLinkPress={url => { void openLink(url).catch(() => Alert.alert('Không mở được liên kết', 'Chỉ hỗ trợ đường dẫn HTTPS hợp lệ.')); return false; }} style={markdownStyle} rules={markdownRules}>{message.content}</Markdown>
     </View>}
     {message.toolInvocations?.map(tool => {
       if (tool.state !== 'result') {
@@ -49,7 +54,7 @@ export function ChatMessage({ message, confirmed, submitted, disabled, streaming
       if (tool.toolName === 'proposeMeeting') {
         try {
           const proposal = parseProposal(tool.result);
-          return <View key={tool.toolCallId} style={{ width: '100%' }}><ProposalCard proposal={proposal} submitted={submitted[proposal.proposalId]} event={confirmed[proposal.proposalId]} disabled={disabled} onSubmit={onSubmit} onCreated={onCreated} onEdit={() => onEdit(proposal)} /></View>;
+          return <View key={tool.toolCallId} style={{ width: '100%' }}><ProposalCard proposal={proposal} meetChoice={meetChoices?.[proposal.proposalId]} onMeetChange={onMeetChange} submitted={submitted[proposal.proposalId]} event={confirmed[proposal.proposalId]} disabled={disabled} onSubmit={onSubmit} onCreated={onCreated} onEdit={() => onEdit(proposal)} /></View>;
         } catch { return <Copy key={tool.toolCallId} style={{ color: colors.danger }}>Bản thảo chưa hợp lệ. Vui lòng yêu cầu Calendai tạo lại.</Copy>; }
       }
       if (tool.toolName === 'listUpcomingEvents') {
@@ -63,4 +68,4 @@ export function ChatMessage({ message, confirmed, submitted, disabled, streaming
       return null;
     })}
   </View>;
-}
+});

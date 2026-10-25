@@ -1,6 +1,16 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
+  if (process.env.EAS_BUILD === 'true') {
+    const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    if (!webClientId?.endsWith('.apps.googleusercontent.com')) {
+      throw new Error('Thiếu EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID cho bản build. Cấu hình OAuth Web client ID trong EAS environment.');
+    }
+    const origin = new URL(process.env.EXPO_PUBLIC_API_URL || 'https://calendai.tduong.online');
+    if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) {
+      throw new Error('EXPO_PUBLIC_API_URL phải là HTTPS origin hợp lệ, không có đường dẫn hoặc thông tin đăng nhập.');
+    }
+  }
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   const iosUrlScheme = iosClientId?.endsWith('.apps.googleusercontent.com')
     ? `com.googleusercontent.apps.${iosClientId.slice(0, -'.apps.googleusercontent.com'.length)}`

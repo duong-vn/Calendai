@@ -2,6 +2,7 @@ import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { ProposalCard } from './ProposalModal';
 import { Action } from '../theme';
+import { Switch } from 'react-native';
 import { mobileApi } from '../services/api';
 
 jest.mock('../services/api', () => ({ mobileApi: { confirm: jest.fn() } }));
@@ -26,6 +27,19 @@ it('creates only on explicit confirmation, guards double tap, persists exact pay
   expect(mobileApi.confirm).toHaveBeenCalledWith(draft, expect.anything());
   await act(async () => { resolve(event); });
   expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
+  act(() => tree.unmount());
+});
+
+it('restores the parent-held Meet choice after a virtualized row remounts', () => {
+  const onMeetChange = jest.fn();
+  const props = { proposal: draft, disabled: false, onSubmit: jest.fn(), onCreated: jest.fn(), onEdit: jest.fn(), onMeetChange };
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ProposalCard {...props} />); });
+  act(() => tree.root.findAllByType(Switch)[0].props.onValueChange(false));
+  expect(onMeetChange).toHaveBeenCalledWith(draft.proposalId, false);
+  act(() => tree.unmount());
+  act(() => { tree = create(<ProposalCard {...props} meetChoice={false} />); });
+  expect(tree.root.findAllByType(Switch)[0].props.value).toBe(false);
   act(() => tree.unmount());
 });
 

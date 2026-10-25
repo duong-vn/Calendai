@@ -7,7 +7,21 @@ import { Copy } from '../theme';
 jest.mock('./ProposalModal', () => ({ ProposalCard: () => null }));
 jest.mock('./AgendaCard', () => ({ AgendaCard: () => null }));
 jest.mock('../services/links', () => ({ openLink: jest.fn() }));
-jest.mock('@ronradtke/react-native-markdown-display', () => () => null);
+const mockMarkdown = jest.fn(() => null);
+jest.mock('@ronradtke/react-native-markdown-display', () => (props: unknown) => mockMarkdown());
+
+it('does not render old markdown again when another message streams', () => {
+  const props = { confirmed: {}, submitted: {}, disabled: true, onSubmit: jest.fn(), onCreated: jest.fn(), onEdit: jest.fn() };
+  const old: Message = { id: 'old', role: 'assistant', content: 'Nội dung cũ' };
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ChatMessage {...props} message={old} />); });
+  const renders = mockMarkdown.mock.calls.length;
+  act(() => tree.update(<ChatMessage {...props} message={old} />));
+  expect(mockMarkdown).toHaveBeenCalledTimes(renders);
+  act(() => tree.update(<ChatMessage {...props} message={{ ...old, content: 'Nội dung mới' }} />));
+  expect(mockMarkdown).toHaveBeenCalledTimes(renders + 1);
+  act(() => tree.unmount());
+});
 
 const message: Message = { id: 'interrupted', role: 'assistant', content: '', toolInvocations: [{ state: 'call', toolCallId: 'call-1', toolName: 'proposeMeeting', args: {} }] };
 

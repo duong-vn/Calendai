@@ -168,7 +168,6 @@ export async function signInGoogle(): Promise<boolean> {
     await authClient.exchange(code);
     return true;
   } catch (error) {
-    console.error('[Calendai Google Sign-in Error]:', error);
     if (isErrorWithCode(error)) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) return false;
       if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) throw new Error('Thiết bị cần Google Play Services để đăng nhập.');

@@ -7,11 +7,13 @@ import { mobileApi } from '../services/api';
 import { AgendaCard, formatDateTime } from './AgendaCard';
 
 // Inline ticket, not an interrupting modal: the draft stays next to its conversation.
-export function ProposalCard({ proposal, submitted, event, disabled, onSubmit, onCreated, onEdit }: {
+export function ProposalCard({ proposal, submitted, event, disabled, meetChoice, onMeetChange, onSubmit, onCreated, onEdit }: {
   proposal: MeetingProposal;
   submitted?: MeetingProposal;
   event?: CalendarEvent;
   disabled: boolean;
+  meetChoice?: boolean;
+  onMeetChange?: (id: string, value: boolean) => void;
   onSubmit: (proposal: MeetingProposal) => Promise<void>;
   onCreated: (proposalId: string, event: CalendarEvent) => Promise<void>;
   onEdit: () => void;
@@ -24,7 +26,7 @@ export function ProposalCard({ proposal, submitted, event, disabled, onSubmit, o
   const controller = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; controller.current?.abort(); }, []);
-  const draft = submitted || { ...proposal, createMeet };
+  const draft = submitted || { ...proposal, createMeet: meetChoice ?? createMeet };
   const confirm = async () => {
     if (busy.current || disabled || event) return;
     busy.current = true;
@@ -56,7 +58,7 @@ export function ProposalCard({ proposal, submitted, event, disabled, onSubmit, o
       <Copy style={{ color: colors.muted, fontSize: 12 }}>{draft.timeZone}</Copy>
       <Copy style={{ color: colors.muted }}>Khách mời: {draft.attendees.length ? draft.attendees.map(a => a.email).join(', ') : 'Không có'}</Copy>
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Copy strong style={{ flex: 1 }}>Tạo Google Meet</Copy><Switch accessibilityLabel="Tạo link Google Meet" value={draft.createMeet} onValueChange={setCreateMeet} disabled={loading || !!submitted || disabled} trackColor={{ true: colors.teal }} /></View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Copy strong style={{ flex: 1 }}>Tạo Google Meet</Copy><Switch accessibilityLabel="Tạo link Google Meet" value={draft.createMeet} onValueChange={value => { setCreateMeet(value); onMeetChange?.(proposal.proposalId, value); }} disabled={loading || !!submitted || disabled} trackColor={{ true: colors.teal }} /></View>
     {submitted && <Copy style={{ color: colors.muted, fontSize: 12 }}>Bản thảo đã gửi được giữ nguyên để thử lại an toàn. Muốn đổi nội dung, hãy yêu cầu một bản thảo mới.</Copy>}
     {!!error && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Copy>}
     {loading && <ActivityIndicator color={colors.accent} accessibilityLabel="Đang tạo lịch" />}
