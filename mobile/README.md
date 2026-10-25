@@ -12,7 +12,7 @@ Thiết lập bằng dashboard EAS Environment Variables hoặc môi trường s
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | OAuth client **Web application** của cùng backend, dạng `….apps.googleusercontent.com` |
 | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | OAuth client **iOS**, bắt buộc khi build iOS; Android không cần biến này |
 
-Đây là client ID công khai, không phải client secret. Thiếu Web client ID sẽ hiển thị lỗi cấu hình rõ khi đăng nhập. App không chuyển sang fake login. `app.config.ts` tự tạo URL scheme iOS đảo từ iOS client ID; build iOS trên EAS bị chặn nếu thiếu ID. Android dùng autolinking của Google SDK, không cần Firebase hay `google-services.json`. Plugin Google Sign-In không-Firebase chỉ cần thêm khi cấu hình callback iOS có thật.
+Đây là client ID công khai, không phải client secret. Thiếu Web client ID sẽ hiển thị lỗi cấu hình rõ khi đăng nhập. App không chuyển sang fake login. `app.config.js` tự tạo URL scheme iOS đảo từ iOS client ID; build iOS trên EAS bị chặn nếu thiếu ID. Android dùng autolinking của Google SDK, không cần Firebase hay `google-services.json`. Plugin Google Sign-In không-Firebase chỉ cần thêm khi cấu hình callback iOS có thật.
 
 ### Google Cloud / Android SHA-1
 

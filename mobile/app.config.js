@@ -1,6 +1,5 @@
-import type { ConfigContext, ExpoConfig } from 'expo/config';
-
-export default ({ config }: ConfigContext): ExpoConfig => {
+/** @param {import('expo/config').ConfigContext} context */
+module.exports = ({ config }) => {
   if (process.env.EAS_BUILD === 'true') {
     const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
     if (!webClientId?.endsWith('.apps.googleusercontent.com')) {
@@ -25,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(config.plugins || []),
       'expo-secure-store',
       'expo-font',
-      ...(iosUrlScheme ? [['@react-native-google-signin/google-signin', { iosUrlScheme }] as [string, { iosUrlScheme: string }]] : []),
+      ...(iosUrlScheme ? [['@react-native-google-signin/google-signin', { iosUrlScheme }]] : []),
       ['expo-speech-recognition', {
         microphonePermission: 'Cho phép Calendai dùng mic khi bạn bấm nhập bằng giọng nói.',
         speechRecognitionPermission: 'Cho phép chuyển lời nói tiếng Việt thành bản nháp tin nhắn.',
