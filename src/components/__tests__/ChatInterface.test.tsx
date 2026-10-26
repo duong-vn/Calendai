@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from 'ai';
@@ -182,6 +182,90 @@ describe('ChatInterface Component UX & States', () => {
     fireEvent.click(clearBtns[0]);
     expect(mockSetMessages).toHaveBeenCalledWith([]);
     expect(mockClearSession).toHaveBeenCalled();
+  });
+});
+
+describe('ChatInterface meeting confirmations', () => {
+  beforeEach(() => localStorage.clear());
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it.each([0, 1])('confirms only the selected proposal at index %i in the same message', async (selectedIndex) => {
+    const proposals = [
+      {
+        proposalId: 'proposal-1',
+        summary: 'Họp nhóm',
+        startDateTime: '2026-11-02T09:00:00+07:00',
+        endDateTime: '2026-11-02T10:00:00+07:00',
+      },
+      {
+        proposalId: 'proposal-2',
+        summary: 'Họp đối tác',
+        startDateTime: '2026-11-02T14:00:00+07:00',
+        endDateTime: '2026-11-02T15:00:00+07:00',
+      },
+    ];
+    mockUseChat.mockReturnValue({
+      messages: [{
+        id: 'two-proposals',
+        role: 'assistant',
+        content: '',
+        toolInvocations: proposals.map((proposal) => ({
+          toolCallId: proposal.proposalId,
+          toolName: 'proposeMeeting',
+          state: 'result',
+          args: {},
+          result: proposal,
+        })),
+      }],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: vi.fn(),
+    });
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, options: RequestInit) => {
+      const proposal = JSON.parse(options.body as string);
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          event: {
+            id: `event-${proposal.proposalId}`,
+            summary: proposal.summary,
+            start: proposal.startDateTime,
+            end: proposal.endDateTime,
+            timeZone: 'Asia/Ho_Chi_Minh',
+          },
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ChatInterface isAuthenticated />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Xác nhận tạo lịch' })[selectedIndex]);
+
+    expect(await screen.findAllByText('Đã tạo sự kiện thành công!')).toHaveLength(1);
+    expect(screen.getAllByText('Chờ xác nhận')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Xác nhận tạo lịch' })).toHaveLength(1);
+    expect(screen.getAllByText(proposals[0].summary)).toHaveLength(1);
+    expect(screen.getAllByText(proposals[1].summary)).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).proposalId).toBe(proposals[selectedIndex].proposalId);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận tạo lịch' }));
+
+    await waitFor(() => expect(screen.getAllByText('Đã tạo sự kiện thành công!')).toHaveLength(2));
+    expect(screen.queryByRole('button', { name: 'Xác nhận tạo lịch' })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).proposalId).toBe(proposals[1 - selectedIndex].proposalId);
   });
 });
 

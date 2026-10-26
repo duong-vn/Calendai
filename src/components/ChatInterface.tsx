@@ -89,7 +89,7 @@ interface ChatMessageItemProps {
   isLast: boolean;
   isLoading: boolean;
   error?: Error;
-  confirmedEvent?: { event: CalendarEventResult; isMock?: boolean };
+  confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
   onConfirmSuccess: (proposalId: string, event: CalendarEventResult, isMock?: boolean) => void;
   onEditRequest: (proposal: MeetingProposalData) => void;
   onReload: () => void;
@@ -100,7 +100,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
   isLast,
   isLoading,
   error,
-  confirmedEvent,
+  confirmedEvents,
   onConfirmSuccess,
   onEditRequest,
   onReload,
@@ -189,6 +189,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
           if (toolName === 'proposeMeeting') {
             if ('result' in toolInvocation) {
               const proposal = toolInvocation.result as MeetingProposalData;
+              const confirmedEvent = confirmedEvents[proposal.proposalId];
 
               if (confirmedEvent) {
                 return (
@@ -813,14 +814,6 @@ export function ChatInterface({
             {/* Messages list (memoized to eliminate re-rendering completed messages on streaming) */}
             {messages.map((message, index) => {
               const isLast = index === messages.length - 1;
-              const proposalInvocation = message.toolInvocations?.find(
-                (t) => t.toolName === 'proposeMeeting' && 'result' in t
-              );
-              const proposalId =
-                proposalInvocation && 'result' in proposalInvocation
-                  ? (proposalInvocation.result as MeetingProposalData | undefined)?.proposalId
-                  : undefined;
-              const confirmed = proposalId ? confirmedEvents[proposalId] : undefined;
 
               return (
                 <ChatMessageItem
@@ -829,7 +822,7 @@ export function ChatInterface({
                   isLast={isLast}
                   isLoading={isLoading}
                   error={error}
-                  confirmedEvent={confirmed}
+                  confirmedEvents={confirmedEvents}
                   onConfirmSuccess={handleConfirmSuccess}
                   onEditRequest={handleEditRequest}
                   onReload={reload}
