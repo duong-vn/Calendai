@@ -4,6 +4,8 @@ import { CalendarProposalConflictError, createGoogleCalendarEvent } from '@/lib/
 import { createMockCalendarEvent } from '@/lib/calendar/mock-calendar-service';
 import { MeetingProposalSchema } from '@/lib/calendar/proposal-schema';
 import { isGoogleConfigured } from '@/lib/env';
+import { ConflictOverrideSchema } from '@/lib/calendar/conflict-schema';
+import { CalendarOverlapError, findCalendarConflicts } from '@/lib/calendar/conflict-service';
 
 export async function POST(request: Request) {
   try {
@@ -28,6 +30,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const override = ConflictOverrideSchema.safeParse(json);
+    if (!override.success) {
+      return NextResponse.json({ success: false, error: 'Lựa chọn cho phép trùng lịch không hợp lệ.' }, { status: 400 });
+    }
     const input = parseResult.data;
     const session = await getServerSession(request);
 
@@ -42,7 +48,11 @@ export async function POST(request: Request) {
         timeZone: input.timeZone,
         attendees: input.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
         createMeet: input.createMeet,
-      }, input.proposalId ? { accountId: session.user.id, proposalId: input.proposalId } : undefined);
+      }, input.proposalId ? { accountId: session.user.id, proposalId: input.proposalId } : undefined, async (eventId) => {
+        if (override.data.allowConflict) return;
+        const conflicts = await findCalendarConflicts(accessToken, input, eventId ? [eventId] : []);
+        if (conflicts.length) throw new CalendarOverlapError(conflicts);
+      });
 
       return NextResponse.json({
         success: true,
@@ -84,6 +94,9 @@ export async function POST(request: Request) {
   } catch (error) {
     const authResponse = authErrorResponse(error);
     if (authResponse) return authResponse;
+    if (error instanceof CalendarOverlapError) {
+      return NextResponse.json({ success: false, code: 'CALENDAR_CONFLICT', conflicts: error.conflicts, error: error.message }, { status: 409 });
+    }
     if (error instanceof CalendarProposalConflictError) {
       return NextResponse.json({ success: false, error: error.message, code: 'PROPOSAL_CONFLICT' }, { status: 409 });
     }

@@ -3,9 +3,15 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { ProposalCard } from './ProposalModal';
 import { Action } from '../theme';
 import { Switch } from 'react-native';
-import { mobileApi } from '../services/api';
+import { CalendarConflictError, mobileApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ mobileApi: { confirm: jest.fn() } }));
+jest.mock('../services/api', () => ({
+  CalendarConflictError: class extends Error {
+    readonly conflicts: unknown[];
+    constructor(conflicts: unknown[]) { super('Xung đột'); this.conflicts = conflicts; }
+  },
+  mobileApi: { confirm: jest.fn(), conflicts: jest.fn(), resolveConflict: jest.fn() },
+}));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 const draft = { proposalId: 'stable-id', summary: 'Họp nhóm', startDateTime: '2027-01-02T09:00:00+07:00', endDateTime: '2027-01-02T10:00:00+07:00', timeZone: 'Asia/Ho_Chi_Minh', attendees: [], createMeet: true };
 const event = { id: 'event-id', summary: draft.summary, start: draft.startDateTime, end: draft.endDateTime };
@@ -24,8 +30,25 @@ it('creates only on explicit confirmation, guards double tap, persists exact pay
   await flush();
   expect(onSubmit).toHaveBeenCalledTimes(1);
   expect(mobileApi.confirm).toHaveBeenCalledTimes(1);
-  expect(mobileApi.confirm).toHaveBeenCalledWith(draft, expect.anything());
+  expect(mobileApi.confirm).toHaveBeenCalledWith(draft, expect.anything(), false);
   await act(async () => { resolve(event); });
+  expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
+  act(() => tree.unmount());
+});
+
+it('shows conflicts and never retries with an override without explicit choice', async () => {
+  const conflict = { id: 'old', summary: 'Lịch cũ', start: draft.startDateTime, end: draft.endDateTime, etag: 'v1', timeZone: draft.timeZone, isAllDay: false };
+  jest.mocked(mobileApi.confirm).mockReset().mockRejectedValueOnce(new CalendarConflictError([conflict])).mockResolvedValueOnce(event);
+  const onCreated = jest.fn();
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ProposalCard proposal={draft} disabled={false} onSubmit={async () => undefined} onCreated={onCreated} onEdit={jest.fn()} />); });
+  act(() => tree.root.findAllByType(Action).find(action => action.props.label === 'Xác nhận tạo lịch')!.props.onPress());
+  await flush();
+  expect(onCreated).not.toHaveBeenCalled();
+  expect(mobileApi.confirm).toHaveBeenCalledTimes(1);
+  act(() => tree.root.findAllByType(Action).find(action => action.props.label === 'Vẫn tạo lịch mới, giữ lịch cũ')!.props.onPress());
+  await flush();
+  expect(mobileApi.confirm).toHaveBeenLastCalledWith(draft, expect.anything(), true);
   expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
   act(() => tree.unmount());
 });

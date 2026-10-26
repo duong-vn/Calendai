@@ -25,7 +25,7 @@ describe('Header Component Mobile Responsiveness & Actions', () => {
     expect(screen.getByAltText('Calendai Logo')).toBeInTheDocument();
   });
 
-  it('renders privacy and terms links with hidden md:flex to avoid mobile header crowding', () => {
+  it('renders privacy and terms links with hidden xl:flex to avoid mobile header crowding', () => {
     render(
       <Header
         user={null}
@@ -39,8 +39,8 @@ describe('Header Component Mobile Responsiveness & Actions', () => {
     const privacyLink = screen.getByTitle('Chính sách quyền riêng tư');
     const termsLink = screen.getByTitle('Điều khoản dịch vụ');
 
-    expect(privacyLink).toHaveClass('hidden', 'md:flex');
-    expect(termsLink).toHaveClass('hidden', 'md:flex');
+    expect(privacyLink).toHaveClass('hidden', 'xl:flex');
+    expect(termsLink).toHaveClass('hidden', 'xl:flex');
   });
 
   it('fires callbacks on clicking tips and upcoming buttons', () => {

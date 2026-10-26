@@ -43,7 +43,9 @@ afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 describe('Calendar route boundaries', () => {
   it('passes Request to shared auth and reconciles actual stable inserts, returning 409 for changed payload', async () => {
     let stored: Record<string, unknown> | undefined;
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('?') && init?.method !== 'POST') return Response.json({ timeZone: 'Asia/Ho_Chi_Minh', items: [] });
+      if (init?.method !== 'POST' && !stored) return Response.json({}, { status: 404 });
       if (init?.method === 'POST') {
         if (stored) return Response.json({ error: { message: 'Duplicate' } }, { status: 409 });
         stored = JSON.parse(String(init.body)) as Record<string, unknown>;
@@ -60,7 +62,7 @@ describe('Calendar route boundaries', () => {
     const retry = await POST(confirm());
     expect(retry.status).toBe(200);
     expect((await retry.json()).event.id).toBe(firstBody.event.id);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     const conflict = await POST(confirm({ ...proposal, summary: 'Nội dung mới' }));
     expect(conflict.status).toBe(409);
     expect(await conflict.json()).toMatchObject({ success: false, code: 'PROPOSAL_CONFLICT' });
@@ -78,12 +80,15 @@ describe('Calendar route boundaries', () => {
   });
 
   it('supports legacy confirmations without proposalId', async () => {
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => Response.json({ ...JSON.parse(String(init?.body)), id: 'legacy-created' }));
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST'
+      ? Response.json({ ...JSON.parse(String(init.body)), id: 'legacy-created' })
+      : Response.json({ timeZone: 'Asia/Ho_Chi_Minh', items: [] }));
     vi.stubGlobal('fetch', fetchMock);
     const { proposalId: _ignored, ...legacy } = proposal;
     const response = await POST(confirm(legacy));
     expect(response.status).toBe(200);
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).id).toBeUndefined();
+    const insert = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(String(insert?.[1]?.body)).id).toBeUndefined();
   });
 
   it.each([

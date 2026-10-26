@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const OffsetDateTimeSchema = z
+export const OffsetDateTimeSchema = z
   .string()
   .max(64, 'Thời gian quá dài')
   .datetime({ offset: true, message: 'Thời gian phải là ngày giờ ISO 8601 hợp lệ có múi giờ (Z hoặc +07:00)' })

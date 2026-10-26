@@ -78,15 +78,20 @@ function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+export function calendarProposalEventId(accountId: string, proposalId: string): string {
+  return digest(JSON.stringify(['calendai-confirm-v1', accountId, proposalId]));
+}
+
 export async function createGoogleCalendarEvent(
   accessToken: string,
   input: CreateCalendarEventInput,
-  operation?: CalendarOperation
+  operation?: CalendarOperation,
+  beforeInsert?: (eventId: string | undefined) => Promise<void>
 ): Promise<CalendarEventResult> {
   const timeZone = input.timeZone || 'Asia/Ho_Chi_Minh';
   const shouldCreateMeet = input.createMeet !== false;
   const eventId = operation
-    ? digest(JSON.stringify(['calendai-confirm-v1', operation.accountId, operation.proposalId]))
+    ? calendarProposalEventId(operation.accountId, operation.proposalId)
     : undefined;
   const requestId = eventId ?? crypto.randomUUID();
 
@@ -130,10 +135,11 @@ export async function createGoogleCalendarEvent(
     requestBody.extendedProperties = { private: privateProperties };
   }
 
-  const reconcile = async (cause: unknown, collision = false): Promise<GoogleApiEventResponse> => {
-    const existingResponse = await fetch(`${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events/${eventId}`, {
+  const reconcile = async (cause: unknown, collision = false, response?: Response): Promise<GoogleApiEventResponse> => {
+    const existingResponse = response ?? await fetch(`${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events/${eventId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(15000),
+      cache: 'no-store',
     });
     if (!existingResponse.ok) {
       if (collision && (existingResponse.status === 404 || existingResponse.status === 410)) {
@@ -153,6 +159,19 @@ export async function createGoogleCalendarEvent(
   };
 
   const data = await (async (): Promise<GoogleApiEventResponse> => {
+    if (beforeInsert) {
+      // Reconcile retries before the guard so changed payloads remain PROPOSAL_CONFLICT.
+      if (eventId) {
+        const existing = await fetch(`${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events/${eventId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(15000),
+          cache: 'no-store',
+        });
+        if (existing.status === 410) throw new CalendarProposalConflictError();
+        if (existing.status !== 404) return reconcile(new Error('Không thể kiểm tra mã đề xuất.'), true, existing);
+      }
+      await beforeInsert(eventId);
+    }
     let response: Response;
     let inserted: GoogleApiEventResponse;
     try {

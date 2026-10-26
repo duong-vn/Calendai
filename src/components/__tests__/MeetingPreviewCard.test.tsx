@@ -86,6 +86,23 @@ describe('MeetingPreviewCard Component', () => {
     expect(JSON.parse(mockFetch.mock.calls[0][1].body).proposalId).toBe(mockProposal.proposalId);
   });
 
+  it('asks about overlapping events before allowing an explicit override', async () => {
+    const conflict = { id: 'old', summary: 'Lịch đã có', start: mockProposal.startDateTime, end: mockProposal.endDateTime, etag: 'v1', timeZone: 'Asia/Ho_Chi_Minh', isAllDay: false };
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [conflict] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, event: { id: 'created' } }) });
+    vi.stubGlobal('fetch', mockFetch);
+    const onConfirmSuccess = vi.fn();
+    render(<MeetingPreviewCard proposal={mockProposal} onConfirmSuccess={onConfirmSuccess} />);
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    expect(await screen.findByText('Lịch đã có')).toBeInTheDocument();
+    expect(onConfirmSuccess).not.toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Vẫn tạo lịch mới, giữ lịch cũ' }));
+    await waitFor(() => expect(onConfirmSuccess).toHaveBeenCalledOnce());
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body).allowConflict).toBe(true);
+  });
+
   it('displays error message when confirmation API fails', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,

@@ -81,17 +81,17 @@ export function ChatSidebar({
       {isOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden animate-in fade-in duration-200"
           aria-hidden="true"
         />
       )}
 
       {/* Sidebar Panel */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r-2 border-[#2d2015] bg-[#fffaf2] shadow-2xl transition-all duration-300 ease-in-out md:static md:z-20 md:shadow-none dark:border-[#453427] dark:bg-[#181310] ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r-2 border-[#2d2015] bg-[#fffaf2] shadow-2xl transition-all duration-300 ease-in-out lg:static lg:z-20 lg:shadow-none dark:border-[#453427] dark:bg-[#181310] ${
           isOpen
             ? 'w-72 max-w-[85vw] translate-x-0'
-            : '-translate-x-full md:w-0 md:translate-x-0 md:overflow-hidden md:border-r-0'
+            : '-translate-x-full lg:w-0 lg:translate-x-0 lg:overflow-hidden lg:border-r-0'
         }`}
         aria-label="Thanh bên danh sách phiên chat"
       >

@@ -179,7 +179,7 @@ export default function Home() {
     <div className="flex h-dvh flex-col overflow-hidden bg-[#f5eee1] dark:bg-[#14110f]">
       {/* Toast notification snackbar */}
       {toast && (
-        <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="fixed top-4 left-1/2 z-50 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
           <div
             className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-xs sm:text-sm font-medium shadow-[0_4px_16px_rgba(43,31,23,0.18)] border-2 ${
               toast.type === 'success'
@@ -243,7 +243,7 @@ export default function Home() {
         />
 
         {/* Main Chat Interface */}
-        <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <main className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
           <ChatInterface
             key={chatKey}
             isAuthenticated={isAuthenticated}

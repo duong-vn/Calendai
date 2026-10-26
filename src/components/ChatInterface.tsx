@@ -106,6 +106,17 @@ const ChatMessageItem = memo(function ChatMessageItem({
   onReload,
 }: ChatMessageItemProps) {
   const isUser = message.role === 'user';
+  const proposalResults = message.toolInvocations?.filter(
+    (tool) => tool.toolName === 'proposeMeeting' && 'result' in tool
+  ) || [];
+  const compactProposals = !isUser && proposalResults.length > 1;
+  const renderProposal = (proposal: MeetingProposalData, toolCallId: string) => {
+    const confirmedEvent = confirmedEvents[proposal.proposalId];
+    if (confirmedEvent) return <EventCreatedCard key={toolCallId} event={confirmedEvent.event} isMock={confirmedEvent.isMock} />;
+    return <MeetingPreviewCard key={toolCallId} compact={compactProposals} proposal={proposal}
+      onConfirmSuccess={(event, isMock) => onConfirmSuccess(proposal.proposalId, event, isMock)}
+      onEditRequest={() => onEditRequest(proposal)} />;
+  };
   const isEmptyAssistant =
     !isUser &&
     !message.content &&
@@ -118,7 +129,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
 
   return (
     <div
-      className={`flex items-start gap-3 ${
+      className={`flex items-start gap-2 sm:gap-3 ${
         isUser ? 'flex-row-reverse' : 'flex-row'
       }`}
     >
@@ -135,14 +146,14 @@ const ChatMessageItem = memo(function ChatMessageItem({
 
       {/* Message Bubble - expands with content up to max-width limit */}
       <div
-        className={`w-fit max-w-[85%] sm:max-w-[78%] space-y-2.5 ${
+        className={`min-w-0 w-full sm:w-fit sm:max-w-[85%] lg:max-w-[78%] space-y-2.5 [overflow-wrap:anywhere] ${
           isUser
             ? 'rounded-2xl rounded-tr-xs bg-[#e8d5c4] px-4 py-3 text-sm text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#3d2719] dark:border-[#e07a3f] dark:text-[#fde8dc] dark:shadow-[2px_2px_0px_#2d1b11]'
-            : 'rounded-2xl rounded-tl-xs bg-[#fffaf2] px-5 py-3.5 text-sm text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427]'
+            : 'rounded-2xl rounded-tl-xs bg-[#fffaf2] px-3 py-3 sm:px-5 sm:py-3.5 text-sm text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427]'
         }`}
       >
         {message.content && (
-          <div className="leading-relaxed text-sm break-words">
+          <div className="min-w-0 leading-relaxed text-sm break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full">
             <ReactMarkdown
               remarkPlugins={MARKDOWN_PLUGINS}
               components={MARKDOWN_COMPONENTS}
@@ -188,29 +199,16 @@ const ChatMessageItem = memo(function ChatMessageItem({
 
           if (toolName === 'proposeMeeting') {
             if ('result' in toolInvocation) {
-              const proposal = toolInvocation.result as MeetingProposalData;
-              const confirmedEvent = confirmedEvents[proposal.proposalId];
-
-              if (confirmedEvent) {
-                return (
-                  <EventCreatedCard
-                    key={toolCallId}
-                    event={confirmedEvent.event}
-                    isMock={confirmedEvent.isMock}
-                  />
-                );
-              }
-
-              return (
-                <MeetingPreviewCard
-                  key={toolCallId}
-                  proposal={proposal}
-                  onConfirmSuccess={(event, isMock) =>
-                    onConfirmSuccess(proposal.proposalId, event, isMock)
-                  }
-                  onEditRequest={() => onEditRequest(proposal)}
-                />
-              );
+              if (toolCallId !== proposalResults[0].toolCallId) return null;
+              return <ol key="meeting-proposals" role={compactProposals ? 'list' : 'presentation'}
+                aria-label={compactProposals ? 'Các cuộc họp đề xuất' : undefined}
+                className={compactProposals ? 'min-w-0 divide-y divide-[#2d2015]/20 dark:divide-[#453427]' : undefined}>
+                {proposalResults.map(tool => 'result' in tool && <li key={tool.toolCallId}
+                  role={compactProposals ? 'listitem' : 'presentation'}
+                  className={compactProposals ? 'min-w-0 py-3 first:pt-0 last:pb-0' : undefined}>
+                  {renderProposal(tool.result as MeetingProposalData, tool.toolCallId)}
+                </li>)}
+              </ol>;
             }
 
             return (
@@ -737,11 +735,11 @@ export function ChatInterface({
   }, [setInput]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-transparent">
+    <div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden bg-transparent">
       {/* Main Chat Stream Area */}
-      <div className="flex flex-1 flex-col h-full min-w-0">
+      <div className="flex flex-1 flex-col h-full min-h-0 min-w-0">
         {/* Scrollable messages container */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-4 sm:px-6 sm:py-6">
           <div className="mx-auto max-w-3xl space-y-6">
             {/* Reset chat history action bar when there are messages */}
             {messages.length > 0 && (
@@ -765,7 +763,7 @@ export function ChatInterface({
                   <Sparkles className="h-7 w-7 text-[#c25e2e] dark:text-[#fbbf24]" />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1
                     id="app-name"
                     className="text-3xl font-extrabold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9] sm:text-4xl"
@@ -836,7 +834,7 @@ export function ChatInterface({
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold bg-[#ede4d5] border-2 border-[#2d2015] text-[#c25e2e] shadow-[1px_1px_0px_#2d2015] dark:bg-[#211a14] dark:border-[#d49439] dark:text-[#fbbf24] dark:shadow-[1px_1px_0px_#453427]">
                   <Sparkles className="h-4 w-4" />
                 </div>
-                <div className="w-fit max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-[#fffaf2] px-5 py-3.5 text-sm text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427]">
+                <div className="w-fit max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tl-xs bg-[#fffaf2] px-3 py-3 sm:px-5 sm:py-3.5 text-sm text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427]">
                   <div className="flex items-center gap-2.5 py-0.5 text-xs text-[#786455] dark:text-[#ba9f88]">
                     <span className="flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#c25e2e] animate-pulse dark:bg-[#e07a3f]" />
@@ -853,7 +851,7 @@ export function ChatInterface({
 
             {/* Error Banner */}
             {error && (
-              <div className="flex items-center justify-between rounded-2xl border-2 border-[#cf3e32] bg-[#fdf2f0] p-3.5 text-xs text-[#a63024] shadow-[2px_2px_0px_#cf3e32] dark:border-[#ef4444] dark:bg-[#2b1614] dark:text-[#f87171] dark:shadow-[2px_2px_0px_#ef4444]">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#cf3e32] bg-[#fdf2f0] p-3.5 text-xs text-[#a63024] shadow-[2px_2px_0px_#cf3e32] dark:border-[#ef4444] dark:bg-[#2b1614] dark:text-[#f87171] dark:shadow-[2px_2px_0px_#ef4444]">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0 text-[#cf3e32] dark:text-[#ef4444]" />
                   <span>
@@ -877,8 +875,8 @@ export function ChatInterface({
         {/* Floating Bottom Input Bar (Typewriter Console styling) */}
         <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 backdrop-blur-md transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
           {/* Workbench Control Bar: Model Selector, Tips & Chronometer Timezone */}
-          <div className="mx-auto flex max-w-3xl items-center justify-between mb-2 px-1">
-            <div className="flex items-center gap-2">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 mb-2 px-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               {onSelectModel && (
                 <ModelSelector
                   selectedModel={activeModel}
@@ -888,7 +886,7 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={toggleTips}
-                className="flex min-h-[30px] sm:min-h-[34px] touch-manipulation items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2.5 py-0.5 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
+                className="flex min-h-11 sm:min-h-[34px] touch-manipulation items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2.5 py-0.5 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
                 title="Xem mẹo đặt lịch & tham số"
                 aria-label="Xem mẹo đặt lịch"
               >
@@ -906,13 +904,13 @@ export function ChatInterface({
 
           <form
             onSubmit={onFormSubmit}
-            className="mx-auto flex max-w-3xl items-end rounded-3xl border-2 border-[#2d2015] bg-[#fffaf2] px-3 sm:px-4 py-2 shadow-[3px_3px_0px_#2d2015] focus-within:shadow-[4px_4px_0px_#c25e2e] transition-all dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[3px_3px_0px_#453427] dark:focus-within:border-[#e07a3f] dark:focus-within:shadow-[4px_4px_0px_#e07a3f]"
+            className="mx-auto flex min-w-0 max-w-3xl items-end rounded-3xl border-2 border-[#2d2015] bg-[#fffaf2] px-3 sm:px-4 py-2 shadow-[3px_3px_0px_#2d2015] focus-within:shadow-[4px_4px_0px_#c25e2e] transition-all dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[3px_3px_0px_#453427] dark:focus-within:border-[#e07a3f] dark:focus-within:shadow-[4px_4px_0px_#e07a3f]"
           >
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearChat}
-                className="flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full text-[#786455] hover:bg-[#fdf2f0] hover:text-[#cf3e32] transition-all active:scale-95 mb-0.5 mr-1.5 sm:mr-2 dark:text-[#ba9f88] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+                className="flex h-11 w-11 shrink-0 sm:h-9 sm:w-9 touch-manipulation items-center justify-center rounded-full text-[#786455] hover:bg-[#fdf2f0] hover:text-[#cf3e32] transition-all active:scale-95 mb-0.5 mr-1.5 sm:mr-2 dark:text-[#ba9f88] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
                 title="Xóa session (Bắt đầu đoạn chat mới)"
                 aria-label="Xóa session"
               >
@@ -928,7 +926,7 @@ export function ChatInterface({
               onKeyDown={handleKeyDown}
               placeholder="Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)"
               disabled={isLoading}
-              className="flex-1 resize-none bg-transparent py-1.5 text-sm text-[#2b1f17] placeholder:text-[#786455] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:opacity-50 max-h-36 overflow-y-auto leading-relaxed dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88]"
+              className="min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base sm:text-sm text-[#2b1f17] placeholder:text-[#786455] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:opacity-50 max-h-36 overflow-y-auto leading-relaxed dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88]"
               style={{ height: 'auto' }}
             />
 
@@ -949,7 +947,7 @@ export function ChatInterface({
                     ? 'Dừng nhận diện giọng nói'
                     : 'Nói để đặt lịch'
                 }
-                className={`flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 transition-all active:translate-x-[1px] active:translate-y-[1px] mb-0.5 ml-1.5 ${
+                className={`flex h-11 w-11 shrink-0 sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 transition-all active:translate-x-[1px] active:translate-y-[1px] mb-0.5 ml-1.5 ${
                   isListening
                     ? 'border-[#cf3e32] bg-[#cf3e32] text-white shadow-[0_0_12px_rgba(207,62,50,0.6)] animate-pulse'
                     : 'border-[#2d2015] bg-[#ede4d5] text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#fffaf2] hover:text-[#c25e2e] dark:border-[#453427] dark:bg-[#2a221b] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#211a14] dark:hover:text-[#e07a3f]'
@@ -967,7 +965,7 @@ export function ChatInterface({
               type="submit"
               disabled={isLoading || !input.trim()}
               aria-label="Gửi tin nhắn"
-              className="flex h-9 w-9 min-h-[36px] min-w-[36px] sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#c25e2e] text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed mb-0.5 ml-1.5 sm:ml-2 dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#f59e0b]"
+              className="flex h-11 w-11 shrink-0 sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#c25e2e] text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed mb-0.5 ml-1.5 sm:ml-2 dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#f59e0b]"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

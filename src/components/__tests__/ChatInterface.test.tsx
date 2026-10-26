@@ -250,15 +250,21 @@ describe('ChatInterface meeting confirmations', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     render(<ChatInterface isAuthenticated />);
+    const proposalList = screen.getByRole('list', { name: 'Các cuộc họp đề xuất' });
+    expect(proposalList.children).toHaveLength(2);
+    expect(screen.queryByText('Google Calendar • Bản xem trước vé họp')).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Google Meet (Đang tắt) Không tạo Meet' })[selectedIndex]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Xác nhận tạo lịch' })[selectedIndex]);
 
     expect(await screen.findAllByText('Đã tạo sự kiện thành công!')).toHaveLength(1);
+    expect(proposalList.children).toHaveLength(2);
     expect(screen.getAllByText('Chờ xác nhận')).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Xác nhận tạo lịch' })).toHaveLength(1);
     expect(screen.getAllByText(proposals[0].summary)).toHaveLength(1);
     expect(screen.getAllByText(proposals[1].summary)).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).proposalId).toBe(proposals[selectedIndex].proposalId);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).createMeet).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận tạo lịch' }));
 
@@ -266,6 +272,7 @@ describe('ChatInterface meeting confirmations', () => {
     expect(screen.queryByRole('button', { name: 'Xác nhận tạo lịch' })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(JSON.parse(fetchMock.mock.calls[1][1].body).proposalId).toBe(proposals[1 - selectedIndex].proposalId);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).createMeet).toBe(false);
   });
 });
 

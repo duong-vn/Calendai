@@ -52,7 +52,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
   return (
     <div className="my-3 overflow-hidden rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] shadow-[4px_4px_0px_#2d2015] dark:border-[#453427] dark:bg-[#1f1813] dark:shadow-[4px_4px_0px_#453427]">
       {/* Top success banner (Stamped wax seal) */}
-      <div className="flex items-center justify-between border-b-2 border-[#2d2015] bg-[#f0f9f4] px-4 py-2.5 sm:px-5 dark:border-[#453427] dark:bg-[#152a1f]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[#2d2015] bg-[#f0f9f4] px-4 py-2.5 sm:px-5 dark:border-[#453427] dark:bg-[#152a1f]">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-[#2d8a57] dark:text-[#34d399]" />
           <span className="text-xs font-bold text-[#2d8a57] dark:text-[#34d399]">
@@ -70,8 +70,8 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
         {/* Title */}
         <div className="flex items-start gap-3">
           <div className="mt-1 h-9 w-1.5 rounded-full bg-[#2d8a57] shrink-0 dark:bg-[#34d399]" />
-          <div>
-            <h4 className="text-base font-bold text-[#2b1f17] sm:text-lg dark:text-[#f5ebd9]">
+          <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+            <h4 className="[overflow-wrap:anywhere] text-base font-bold text-[#2b1f17] sm:text-lg dark:text-[#f5ebd9]">
               {event.summary}
             </h4>
             <div className="mt-1 flex items-center gap-2 text-xs text-[#786455] sm:text-sm dark:text-[#ba9f88]">
@@ -84,7 +84,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
         {/* Google Meet Card */}
         {event.hangoutLink && (
           <div className="mt-4 rounded-xl border-2 border-[#2d2015]/30 bg-[#f5eee1] p-3.5 dark:border-[#453427] dark:bg-[#16120f]">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#2d2015] bg-[#1f7560] text-white shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#2dd4bf] dark:text-[#14110f]">
                   <Video className="h-3.5 w-3.5" />
@@ -147,7 +147,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
         )}
 
         {/* Google Calendar Link Button */}
-        <div className="mt-4 flex items-center justify-between border-t-2 border-[#2d2015]/20 pt-3 dark:border-[#453427]">
+        <div className="mt-4 flex flex-wrap gap-3 items-center justify-between border-t-2 border-[#2d2015]/20 pt-3 dark:border-[#453427]">
           {isMock ? (
             <span className="text-[11px] text-[#786455] dark:text-[#ba9f88]">
               Chế độ giả lập phục vụ kiểm thử API & UI.

@@ -3,12 +3,14 @@ import { ActivityIndicator, Switch, View } from 'react-native';
 import { Calendar, Check, Edit3 } from 'lucide-react-native';
 import type { CalendarEvent, MeetingProposal } from '../types';
 import { Action, Copy, Panel, useTheme } from '../theme';
-import { mobileApi } from '../services/api';
+import { CalendarConflictError, mobileApi, type CalendarConflict } from '../services/api';
+import { CalendarConflictChoices } from './CalendarConflictChoices';
 import { AgendaCard, formatDateTime } from './AgendaCard';
 
 // Inline ticket, not an interrupting modal: the draft stays next to its conversation.
-export function ProposalCard({ proposal, submitted, event, disabled, meetChoice, onMeetChange, onSubmit, onCreated, onEdit }: {
+export function ProposalCard({ proposal, submitted, event, disabled, meetChoice, onMeetChange, onSubmit, onCreated, onEdit, compact = false }: {
   proposal: MeetingProposal;
+  compact?: boolean;
   submitted?: MeetingProposal;
   event?: CalendarEvent;
   disabled: boolean;
@@ -27,7 +29,23 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; controller.current?.abort(); }, []);
   const draft = submitted || { ...proposal, createMeet: meetChoice ?? createMeet };
-  const confirm = async () => {
+  const [conflicts, setConflicts] = useState<CalendarConflict[]>([]);
+  const [conflictRevision, setConflictRevision] = useState(0);
+  const refreshConflicts = async () => {
+    if (busy.current || disabled || event) return;
+    busy.current = true;
+    setLoading(true);
+    setError('');
+    const abort = new AbortController();
+    controller.current = abort;
+    try {
+      const current = await mobileApi.conflicts(draft, abort.signal);
+      if (mounted.current) { setConflicts(current); setConflictRevision(value => value + 1); }
+    } catch {
+      if (mounted.current && !abort.signal.aborted) setError('Chưa kiểm tra được lịch. Vui lòng thử lại.');
+    } finally { busy.current = false; if (mounted.current) setLoading(false); }
+  };
+  const confirm = async (allowConflict = false) => {
     if (busy.current || disabled || event) return;
     busy.current = true;
     setLoading(true);
@@ -38,21 +56,26 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
       // Persist the exact payload before any network side effect; retries never mutate it.
       await onSubmit(draft);
       if (!mounted.current || abort.signal.aborted) return;
-      const created = await mobileApi.confirm(draft, abort.signal);
+      const created = await mobileApi.confirm(draft, abort.signal, allowConflict);
       if (mounted.current) await onCreated(draft.proposalId, created);
     } catch (failure) {
-      if (mounted.current && !abort.signal.aborted) setError(failure instanceof Error ? failure.message : 'Chưa tạo được lịch. Vui lòng thử lại cùng bản thảo.');
+      if (mounted.current && !abort.signal.aborted) {
+        if (failure instanceof CalendarConflictError) {
+          setConflicts(failure.conflicts);
+          setConflictRevision(value => value + 1);
+        } else setError(failure instanceof Error ? failure.message : 'Chưa tạo được lịch. Vui lòng thử lại cùng bản thảo.');
+      }
     } finally {
       busy.current = false;
       if (mounted.current) setLoading(false);
     }
   };
   if (event) return <AgendaCard event={event} created requestedMeet={draft.createMeet} />;
-  return <Panel style={{ gap: 12 }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Calendar size={20} color={colors.accent} /><Copy strong style={{ color: colors.accent }}>Vé họp · Chờ xác nhận</Copy></View>
-    <Copy strong style={{ fontSize: 18 }}>{draft.summary}</Copy>
+  return <Panel style={[{ gap: 12 }, compact && { gap: 8, padding: 0, borderWidth: 0, borderRadius: 0, shadowOpacity: 0 }]}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Calendar size={compact ? 16 : 20} color={colors.accent} /><Copy strong style={{ color: colors.accent, ...(compact && { fontSize: 12 }) }}>Vé họp · Chờ xác nhận</Copy></View>
+    <Copy strong style={{ fontSize: compact ? 15 : 18 }}>{draft.summary}</Copy>
     {!!draft.description && <Copy style={{ color: colors.muted }}>{draft.description}</Copy>}
-    <View style={{ backgroundColor: colors.raised, borderRadius: 10, padding: 12, gap: 6 }}>
+    <View style={compact ? { gap: 2 } : { backgroundColor: colors.raised, borderRadius: 10, padding: 12, gap: 6 }}>
       <Copy strong>{formatDateTime(draft.startDateTime, draft.timeZone)}</Copy>
       <Copy>đến {formatDateTime(draft.endDateTime, draft.timeZone)}</Copy>
       <Copy style={{ color: colors.muted, fontSize: 12 }}>{draft.timeZone}</Copy>
@@ -60,10 +83,11 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
     </View>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Copy strong style={{ flex: 1 }}>Tạo Google Meet</Copy><Switch accessibilityLabel="Tạo link Google Meet" value={draft.createMeet} onValueChange={value => { setCreateMeet(value); onMeetChange?.(proposal.proposalId, value); }} disabled={loading || !!submitted || disabled} trackColor={{ true: colors.teal }} /></View>
     {submitted && <Copy style={{ color: colors.muted, fontSize: 12 }}>Bản thảo đã gửi được giữ nguyên để thử lại an toàn. Muốn đổi nội dung, hãy yêu cầu một bản thảo mới.</Copy>}
+    {conflicts.length > 0 && <CalendarConflictChoices key={conflictRevision} proposal={draft} conflicts={conflicts} disabled={loading || disabled} onResolved={() => { void refreshConflicts(); }} onContinue={() => { void confirm(true); }} />}
     {!!error && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Copy>}
     {loading && <ActivityIndicator color={colors.accent} accessibilityLabel="Đang tạo lịch" />}
-    <Action label={loading ? 'Đang xác nhận…' : submitted ? 'Thử xác nhận lại' : 'Xác nhận tạo lịch'} icon={Check} primary disabled={loading || disabled} onPress={() => { void confirm(); }} />
-    <Action label="Chỉnh sửa qua trò chuyện" icon={Edit3} disabled={loading || disabled} onPress={onEdit} />
+    <Action compact={compact} label={loading ? 'Đang xác nhận…' : submitted ? 'Thử xác nhận lại' : 'Xác nhận tạo lịch'} icon={Check} primary disabled={loading || disabled || conflicts.length > 0} onPress={() => { void confirm(); }} />
+    <Action compact={compact} label="Chỉnh sửa qua trò chuyện" icon={Edit3} disabled={loading || disabled} onPress={onEdit} />
     <Copy style={{ color: colors.muted, fontSize: 11 }}>Chỉ khi bạn xác nhận, Calendai mới tạo lịch và gửi lời mời.</Copy>
   </Panel>;
 }

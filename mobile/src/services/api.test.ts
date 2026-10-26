@@ -1,4 +1,4 @@
-import { MobileApi } from './api';
+import { CalendarConflictError, MobileApi } from './api';
 import { parseEvent, parseProposal } from '../types';
 import { safeHttpsUrl } from './links';
 
@@ -12,9 +12,19 @@ it('sends the canonical stable proposal and accepts only real calendar success',
   const fetcher = jest.fn().mockResolvedValue(response({ success: true, event }));
   const api = new MobileApi(fetcher);
   expect(await api.confirm(draft)).toMatchObject(event);
-  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual(draft);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ ...draft, allowConflict: false });
   fetcher.mockResolvedValue(response({ success: true, isMock: true, event }));
   await expect(api.confirm(draft)).rejects.toThrow('Chưa xác nhận');
+});
+it('surfaces conflicts without claiming creation and only overrides after explicit choice', async () => {
+  const conflict = { id: 'old', summary: 'Họp cũ', start: event.start, end: event.end, etag: 'v1', timeZone: 'Asia/Ho_Chi_Minh', isAllDay: false };
+  const fetcher = jest.fn().mockResolvedValue(response({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [conflict] }, 409));
+  const api = new MobileApi(fetcher);
+  await expect(api.confirm(draft)).rejects.toBeInstanceOf(CalendarConflictError);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).allowConflict).toBe(false);
+  fetcher.mockResolvedValue(response({ success: true, event }));
+  await expect(api.confirm(draft, undefined, true)).resolves.toMatchObject(event);
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).allowConflict).toBe(true);
 });
 it('does not represent failed auth/upcoming as an empty calendar', async () => {
   const fetcher = jest.fn().mockResolvedValue(response({ error: 'unauthorized' }, 401));

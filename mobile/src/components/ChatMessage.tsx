@@ -36,6 +36,15 @@ export const ChatMessage = memo(function ChatMessage({ message, confirmed, submi
     table: { borderColor: colors.border }, th: { padding: 6 }, td: { padding: 6 }, tr: { borderColor: colors.border },
   }), [colors, fonts]);
   const user = message.role === 'user';
+  const proposalResults = message.toolInvocations?.filter(tool => tool.toolName === 'proposeMeeting' && tool.state === 'result') || [];
+  const compactProposals = !user && proposalResults.length > 1;
+  const renderProposal = (tool: NonNullable<Message['toolInvocations']>[number]) => {
+    if (tool.state !== 'result') return null;
+    try {
+      const proposal = parseProposal(tool.result);
+      return <View key={tool.toolCallId} style={{ width: '100%' }}><ProposalCard compact={compactProposals} proposal={proposal} meetChoice={meetChoices?.[proposal.proposalId]} onMeetChange={onMeetChange} submitted={submitted[proposal.proposalId]} event={confirmed[proposal.proposalId]} disabled={disabled} onSubmit={onSubmit} onCreated={onCreated} onEdit={() => onEdit(proposal)} /></View>;
+    } catch { return <Copy key={tool.toolCallId} style={{ color: colors.danger }}>Bản thảo chưa hợp lệ. Vui lòng yêu cầu Calendai tạo lại.</Copy>; }
+  };
   const Icon = user ? UserRound : Sparkles;
   if (!message.content && !message.toolInvocations?.length) return null;
   return <View style={{ gap: 8, alignItems: user ? 'flex-end' : 'flex-start', marginBottom: 22 }}>
@@ -52,10 +61,10 @@ export const ChatMessage = memo(function ChatMessage({ message, confirmed, submi
         </View>;
       }
       if (tool.toolName === 'proposeMeeting') {
-        try {
-          const proposal = parseProposal(tool.result);
-          return <View key={tool.toolCallId} style={{ width: '100%' }}><ProposalCard proposal={proposal} meetChoice={meetChoices?.[proposal.proposalId]} onMeetChange={onMeetChange} submitted={submitted[proposal.proposalId]} event={confirmed[proposal.proposalId]} disabled={disabled} onSubmit={onSubmit} onCreated={onCreated} onEdit={() => onEdit(proposal)} /></View>;
-        } catch { return <Copy key={tool.toolCallId} style={{ color: colors.danger }}>Bản thảo chưa hợp lệ. Vui lòng yêu cầu Calendai tạo lại.</Copy>; }
+        if (tool.toolCallId !== proposalResults[0].toolCallId) return null;
+        return <View key="meeting-proposals" accessibilityLabel={compactProposals ? 'Các cuộc họp đề xuất' : undefined} style={{ width: '100%' }}>
+          {proposalResults.map((proposalTool, index) => <View key={proposalTool.toolCallId} style={compactProposals ? { paddingVertical: 12, borderTopWidth: index ? 1 : 0, borderTopColor: colors.border } : undefined}>{renderProposal(proposalTool)}</View>)}
+        </View>;
       }
       if (tool.toolName === 'listUpcomingEvents') {
         const result: unknown = tool.result;

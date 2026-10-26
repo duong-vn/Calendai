@@ -138,7 +138,7 @@ export function ModelSelector({
   };
 
   return (
-    <div ref={dropdownRef} className={`relative inline-block ${className}`}>
+    <div ref={dropdownRef} className={`relative inline-block min-w-0 max-w-full ${className}`}>
       {/* Trigger pill */}
       <button
         type="button"
@@ -146,7 +146,7 @@ export function ModelSelector({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Chọn mô hình AI (Đang chọn: ${currentModel.name})`}
-        className="group flex min-h-[30px] sm:min-h-[34px] touch-manipulation items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+        className="group flex max-w-full min-h-11 sm:min-h-[34px] touch-manipulation items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
       >
         <div className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-[#c25e2e] dark:text-[#e07a3f] shrink-0">
           {currentModel.isFree ? (
@@ -190,7 +190,7 @@ export function ModelSelector({
           <div
             role="listbox"
             aria-label="Danh sách mô hình AI"
-            className="flex max-h-[85dvh] w-full flex-col rounded-t-3xl bg-[#fffaf2] p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-2 border-[#2d2015] overflow-hidden sm:max-h-none sm:w-84 sm:w-96 sm:rounded-2xl sm:p-3 sm:pb-3 sm:shadow-[4px_4px_0px_#2d2015] dark:bg-[#1f1813] dark:border-[#453427] dark:sm:shadow-[4px_4px_0px_#453427]"
+            className="flex max-h-[85dvh] w-full flex-col rounded-t-3xl bg-[#fffaf2] p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl border-2 border-[#2d2015] overflow-hidden sm:max-h-[min(85dvh,36rem)] sm:w-96 sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl sm:p-3 sm:pb-3 sm:shadow-[4px_4px_0px_#2d2015] dark:bg-[#1f1813] dark:border-[#453427] dark:sm:shadow-[4px_4px_0px_#453427]"
           >
             {/* Mobile Drag Handle */}
             <div className="w-10 h-1 bg-[#2d2015]/40 dark:bg-[#453427] rounded-full mx-auto mb-2.5 shrink-0 sm:hidden" />
@@ -233,7 +233,7 @@ export function ModelSelector({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm theo tên hoặc ID..."
-                className="w-full rounded-xl border-2 border-[#2d2015]/40 bg-[#f5eee1] py-1.5 pl-8 pr-7 text-xs font-medium text-[#2b1f17] placeholder:text-[#786455] focus:border-[#c25e2e] focus:outline-hidden dark:border-[#453427] dark:bg-[#16120f] dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88] dark:focus:border-[#e07a3f]"
+                className="w-full rounded-xl border-2 border-[#2d2015]/40 bg-[#f5eee1] py-1.5 pl-8 pr-7 text-base sm:text-xs font-medium text-[#2b1f17] placeholder:text-[#786455] focus:border-[#c25e2e] focus:outline-hidden dark:border-[#453427] dark:bg-[#16120f] dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88] dark:focus:border-[#e07a3f]"
               />
               {searchQuery && (
                 <button
@@ -286,7 +286,7 @@ export function ModelSelector({
             </div>
 
             {/* Model Options List */}
-            <div className="max-h-60 overflow-y-auto pr-0.5 space-y-1">
+            <div className="min-h-0 max-h-60 overflow-y-auto pr-0.5 space-y-1">
               {filteredModels.length === 0 ? (
                 <div className="py-6 text-center text-xs text-[#786455] dark:text-[#ba9f88]">
                   <p>Không tìm thấy mô hình phù hợp.</p>

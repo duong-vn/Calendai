@@ -105,7 +105,7 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 relative flex h-14 sm:h-16 w-full shrink-0 items-center justify-between border-b-2 border-[#2d2015] bg-[#fffaf2]/95 px-3 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#453427] dark:bg-[#181310]/95">
+    <header className="sticky top-0 z-30 relative flex min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:min-h-[calc(4rem+env(safe-area-inset-top,0px))] w-full shrink-0 flex-wrap gap-2 py-2 items-center justify-between border-b-2 border-[#2d2015] bg-[#fffaf2]/95 px-3 sm:px-6 backdrop-blur-md transition-colors pt-[env(safe-area-inset-top,0px)] dark:border-[#453427] dark:bg-[#181310]/95">
       {/* Brand logo & Sidebar Toggle */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {onToggleSidebar && (
@@ -135,7 +135,7 @@ export function Header({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <span
               id="header-app-name"
-              className="text-base sm:text-lg font-bold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9]"
+              className="hidden min-[360px]:inline text-base sm:text-lg font-bold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9]"
             >
               Calendai
             </span>
@@ -153,7 +153,7 @@ export function Header({
         <button
           type="button"
           onClick={onOpenUpcoming}
-          className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+          className="hidden xl:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 lg:px-3.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           title="Xem lịch trình sắp tới"
           aria-label="Xem lịch trình sắp tới"
         >
@@ -166,7 +166,7 @@ export function Header({
           <button
             type="button"
             onClick={onOpenHistory}
-            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+            className="hidden xl:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
             title="Lịch sử các phiên chat"
             aria-label="Lịch sử các phiên chat"
           >
@@ -180,7 +180,7 @@ export function Header({
           <button
             type="button"
             onClick={onOpenTips}
-            className="hidden md:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+            className="hidden xl:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
             title="Xem mẹo đặt lịch & các tham số nâng cao"
             aria-label="Xem mẹo đặt lịch"
           >
@@ -192,7 +192,7 @@ export function Header({
         {/* Buttons to Privacy and Terms (Desktop/Tablet only) */}
         <Link
           href="/privacy"
-          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+          className="hidden xl:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           title="Chính sách quyền riêng tư"
         >
           <Shield className="h-3.5 w-3.5 text-[#c25e2e] dark:text-[#e07a3f]" />
@@ -201,7 +201,7 @@ export function Header({
 
         <Link
           href="/terms"
-          className="hidden md:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+          className="hidden xl:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           title="Điều khoản dịch vụ"
         >
           <FileText className="h-3.5 w-3.5 text-[#786455] dark:text-[#ba9f88]" />
@@ -212,7 +212,7 @@ export function Header({
           <button
             type="button"
             onClick={onClearSession}
-            className="hidden sm:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#fdf2f0] hover:text-[#cf3e32] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2e1917] dark:hover:text-[#fca5a5]"
+            className="hidden xl:flex h-9 w-9 min-h-[36px] min-w-[36px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#fdf2f0] hover:text-[#cf3e32] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:h-auto sm:w-auto sm:min-h-0 sm:min-w-0 sm:gap-1.5 sm:px-3 sm:py-1.5 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2e1917] dark:hover:text-[#fca5a5]"
             title="Xóa session (Bắt đầu đoạn chat mới)"
             aria-label="Xóa session"
           >
@@ -300,7 +300,7 @@ export function Header({
         )}
 
         {/* Mobile More Actions Menu (sm:hidden) */}
-        <div ref={mobileMenuRef} className="relative sm:hidden">
+        <div ref={mobileMenuRef} className="relative xl:hidden">
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen((prev) => !prev)}
@@ -319,7 +319,7 @@ export function Header({
             <div
               role="menu"
               aria-label="Menu tùy chọn"
-              className="absolute right-0 top-full mt-2 w-56 origin-top-right rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-2 shadow-[4px_4px_0px_#2d2015] backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-150 dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[4px_4px_0px_#453427]"
+              className="absolute right-0 top-full mt-2 max-h-[calc(100dvh-6rem)] w-64 max-w-[calc(100vw-1.5rem)] overflow-y-auto origin-top-right rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-2 shadow-[4px_4px_0px_#2d2015] backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-150 dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[4px_4px_0px_#453427]"
             >
               <button
                 type="button"
