@@ -18,6 +18,9 @@ import { AgendaCard } from './src/components/AgendaCard';
 import { ChatMessage } from './src/components/ChatMessage';
 import { Sheet } from './src/components/Sheet';
 import { VoiceAssistantBar } from './src/components/VoiceAssistantBar';
+import { ReminderSettings } from './src/components/ReminderSettings';
+import { loadReminderMinutes, saveReminderMinutes } from './src/services/reminders';
+import { DEFAULT_REMINDER_MINUTES } from './src/types';
 
 const messageKey = (message: Message) => message.id;
 const PROMPTS = ['Họp nhóm lúc 9h sáng mai trong 1 tiếng, có Google Meet', 'Xem các cuộc họp sắp tới', 'Hẹn cà phê chiều thứ Sáu lúc 15h'];
@@ -27,6 +30,7 @@ type ThemeMode = 'system' | 'light' | 'dark';
 export default function App() {
   const system = useColorScheme();
   const [mode, setMode] = useState<ThemeMode>('system');
+  const [reminderMinutes, setReminderMinutes] = useState(DEFAULT_REMINDER_MINUTES);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -37,6 +41,7 @@ export default function App() {
     let live = true;
     void Promise.all([
       authClient.restore().catch(() => { if (live) setError('Không khôi phục được phiên. Vui lòng đăng nhập Google lại.'); }),
+      loadReminderMinutes().then(value => { if (live) setReminderMinutes(value); }).catch(() => { if (live) setError('Không đọc được tùy chọn nhắc lịch. Đang dùng mặc định 60 và 10 phút; dữ liệu cũ được giữ nguyên.'); }),
       AsyncStorage.getItem('calendai.theme.v1').then(value => { if (live && (value === 'system' || value === 'light' || value === 'dark')) setMode(value); }).catch(() => { if (live) setError('Không đọc được tùy chọn giao diện trên thiết bị.'); }),
     ]).finally(() => { if (live) setReady(true); });
     return () => { live = false; };
@@ -55,18 +60,24 @@ export default function App() {
     setMode(next);
     void AsyncStorage.setItem('calendai.theme.v1', next).catch(() => setError('Chưa lưu được tùy chọn giao diện.'));
   };
+  const changeReminders = async (minutes: number[]) => {
+    try { await saveReminderMinutes(minutes); }
+    catch { throw new Error('Chưa lưu được tùy chọn nhắc lịch. Vui lòng thử lại.'); }
+    setReminderMinutes(minutes);
+  };
   const theme = useMemo(() => ({ colors: dark ? palettes.dark : palettes.light, dark, fonts }), [dark, fonts]);
   return <SafeAreaProvider><ThemeContext.Provider value={theme}>
     <SafeAreaView style={{ flex: 1, backgroundColor: dark ? palettes.dark.bg : palettes.light.bg }}>
       <StatusBar style={dark ? 'light' : 'dark'} />
       {!ready || !fonts && !fontError ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }}><ActivityIndicator color={dark ? palettes.dark.accent : palettes.light.accent} /><Copy>Đang mở Calendai…</Copy></View> :
-        <Workspace key={`${API_ORIGIN}:${session?.user.id || 'guest'}`} user={session?.user || null} error={error} clearError={() => setError('')} login={() => { void login(); }} logout={() => { void logout(); }} loggingIn={loggingIn} mode={mode} changeTheme={changeTheme} />}
+        <Workspace key={`${API_ORIGIN}:${session?.user.id || 'guest'}`} user={session?.user || null} error={error} clearError={() => setError('')} login={() => { void login(); }} logout={() => { void logout(); }} loggingIn={loggingIn} mode={mode} changeTheme={changeTheme} reminderMinutes={reminderMinutes} changeReminders={changeReminders} />}
     </SafeAreaView>
   </ThemeContext.Provider></SafeAreaProvider>;
 }
 
-function Workspace({ user, error: authError, clearError, login, logout, loggingIn, mode, changeTheme }: {
+function Workspace({ user, error: authError, clearError, login, logout, loggingIn, mode, changeTheme, reminderMinutes, changeReminders }: {
   user: UserProfile | null; error: string; clearError: () => void; login: () => void; logout: () => void; loggingIn: boolean; mode: ThemeMode; changeTheme: (mode: ThemeMode) => void;
+  reminderMinutes: number[]; changeReminders: (minutes: number[]) => Promise<void>;
 }) {
   const { colors, dark } = useTheme();
   const { width } = useWindowDimensions();
@@ -195,7 +206,7 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
     </View>)}
     <Action label="Lịch sắp tới" icon={CalendarDays} onPress={() => openPage('upcoming')} />
     <Action label="Mẹo đặt lịch" icon={HelpCircle} onPress={() => openPage('help')} />
-    <Action label={user ? 'Tài khoản & giao diện' : 'Đăng nhập & giao diện'} icon={Settings2} onPress={() => openPage('account')} />
+    <Action label={user ? 'Cài đặt & tài khoản' : 'Cài đặt & đăng nhập'} icon={Settings2} onPress={() => openPage('account')} />
   </View>;
   return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View style={{ flexDirection: 'row', borderBottomWidth: 2, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}>
@@ -203,13 +214,13 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
       <View style={{ flex: 1, paddingLeft: wide ? 14 : 0 }}><Copy strong style={{ fontSize: 21, letterSpacing: -0.5 }}>Calendai<Copy style={{ color: colors.accent }}>.</Copy></Copy><Copy style={{ fontSize: 10, fontFamily: mono, color: colors.muted }}>TRỢ LÝ LỊCH HẸN</Copy></View>
       <IconButton icon={CalendarDays} label="Lịch sắp tới" onPress={() => openPage('upcoming')} />
       <IconButton icon={dark ? Sun : Moon} label={dark ? 'Đổi sang giao diện sáng' : 'Đổi sang giao diện tối'} onPress={() => changeTheme(dark ? 'light' : 'dark')} />
-      <IconButton icon={user ? Settings2 : LogIn} label={user ? 'Tài khoản Google' : 'Đăng nhập Google'} onPress={() => openPage('account')} />
+      <IconButton icon={user ? Settings2 : LogIn} label={user ? 'Cài đặt & tài khoản Google' : 'Cài đặt & đăng nhập Google'} onPress={() => openPage('account')} />
     </View>
     {Boolean(authError || error) && <View style={{ backgroundColor: colors.raised, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', gap: 8, alignItems: 'center' }}><Copy accessibilityRole="alert" style={{ flex: 1, color: colors.danger, fontSize: 12 }}>{authError || error}</Copy><IconButton icon={X} label="Đóng thông báo" onPress={() => { setError(''); clearError(); }} /></View>}
     <View style={{ flex: 1, flexDirection: 'row' }}>
       {wide && <ScrollView style={{ width: 290, flexGrow: 0, borderRightWidth: 2, borderColor: colors.border, backgroundColor: colors.surface }} contentContainerStyle={{ padding: 16 }}>{history}</ScrollView>}
       <View style={{ flex: 1 }}>
-        {!loaded ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.accent} /><Copy>Đang đọc lịch sử…</Copy></View> : historyError ? <Panel style={{ margin: 20, gap: 12 }}><Copy accessibilityRole="alert" style={{ color: colors.danger }}>{historyError}</Copy><Action label="Thử đọc lại lịch sử" onPress={() => { void restoreHistory(); }} /></Panel> : <Conversation key={active.id} initial={active} user={user} model={model} modelLabel={models.find(item => item.id === model)?.name || 'Mặc định máy chủ'} onModel={() => openPage('models')} onChange={commit} login={login} blocked={page !== null} />}
+        {!loaded ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.accent} /><Copy>Đang đọc lịch sử…</Copy></View> : historyError ? <Panel style={{ margin: 20, gap: 12 }}><Copy accessibilityRole="alert" style={{ color: colors.danger }}>{historyError}</Copy><Action label="Thử đọc lại lịch sử" onPress={() => { void restoreHistory(); }} /></Panel> : <Conversation key={active.id} initial={active} user={user} model={model} modelLabel={models.find(item => item.id === model)?.name || 'Mặc định máy chủ'} onModel={() => openPage('models')} onChange={commit} login={login} blocked={page !== null} reminderMinutes={reminderMinutes} />}
       </View>
     </View>
     <Sheet title="Cuộc trò chuyện" visible={page === 'history'} onClose={() => setPage(null)}>{history}</Sheet>
@@ -235,11 +246,12 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
       <Copy>Mic chỉ chuyển lời nói tiếng Việt thành bản nháp để bạn chỉnh lại, không tự gửi hoặc tạo sự kiện. Nhận diện phụ thuộc dịch vụ Google/Apple và mạng trên thiết bị; không đảm bảo ngoại tuyến.</Copy>
       <Copy>Lịch sử được lưu cục bộ theo tài khoản và máy chủ. Đăng xuất không xóa sự kiện đã tạo hoặc thu hồi mọi phiên trên thiết bị khác.</Copy>
     </Sheet>
-    <Sheet title="Tài khoản & giao diện" visible={page === 'account'} onClose={() => setPage(null)}>
+    <Sheet title="Cài đặt & tài khoản" visible={page === 'account'} onClose={() => setPage(null)}>
       <Panel style={{ gap: 10 }}><Copy strong style={{ fontSize: 20 }}>{user?.name || 'Chào bạn'}</Copy><Copy>{user?.email || 'Kết nối Google Calendar để bắt đầu.'}</Copy>{!!calendarStatus && <Copy style={{ color: colors.muted }}>{calendarStatus}</Copy>}
         {user ? <Action label="Đăng xuất trên thiết bị" icon={LogOut} onPress={logout} /> : <Action label={loggingIn ? 'Đang đăng nhập…' : 'Tiếp tục với Google'} icon={LogIn} disabled={loggingIn} primary onPress={login} />}
       </Panel>
       {!!authError && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{authError}</Copy>}
+      <ReminderSettings minutes={reminderMinutes} onSave={changeReminders} />
       <Copy strong>Giao diện</Copy>
       {(['system', 'light', 'dark'] as const).map(item => <Action key={item} label={`${item === 'system' ? 'Theo thiết bị' : item === 'light' ? 'Giấy sáng' : 'Xưởng đêm'}${mode === item ? ' · Đang chọn' : ''}`} icon={mode === item ? Check : undefined} onPress={() => changeTheme(item)} />)}
       <Action label="Chính sách quyền riêng tư" icon={ChevronRight} onPress={() => { void openLink(`${API_ORIGIN}/privacy`).catch(() => setError('Không mở được chính sách quyền riêng tư.')); }} />
@@ -249,8 +261,8 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
   </KeyboardAvoidingView>;
 }
 
-function Conversation({ initial, user, model, modelLabel, onModel, onChange, login, blocked }: {
-  initial: ChatSession; user: UserProfile | null; model: string; modelLabel: string; onModel: () => void; onChange: (value: ChatSession) => Promise<void>; login: () => void; blocked: boolean;
+function Conversation({ initial, user, model, modelLabel, onModel, onChange, login, blocked, reminderMinutes }: {
+  initial: ChatSession; user: UserProfile | null; model: string; modelLabel: string; onModel: () => void; onChange: (value: ChatSession) => Promise<void>; login: () => void; blocked: boolean; reminderMinutes: number[];
 }) {
   const { colors } = useTheme();
   const [confirmed, setConfirmed] = useState(initial.confirmed);
@@ -321,7 +333,7 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
     nearBottom.current = true;
     scroll.current?.scrollToEnd({ animated: true });
   }, [setInput]);
-  const renderMessage = useCallback(({ item }: { item: Message }) => <ChatMessage message={item} meetChoices={meetChoices} onMeetChange={onMeetChange} confirmed={confirmed} submitted={submitted} disabled={isLoading || blocked} streaming={isLoading && item.id === messages[messages.length - 1]?.id} onSubmit={onSubmit} onCreated={onCreated} onEdit={onEdit} />, [confirmed, submitted, isLoading, blocked, messages, meetChoices, onMeetChange, onSubmit, onCreated, onEdit]);
+  const renderMessage = useCallback(({ item }: { item: Message }) => <ChatMessage message={item} reminderMinutes={reminderMinutes} meetChoices={meetChoices} onMeetChange={onMeetChange} confirmed={confirmed} submitted={submitted} disabled={isLoading || blocked} streaming={isLoading && item.id === messages[messages.length - 1]?.id} onSubmit={onSubmit} onCreated={onCreated} onEdit={onEdit} />, [confirmed, submitted, isLoading, blocked, messages, meetChoices, onMeetChange, onSubmit, onCreated, onEdit, reminderMinutes]);
   return <View style={{ flex: 1 }}>
     <FlatList ref={scroll} data={messages} renderItem={renderMessage} keyExtractor={messageKey}
       initialNumToRender={12} maxToRenderPerBatch={8} windowSize={7} removeClippedSubviews={false}

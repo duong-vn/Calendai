@@ -16,6 +16,18 @@ it('sends the canonical stable proposal and accepts only real calendar success',
   fetcher.mockResolvedValue(response({ success: true, isMock: true, event }));
   await expect(api.confirm(draft)).rejects.toThrow('Chưa xác nhận');
 });
+it.each([{ minutes: [60, 10] }, { minutes: [] }, { minutes: [0, 40320, 30, 15, 5] }])('preserves explicit reminders through parsing and confirmation (%j)', async ({ minutes }) => {
+  const fetcher = jest.fn().mockResolvedValue(response({ success: true, event }));
+  const proposal = { ...draft, reminderMinutes: minutes };
+  expect(parseProposal(proposal)).toEqual(proposal);
+  await new MobileApi(fetcher).confirm(proposal);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ ...proposal, allowConflict: false });
+});
+it.each([{ minutes: null }, { minutes: [1, 1] }, { minutes: [-1] }, { minutes: [40321] }, { minutes: [1.5] }, { minutes: ['10'] }, { minutes: [NaN] }, { minutes: [1, 2, 3, 4, 5, 6] }])('rejects invalid reminders before a network side effect (%j)', async ({ minutes }) => {
+  const fetcher = jest.fn();
+  await expect(new MobileApi(fetcher).confirm({ ...draft, reminderMinutes: minutes } as unknown as Parameters<MobileApi['confirm']>[0])).rejects.toThrow('mốc nhắc');
+  expect(fetcher).not.toHaveBeenCalled();
+});
 it('surfaces conflicts without claiming creation and only overrides after explicit choice', async () => {
   const conflict = { id: 'old', summary: 'Họp cũ', start: event.start, end: event.end, etag: 'v1', timeZone: 'Asia/Ho_Chi_Minh', isAllDay: false };
   const fetcher = jest.fn().mockResolvedValue(response({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [conflict] }, 409));

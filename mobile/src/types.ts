@@ -36,6 +36,7 @@ export interface MeetingProposal {
   attendees: Array<{ email: string; name?: string }>;
   description?: string;
   createMeet: boolean;
+  reminderMinutes?: number[];
 }
 
 export interface AuthStatus {
@@ -106,6 +107,17 @@ export function parseEvent(value: unknown): CalendarEvent {
   };
 }
 
+export const DEFAULT_REMINDER_MINUTES = [60, 10];
+
+export function parseReminderMinutes(value: unknown): number[] {
+  if (!Array.isArray(value) || value.length > 5 ||
+      value.some(minutes => typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 0 || minutes > 40320) ||
+      new Set(value).size !== value.length) {
+    throw new Error('Chọn tối đa 5 mốc nhắc khác nhau, mỗi mốc là số phút nguyên từ 0 đến 40320.');
+  }
+  return [...value];
+}
+
 export function parseProposal(value: unknown): MeetingProposal {
   if (!isRecord(value) || typeof value.proposalId !== 'string' || !value.proposalId || value.proposalId.length > 200 ||
       typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 200 ||
@@ -125,5 +137,6 @@ export function parseProposal(value: unknown): MeetingProposal {
     attendees: attendees.map(a => ({ email: String(a.email), name: typeof a.name === 'string' ? a.name : undefined })),
     createMeet: value.createMeet === true,
     description: typeof value.description === 'string' ? value.description : undefined,
+    ...(value.reminderMinutes === undefined ? {} : { reminderMinutes: parseReminderMinutes(value.reminderMinutes) }),
   };
 }

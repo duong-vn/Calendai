@@ -36,6 +36,16 @@ it('isolates guest and Google accounts and persists actual SDK messages', async 
   expect(await AsyncStorage.getItem(sessionKey('account-a', session.id))).not.toBeNull();
 });
 
+it.each([{ reminderMinutes: undefined }, { reminderMinutes: [90, 5] }, { reminderMinutes: [] }])('restores the exact submitted reminders, including legacy absence (%j)', async ({ reminderMinutes }) => {
+  const draft = { proposalId: 'pending', summary: 'Họp', startDateTime: '2027-01-02T09:00:00+07:00', endDateTime: '2027-01-02T10:00:00+07:00', timeZone: 'Asia/Ho_Chi_Minh', attendees: [], createMeet: true };
+  const proposal = reminderMinutes === undefined ? draft : { ...draft, reminderMinutes };
+  const session = { ...conversation(), submitted: { pending: proposal } };
+  await saveConversation('reminders', session);
+  const restored = await loadConversation('reminders', session.id);
+  expect(JSON.stringify(restored.submitted.pending)).toBe(JSON.stringify(proposal));
+  if (reminderMinutes === undefined) expect(restored.submitted.pending).not.toHaveProperty('reminderMinutes');
+});
+
 it('keeps the index sorted by latest update rather than write order', async () => {
   const recent = { ...conversation('recent'), updatedAt: 3000 };
   const older = { ...conversation('older'), updatedAt: 1000 };

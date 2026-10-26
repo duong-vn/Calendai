@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ReminderMinutesSchema } from './reminders';
 
 export const OffsetDateTimeSchema = z
   .string()
@@ -34,6 +35,7 @@ export const MeetingProposalSchema = z.object({
   }, 'Múi giờ không hợp lệ').default('Asia/Ho_Chi_Minh'),
   attendees: z.array(AttendeeSchema).max(100, 'Chỉ hỗ trợ tối đa 100 người tham gia').optional().default([]),
   createMeet: z.boolean().default(false).describe('Tạo Google Meet link (mặc định false, chỉ bật true khi người dùng yêu cầu họp online/Meet)'),
+  reminderMinutes: ReminderMinutesSchema.optional(),
   proposalId: z.string().min(1, 'Mã đề xuất không được để trống').max(200, 'Mã đề xuất quá dài').optional(),
 }).refine(
   (proposal) => Date.parse(proposal.endDateTime) > Date.parse(proposal.startDateTime),

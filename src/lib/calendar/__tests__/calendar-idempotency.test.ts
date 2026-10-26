@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import { CalendarProposalConflictError, createGoogleCalendarEvent } from '../google-calendar-service';
 
 const input = {
@@ -40,6 +41,16 @@ function googleStore(options: { timeoutAfterInsert?: boolean; pending?: boolean 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Google-backed proposal idempotency', () => {
+  it('still reconciles legacy events created without reminder overrides', async () => {
+    const { events } = googleStore();
+    const first = await createGoogleCalendarEvent('access', input, operation);
+    const stored = events.get(first.id)!;
+    const { reminders: _reminders, id: _id, extendedProperties: _metadata, ...legacyBody } = stored as StoredEvent & { reminders: unknown };
+    stored.extendedProperties.private.calendaiPayload = createHash('sha256').update(JSON.stringify(legacyBody)).digest('hex');
+    const retry = await createGoogleCalendarEvent('access', input, operation);
+    expect(retry.id).toBe(first.id);
+    await expect(createGoogleCalendarEvent('access', { ...input, reminderMinutes: [30] }, operation)).rejects.toBeInstanceOf(CalendarProposalConflictError);
+  });
   it('uses one valid stable event ID and Meet request ID across retry and reconciles 409', async () => {
     const { events, fetchMock } = googleStore();
     const first = await createGoogleCalendarEvent('access', input, operation);

@@ -48,6 +48,7 @@ export async function POST(request: Request) {
         timeZone: input.timeZone,
         attendees: input.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
         createMeet: input.createMeet,
+        reminderMinutes: input.reminderMinutes,
       }, input.proposalId ? { accountId: session.user.id, proposalId: input.proposalId } : undefined, async (eventId) => {
         if (override.data.allowConflict) return;
         const conflicts = await findCalendarConflicts(accessToken, input, eventId ? [eventId] : []);
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
         timeZone: input.timeZone,
         attendees: input.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
         createMeet: input.createMeet,
+        reminderMinutes: input.reminderMinutes,
       });
 
       return NextResponse.json({

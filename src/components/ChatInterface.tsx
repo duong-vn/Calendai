@@ -37,6 +37,7 @@ import {
   type MeetingProposalData,
 } from './MeetingPreviewCard';
 import { ModelSelector } from './ModelSelector';
+import { ReminderSettings } from './ReminderSettings';
 
 // Lazy-load drawer only when opened
 const Sidenote = dynamic(
@@ -894,6 +895,8 @@ export function ChatInterface({
                 <span className="hidden xs:inline">Mẹo đặt lịch</span>
               </button>
             </div>
+
+            <ReminderSettings />
 
             {/* Chronometer Timezone Badge */}
             <div className="flex items-center gap-1.5 rounded-full border-2 border-[#2d2015]/30 bg-[#f5eee1] px-2.5 py-0.5 text-[11px] font-mono font-semibold text-[#786455] dark:border-[#453427] dark:bg-[#16120f] dark:text-[#ba9f88]">

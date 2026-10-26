@@ -11,6 +11,7 @@ export interface CreateCalendarEventInput {
   timeZone?: string;     // Default 'Asia/Ho_Chi_Minh'
   attendees?: CalendarAttendee[];
   createMeet?: boolean;  // Default true
+  reminderMinutes?: number[];
 }
 
 export interface CalendarEventResult {

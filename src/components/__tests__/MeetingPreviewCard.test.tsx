@@ -9,6 +9,8 @@ describe('MeetingPreviewCard Component', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    localStorage.removeItem('calendai_reminder_minutes');
   });
 
   const mockProposal: MeetingProposalData = {
@@ -101,6 +103,31 @@ describe('MeetingPreviewCard Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Vẫn tạo lịch mới, giữ lịch cũ' }));
     await waitFor(() => expect(onConfirmSuccess).toHaveBeenCalledOnce());
     expect(JSON.parse(mockFetch.mock.calls[1][1].body).allowConflict).toBe(true);
+  });
+
+  it('uses two default reminders when no preference exists', async () => {
+    localStorage.removeItem('calendai_reminder_minutes');
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, event: { id: 'created' } }) });
+    vi.stubGlobal('fetch', mockFetch);
+    render(<MeetingPreviewCard proposal={mockProposal} onConfirmSuccess={vi.fn()} />);
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).reminderMinutes).toEqual([60, 10]);
+  });
+
+  it('uses saved reminder settings and keeps them fixed for retries', async () => {
+    localStorage.setItem('calendai_reminder_minutes', '[30,5]');
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ success: false, error: 'Thử lại' }) });
+    vi.stubGlobal('fetch', mockFetch);
+    render(<MeetingPreviewCard proposal={mockProposal} onConfirmSuccess={vi.fn()} />);
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await screen.findByText('Thử lại');
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).reminderMinutes).toEqual([30, 5]);
+    localStorage.setItem('calendai_reminder_minutes', '[15]');
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body).reminderMinutes).toEqual([30, 5]);
+    localStorage.removeItem('calendai_reminder_minutes');
   });
 
   it('displays error message when confirmation API fails', async () => {

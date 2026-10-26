@@ -1,6 +1,9 @@
 import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { Alert, TouchableOpacity, FlatList } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ReminderSettings } from './src/components/ReminderSettings';
+import { saveReminderMinutes } from './src/services/reminders';
 import type { ChatSession } from './src/types';
 import App from './App';
 import { Action, Copy, IconButton } from './src/theme';
@@ -26,6 +29,21 @@ jest.mock('react-native/Libraries/Lists/FlatList', () => 'FlatList');
 jest.mock('./src/services/history', () => ({ ...jest.requireActual('./src/services/history'), loadHistory: jest.fn(), loadConversation: jest.fn(), saveConversation: jest.fn().mockResolvedValue([]), deleteConversation: jest.fn() }));
 const mockStop = jest.fn();
 const flush = async () => { await act(async () => { await Promise.resolve(); await Promise.resolve(); }); };
+
+it('exposes locally persisted reminder settings through the existing settings sheet', async () => {
+  await AsyncStorage.clear();
+  await saveReminderMinutes([]);
+  jest.mocked(loadHistory).mockResolvedValue([]);
+  let tree!: ReactTestRenderer;
+  await act(async () => { tree = create(<App />); });
+  await flush();
+  expect(tree.root.findAllByType(ReminderSettings)[0].props.minutes).toEqual([]);
+  act(() => tree.root.findAllByType(IconButton).find(node => node.props.label === 'Cài đặt & đăng nhập Google')!.props.onPress());
+  await act(async () => tree.root.findAllByType(ReminderSettings)[0].props.onSave([30, 5]));
+  expect(tree.root.findAllByType(ReminderSettings)[0].props.minutes).toEqual([30, 5]);
+  act(() => tree.unmount());
+  await AsyncStorage.clear();
+});
 
 it('shows a retryable history error without mounting chat or overwriting stored data', async () => {
   jest.mocked(loadHistory).mockRejectedValueOnce(new Error('damaged')).mockResolvedValueOnce([]);

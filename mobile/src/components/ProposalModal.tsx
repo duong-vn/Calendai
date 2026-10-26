@@ -6,11 +6,13 @@ import { Action, Copy, Panel, useTheme } from '../theme';
 import { CalendarConflictError, mobileApi, type CalendarConflict } from '../services/api';
 import { CalendarConflictChoices } from './CalendarConflictChoices';
 import { AgendaCard, formatDateTime } from './AgendaCard';
+import { DEFAULT_REMINDER_MINUTES } from '../types';
 
 // Inline ticket, not an interrupting modal: the draft stays next to its conversation.
-export function ProposalCard({ proposal, submitted, event, disabled, meetChoice, onMeetChange, onSubmit, onCreated, onEdit, compact = false }: {
+export function ProposalCard({ proposal, submitted, event, disabled, meetChoice, onMeetChange, onSubmit, onCreated, onEdit, compact = false, reminderMinutes = DEFAULT_REMINDER_MINUTES }: {
   proposal: MeetingProposal;
   compact?: boolean;
+  reminderMinutes?: number[];
   submitted?: MeetingProposal;
   event?: CalendarEvent;
   disabled: boolean;
@@ -28,7 +30,8 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
   const controller = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; controller.current?.abort(); }, []);
-  const draft = submitted || { ...proposal, createMeet: meetChoice ?? createMeet };
+  const sentDraft = useRef<MeetingProposal | undefined>(submitted);
+  const draft = submitted || sentDraft.current || { ...proposal, createMeet: meetChoice ?? createMeet, reminderMinutes: proposal.reminderMinutes ?? [...reminderMinutes] };
   const [conflicts, setConflicts] = useState<CalendarConflict[]>([]);
   const [conflictRevision, setConflictRevision] = useState(0);
   const refreshConflicts = async () => {
@@ -53,7 +56,8 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
     const abort = new AbortController();
     controller.current = abort;
     try {
-      // Persist the exact payload before any network side effect; retries never mutate it.
+      // Freeze before persisting so settings changes cannot mutate a retry payload.
+      sentDraft.current = draft;
       await onSubmit(draft);
       if (!mounted.current || abort.signal.aborted) return;
       const created = await mobileApi.confirm(draft, abort.signal, allowConflict);
@@ -82,6 +86,7 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
       <Copy style={{ color: colors.muted }}>Khách mời: {draft.attendees.length ? draft.attendees.map(a => a.email).join(', ') : 'Không có'}</Copy>
     </View>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Copy strong style={{ flex: 1 }}>Tạo Google Meet</Copy><Switch accessibilityLabel="Tạo link Google Meet" value={draft.createMeet} onValueChange={value => { setCreateMeet(value); onMeetChange?.(proposal.proposalId, value); }} disabled={loading || !!submitted || disabled} trackColor={{ true: colors.teal }} /></View>
+    <Copy style={{ color: colors.muted, fontSize: 12 }}>Nhắc qua Google Calendar: {(draft.reminderMinutes ?? DEFAULT_REMINDER_MINUTES).length ? `trước ${(draft.reminderMinutes ?? DEFAULT_REMINDER_MINUTES).join(' và ')} phút (0 = lúc bắt đầu)` : 'Đã tắt'}</Copy>
     {submitted && <Copy style={{ color: colors.muted, fontSize: 12 }}>Bản thảo đã gửi được giữ nguyên để thử lại an toàn. Muốn đổi nội dung, hãy yêu cầu một bản thảo mới.</Copy>}
     {conflicts.length > 0 && <CalendarConflictChoices key={conflictRevision} proposal={draft} conflicts={conflicts} disabled={loading || disabled} onResolved={() => { void refreshConflicts(); }} onContinue={() => { void confirm(true); }} />}
     {!!error && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Copy>}

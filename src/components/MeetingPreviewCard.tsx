@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import {
   AlertCircle,
+  Bell,
   Calendar,
   Check,
   Clock,
@@ -13,6 +14,7 @@ import {
   Video,
 } from 'lucide-react';
 import type { CalendarEventResult } from '@/lib/calendar/types';
+import { DEFAULT_REMINDER_MINUTES, readReminderSettings } from '@/lib/calendar/reminders';
 import { CalendarConflictChoices, type CalendarConflict } from './CalendarConflictChoices';
 
 export interface MeetingProposalData {
@@ -24,6 +26,7 @@ export interface MeetingProposalData {
   timeZone?: string;
   attendees?: Array<{ email: string; name?: string }>;
   createMeet?: boolean;
+  reminderMinutes?: number[];
 }
 
 interface MeetingPreviewCardProps {
@@ -81,6 +84,7 @@ export function MeetingPreviewCard({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [createMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
   const confirmationPending = useRef(false);
+  const submittedReminders = useRef<number[] | undefined>(undefined);
   const [conflicts, setConflicts] = useState<CalendarConflict[]>([]);
   const [conflictRevision, setConflictRevision] = useState(0);
   const draft = { ...proposal, createMeet };
@@ -124,6 +128,7 @@ export function MeetingPreviewCard({
           createMeet: Boolean(createMeet),
           proposalId: proposal.proposalId,
           allowConflict,
+          reminderMinutes: submittedReminders.current ?? (submittedReminders.current = proposal.reminderMinutes ?? readReminderSettings()),
         }),
       });
 
@@ -252,6 +257,16 @@ export function MeetingPreviewCard({
             {createMeet ? 'Sẽ tạo link Meet' : 'Không tạo Meet'}
           </span>
         </button>
+
+        <div className="flex items-center gap-1.5 text-xs text-[#786455] dark:text-[#ba9f88]">
+          <Bell className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Nhắc qua Google Calendar:{' '}
+            {(submittedReminders.current ?? proposal.reminderMinutes ?? readReminderSettings()).length
+              ? `trước ${(submittedReminders.current ?? proposal.reminderMinutes ?? readReminderSettings()).join(' và ')} phút (0 = lúc bắt đầu)`
+              : 'Đã tắt'}
+          </span>
+        </div>
 
         {conflicts.length > 0 && <CalendarConflictChoices key={conflictRevision} proposal={draft} conflicts={conflicts} disabled={loading} onResolved={() => { void refreshConflicts(); }} onContinue={() => { void handleConfirm(true); }} />}
 

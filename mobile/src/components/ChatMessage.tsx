@@ -11,12 +11,13 @@ import { ProposalCard } from './ProposalModal';
 
 const markdownRules = { image: () => null };
 
-export const ChatMessage = memo(function ChatMessage({ message, confirmed, submitted, disabled, streaming = false, meetChoices, onMeetChange, onSubmit, onCreated, onEdit }: {
+export const ChatMessage = memo(function ChatMessage({ message, confirmed, submitted, disabled, streaming = false, reminderMinutes, meetChoices, onMeetChange, onSubmit, onCreated, onEdit }: {
   message: Message;
   confirmed: Record<string, CalendarEvent>;
   submitted: Record<string, MeetingProposal>;
   disabled: boolean;
   streaming?: boolean;
+  reminderMinutes?: number[];
   meetChoices?: Record<string, boolean>;
   onMeetChange?: (id: string, value: boolean) => void;
   onSubmit: (proposal: MeetingProposal) => Promise<void>;
@@ -42,7 +43,7 @@ export const ChatMessage = memo(function ChatMessage({ message, confirmed, submi
     if (tool.state !== 'result') return null;
     try {
       const proposal = parseProposal(tool.result);
-      return <View key={tool.toolCallId} style={{ width: '100%' }}><ProposalCard compact={compactProposals} proposal={proposal} meetChoice={meetChoices?.[proposal.proposalId]} onMeetChange={onMeetChange} submitted={submitted[proposal.proposalId]} event={confirmed[proposal.proposalId]} disabled={disabled} onSubmit={onSubmit} onCreated={onCreated} onEdit={() => onEdit(proposal)} /></View>;
+      return <View key={tool.toolCallId} style={{ width: '100%' }}><ProposalCard compact={compactProposals} reminderMinutes={reminderMinutes} proposal={proposal} meetChoice={meetChoices?.[proposal.proposalId]} onMeetChange={onMeetChange} submitted={submitted[proposal.proposalId]} event={confirmed[proposal.proposalId]} disabled={disabled} onSubmit={onSubmit} onCreated={onCreated} onEdit={() => onEdit(proposal)} /></View>;
     } catch { return <Copy key={tool.toolCallId} style={{ color: colors.danger }}>Bản thảo chưa hợp lệ. Vui lòng yêu cầu Calendai tạo lại.</Copy>; }
   };
   const Icon = user ? UserRound : Sparkles;

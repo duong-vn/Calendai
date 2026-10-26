@@ -30,7 +30,7 @@ it('creates only on explicit confirmation, guards double tap, persists exact pay
   await flush();
   expect(onSubmit).toHaveBeenCalledTimes(1);
   expect(mobileApi.confirm).toHaveBeenCalledTimes(1);
-  expect(mobileApi.confirm).toHaveBeenCalledWith(draft, expect.anything(), false);
+  expect(mobileApi.confirm).toHaveBeenCalledWith({ ...draft, reminderMinutes: [60, 10] }, expect.anything(), false);
   await act(async () => { resolve(event); });
   expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
   act(() => tree.unmount());
@@ -48,7 +48,7 @@ it('shows conflicts and never retries with an override without explicit choice',
   expect(mobileApi.confirm).toHaveBeenCalledTimes(1);
   act(() => tree.root.findAllByType(Action).find(action => action.props.label === 'Vẫn tạo lịch mới, giữ lịch cũ')!.props.onPress());
   await flush();
-  expect(mobileApi.confirm).toHaveBeenLastCalledWith(draft, expect.anything(), true);
+  expect(mobileApi.confirm).toHaveBeenLastCalledWith({ ...draft, reminderMinutes: [60, 10] }, expect.anything(), true);
   expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
   act(() => tree.unmount());
 });
@@ -63,6 +63,51 @@ it('restores the parent-held Meet choice after a virtualized row remounts', () =
   act(() => tree.unmount());
   act(() => { tree = create(<ProposalCard {...props} meetChoice={false} />); });
   expect(tree.root.findAllByType(Switch)[0].props.value).toBe(false);
+  act(() => tree.unmount());
+});
+
+it.each([{ reminderMinutes: [30, 5] }, { reminderMinutes: [] }])('freezes saved reminders before persistence and keeps them across settings changes (%j)', async ({ reminderMinutes }) => {
+  jest.mocked(mobileApi.confirm).mockReset().mockRejectedValue(new Error('Mất mạng'));
+  const onSubmit = jest.fn().mockResolvedValue(undefined);
+  const props = { proposal: draft, disabled: false, onSubmit, onCreated: jest.fn(), onEdit: jest.fn() };
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ProposalCard {...props} reminderMinutes={reminderMinutes} />); });
+  act(() => tree.root.findAllByType(Action)[0].props.onPress());
+  await flush();
+  const submitted = onSubmit.mock.calls[0][0];
+  expect(submitted.reminderMinutes).toEqual(reminderMinutes);
+  expect(onSubmit.mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(mobileApi.confirm).mock.invocationCallOrder[0]);
+  act(() => tree.update(<ProposalCard {...props} reminderMinutes={[90]} />));
+  act(() => tree.root.findAllByType(Action)[0].props.onPress());
+  await flush();
+  expect(mobileApi.confirm).toHaveBeenLastCalledWith(submitted, expect.anything(), false);
+  expect(onSubmit.mock.calls[1][0]).toBe(submitted);
+  act(() => tree.unmount());
+});
+
+it.each([{ reminderMinutes: undefined }, { reminderMinutes: [25] }, { reminderMinutes: [] }])('retries persisted drafts without replacing reminders with current settings (%j)', async ({ reminderMinutes }) => {
+  jest.mocked(mobileApi.confirm).mockReset().mockResolvedValue(event);
+  const submitted = reminderMinutes === undefined ? draft : { ...draft, reminderMinutes };
+  const onSubmit = jest.fn().mockResolvedValue(undefined);
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ProposalCard proposal={draft} submitted={submitted} reminderMinutes={[120]} disabled={false} onSubmit={onSubmit} onCreated={jest.fn()} onEdit={jest.fn()} />); });
+  act(() => tree.root.findAllByType(Action)[0].props.onPress());
+  await flush();
+  expect(onSubmit).toHaveBeenCalledWith(submitted);
+  expect(mobileApi.confirm).toHaveBeenCalledWith(submitted, expect.anything(), false);
+  if (reminderMinutes === undefined) expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('reminderMinutes');
+  act(() => tree.unmount());
+});
+
+it('prioritizes explicit proposal reminders over default settings on first submit', async () => {
+  jest.mocked(mobileApi.confirm).mockReset().mockResolvedValue(event);
+  const onSubmit = jest.fn().mockResolvedValue(undefined);
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ProposalCard proposal={{ ...draft, reminderMinutes: [15] }} reminderMinutes={[60, 10]} disabled={false} onSubmit={onSubmit} onCreated={jest.fn()} onEdit={jest.fn()} />); });
+  act(() => tree.root.findAllByType(Action)[0].props.onPress());
+  await flush();
+  expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ reminderMinutes: [15] }));
+  expect(mobileApi.confirm).toHaveBeenCalledWith(expect.objectContaining({ reminderMinutes: [15] }), expect.anything(), false);
   act(() => tree.unmount());
 });
 

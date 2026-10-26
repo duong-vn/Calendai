@@ -41,6 +41,15 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('Calendar route boundaries', () => {
+  it.each([{ reminderMinutes: [30, 5] }, { reminderMinutes: [] }])('passes reminder settings to Google %j', async ({ reminderMinutes }) => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST'
+      ? Response.json({ ...JSON.parse(String(init.body)), id: 'created' })
+      : Response.json({}, { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await POST(confirm({ ...proposal, reminderMinutes, allowConflict: true }))).status).toBe(200);
+    const inserted = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(String(inserted?.[1]?.body)).reminders).toEqual({ useDefault: false, overrides: reminderMinutes.map(minutes => ({ method: 'popup', minutes })) });
+  });
   it('passes Request to shared auth and reconciles actual stable inserts, returning 409 for changed payload', async () => {
     let stored: Record<string, unknown> | undefined;
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {

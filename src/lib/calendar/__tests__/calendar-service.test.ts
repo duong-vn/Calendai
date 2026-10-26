@@ -9,6 +9,12 @@ import {
 } from '../mock-calendar-service';
 
 describe('Google Calendar Service Layer', () => {
+  it.each([{ reminderMinutes: [30, 5] }, { reminderMinutes: [] }])('sends configured popup reminders %j', async ({ reminderMinutes }) => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'new' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await createGoogleCalendarEvent('access', { summary: 'Họp', startDateTime: '2026-11-02T09:00:00+07:00', endDateTime: '2026-11-02T10:00:00+07:00', reminderMinutes });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).reminders).toEqual({ useDefault: false, overrides: reminderMinutes.map(minutes => ({ method: 'popup', minutes })) });
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -67,6 +73,7 @@ describe('Google Calendar Service Layer', () => {
 
     const parsedBody = JSON.parse(calledOptions.body);
     expect(parsedBody.summary).toBe('Họp Kế hoạch Tuần');
+    expect(parsedBody.reminders).toEqual({ useDefault: false, overrides: [{ method: 'popup', minutes: 60 }, { method: 'popup', minutes: 10 }] });
     expect(parsedBody.conferenceData?.createRequest?.conferenceSolutionKey?.type).toBe('hangoutsMeet');
 
     expect(result.id).toBe('google-event-id-999');

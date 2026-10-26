@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { DEFAULT_REMINDER_MINUTES } from './reminders';
 import type {
   CalendarEventResult,
   CreateCalendarEventInput,
@@ -100,6 +101,10 @@ export async function createGoogleCalendarEvent(
   const requestBody: Record<string, unknown> = {
     summary: input.summary,
     description: input.description ?? '',
+    reminders: {
+      useDefault: false,
+      overrides: (input.reminderMinutes ?? DEFAULT_REMINDER_MINUTES).map(minutes => ({ method: 'popup', minutes })),
+    },
     start: {
       dateTime: input.startDateTime,
       timeZone,
@@ -124,6 +129,9 @@ export async function createGoogleCalendarEvent(
     };
   }
 
+  // Retries of pre-reminder drafts must still match their original Google event.
+  const { reminders: _reminders, ...legacyBody } = requestBody;
+  const legacyPayload = input.reminderMinutes === undefined ? digest(JSON.stringify(legacyBody)) : undefined;
   const privateProperties = eventId && operation ? {
     calendaiOperation: eventId,
     calendaiOwner: digest(operation.accountId),
@@ -152,7 +160,7 @@ export async function createGoogleCalendarEvent(
     if (existing.error || existing.id !== eventId || existing.status === 'cancelled' ||
       !privateProperties || metadata?.calendaiOperation !== privateProperties.calendaiOperation ||
       metadata?.calendaiOwner !== privateProperties.calendaiOwner ||
-      metadata?.calendaiPayload !== privateProperties.calendaiPayload) {
+      (metadata?.calendaiPayload !== privateProperties.calendaiPayload && (!legacyPayload || metadata?.calendaiPayload !== legacyPayload))) {
       throw new CalendarProposalConflictError();
     }
     return existing;
