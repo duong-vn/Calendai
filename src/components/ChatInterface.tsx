@@ -740,8 +740,8 @@ export function ChatInterface({
       {/* Main Chat Stream Area */}
       <div className="flex flex-1 flex-col h-full min-h-0 min-w-0">
         {/* Scrollable messages container */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-4 sm:px-6 sm:py-6">
-          <div className="mx-auto max-w-3xl space-y-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 sm:px-6 sm:py-6">
+          <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
             {/* Reset chat history action bar when there are messages */}
             {messages.length > 0 && (
               <div className="flex items-center justify-end pb-1">
@@ -759,50 +759,50 @@ export function ChatInterface({
 
             {/* Cartoon Workshop Welcome Hero when empty */}
             {messages.length === 0 && (
-              <div className="my-8 flex flex-col items-start justify-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ede4d5] border-2 border-[#2d2015] shadow-[3px_3px_0px_#2d2015] mb-5 dark:bg-[#211a14] dark:border-[#d49439] dark:shadow-[3px_3px_0px_#d49439]">
-                  <Sparkles className="h-7 w-7 text-[#c25e2e] dark:text-[#fbbf24]" />
+              <div className="my-2 sm:my-8 flex flex-col items-start justify-center">
+                <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-[#ede4d5] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] sm:shadow-[3px_3px_0px_#2d2015] mb-2.5 sm:mb-5 dark:bg-[#211a14] dark:border-[#d49439] dark:shadow-[3px_3px_0px_#d49439]">
+                  <Sparkles className="h-5 w-5 sm:h-7 sm:w-7 text-[#c25e2e] dark:text-[#fbbf24]" />
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <h1
                     id="app-name"
-                    className="text-3xl font-extrabold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9] sm:text-4xl"
+                    className="text-2xl font-extrabold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9] sm:text-4xl"
                   >
                     Calendai
                   </h1>
-                  <span className="rounded-md border border-[#2d2015] bg-[#ede4d5] px-2 py-0.5 text-[11px] font-bold text-[#c25e2e] dark:border-[#453427] dark:bg-[#2a221b] dark:text-[#fbbf24]">
+                  <span className="rounded-md border border-[#2d2015] bg-[#ede4d5] px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-[#c25e2e] dark:border-[#453427] dark:bg-[#2a221b] dark:text-[#fbbf24]">
                     CHRONO-ATELIER
                   </span>
                 </div>
-                <p className="mt-1.5 text-xl font-medium text-[#786455] dark:text-[#ba9f88] sm:text-2xl">
+                <p className="mt-1 text-sm font-medium text-[#786455] dark:text-[#ba9f88] sm:text-2xl sm:mt-1.5">
                   Tôi có thể giúp bạn lên lịch cuộc họp nào hôm nay?
                 </p>
 
                 {/* Quick suggestion cards styled as vintage ticket vouchers */}
-                <div className="mt-8 grid w-full grid-cols-1 gap-3.5 sm:grid-cols-3">
+                <div className="mt-3.5 sm:mt-8 flex w-full gap-2.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-3.5 sm:overflow-visible sm:pb-0">
                   {QUICK_PROMPTS.map((item) => (
                     <button
                       key={item.title}
                       type="button"
                       onClick={() => handlePromptClick(item.prompt)}
-                      className={`flex flex-col justify-between rounded-2xl p-4 text-left transition-all active:scale-[0.98] ${item.cardStyle}`}
+                      className={`flex shrink-0 w-[240px] sm:w-auto flex-col justify-between rounded-xl sm:rounded-2xl p-3 sm:p-4 text-left transition-all active:scale-[0.98] ${item.cardStyle}`}
                     >
                       <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className={`rounded-sm border px-1.5 py-0.2 text-[11px] font-mono font-bold tracking-wider ${item.accentBadge}`}>
+                        <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                          <span className={`rounded-sm border px-1.5 py-0.2 text-[10px] sm:text-[11px] font-mono font-bold tracking-wider ${item.accentBadge}`}>
                             {item.tag}
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
+                        <span className="text-xs sm:text-sm font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
                           {item.title}
                         </span>
-                        <p className="mt-1 text-xs text-[#786455] dark:text-[#ba9f88] line-clamp-2">
+                        <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-[#786455] dark:text-[#ba9f88] line-clamp-2">
                           {item.desc}
                         </p>
                       </div>
-                      <div className={`mt-4 flex items-center justify-end font-bold ${item.arrowColor}`}>
-                        <ArrowUp className="h-4 w-4 rotate-45" />
+                      <div className={`mt-2.5 sm:mt-4 flex items-center justify-end font-bold ${item.arrowColor}`}>
+                        <ArrowUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 rotate-45" />
                       </div>
                     </button>
                   ))}
@@ -874,10 +874,10 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar (Typewriter Console styling) */}
-        <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
-          {/* Workbench Control Bar: Model Selector, Tips & Chronometer Timezone */}
-          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 mb-2 px-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-2.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-2.5 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
+          {/* Workbench Control Bar: Model Selector, Tips, Settings & Chronometer Timezone */}
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-1.5 mb-1.5 px-0.5 sm:mb-2 sm:px-1">
+            <div className="flex min-w-0 items-center gap-1.5 shrink-0">
               {onSelectModel && (
                 <ModelSelector
                   selectedModel={activeModel}
@@ -887,33 +887,35 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={toggleTips}
-                className="flex min-h-11 sm:min-h-[34px] touch-manipulation items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2.5 py-0.5 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
+                className="flex min-h-8 sm:min-h-[34px] touch-manipulation items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2 py-0.5 sm:px-2.5 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
                 title="Xem mẹo đặt lịch & tham số"
                 aria-label="Xem mẹo đặt lịch"
               >
-                <Sparkles className="h-3.5 w-3.5 text-[#d49439] dark:text-[#fbbf24]" />
+                <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#d49439] dark:text-[#fbbf24]" />
                 <span className="hidden xs:inline">Mẹo đặt lịch</span>
               </button>
             </div>
 
-            <ReminderSettings />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <ReminderSettings />
 
-            {/* Chronometer Timezone Badge */}
-            <div className="flex items-center gap-1.5 rounded-full border-2 border-[#2d2015]/30 bg-[#f5eee1] px-2.5 py-0.5 text-[11px] font-mono font-semibold text-[#786455] dark:border-[#453427] dark:bg-[#16120f] dark:text-[#ba9f88]">
-              <Globe className="h-3 w-3 text-[#c25e2e] dark:text-[#e07a3f]" />
-              <span>Hà Nội (GMT+7)</span>
+              {/* Chronometer Timezone Badge */}
+              <div className="hidden xs:flex items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015]/30 bg-[#f5eee1] px-2 py-0.5 sm:px-2.5 text-[10px] sm:text-[11px] font-mono font-semibold text-[#786455] dark:border-[#453427] dark:bg-[#16120f] dark:text-[#ba9f88]">
+                <Globe className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#c25e2e] dark:text-[#e07a3f]" />
+                <span>Hà Nội (GMT+7)</span>
+              </div>
             </div>
           </div>
 
           <form
             onSubmit={onFormSubmit}
-            className="mx-auto flex min-w-0 max-w-3xl items-end rounded-3xl border-2 border-[#2d2015] bg-[#fffaf2] px-3 sm:px-4 py-2 shadow-[3px_3px_0px_#2d2015] focus-within:shadow-[4px_4px_0px_#c25e2e] transition-all dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[3px_3px_0px_#453427] dark:focus-within:border-[#e07a3f] dark:focus-within:shadow-[4px_4px_0px_#e07a3f]"
+            className="mx-auto flex min-w-0 max-w-3xl items-end rounded-2xl sm:rounded-3xl border-2 border-[#2d2015] bg-[#fffaf2] px-2.5 sm:px-4 py-1.5 sm:py-2 shadow-[2px_2px_0px_#2d2015] sm:shadow-[3px_3px_0px_#2d2015] focus-within:shadow-[3px_3px_0px_#c25e2e] sm:focus-within:shadow-[4px_4px_0px_#c25e2e] transition-all dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[2px_2px_0px_#453427] sm:dark:shadow-[3px_3px_0px_#453427] dark:focus-within:border-[#e07a3f] dark:focus-within:shadow-[3px_3px_0px_#e07a3f] sm:dark:focus-within:shadow-[4px_4px_0px_#e07a3f]"
           >
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearChat}
-                className="flex h-11 w-11 shrink-0 sm:h-9 sm:w-9 touch-manipulation items-center justify-center rounded-full text-[#786455] hover:bg-[#fdf2f0] hover:text-[#cf3e32] transition-all active:scale-95 mb-0.5 mr-1.5 sm:mr-2 dark:text-[#ba9f88] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+                className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-full text-[#786455] hover:bg-[#fdf2f0] hover:text-[#cf3e32] transition-all active:scale-95 mb-0.5 mr-1 sm:mr-2 dark:text-[#ba9f88] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
                 title="Xóa session (Bắt đầu đoạn chat mới)"
                 aria-label="Xóa session"
               >
@@ -929,7 +931,7 @@ export function ChatInterface({
               onKeyDown={handleKeyDown}
               placeholder="Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)"
               disabled={isLoading}
-              className="min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base sm:text-sm text-[#2b1f17] placeholder:text-[#786455] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:opacity-50 max-h-36 overflow-y-auto leading-relaxed dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88]"
+              className="min-w-0 flex-1 resize-none bg-transparent py-1 sm:py-1.5 text-base sm:text-sm text-[#2b1f17] placeholder:text-[#786455] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:opacity-50 max-h-36 overflow-y-auto leading-relaxed dark:text-[#f5ebd9] dark:placeholder:text-[#ba9f88]"
               style={{ height: 'auto' }}
             />
 
@@ -950,7 +952,7 @@ export function ChatInterface({
                     ? 'Dừng nhận diện giọng nói'
                     : 'Nói để đặt lịch'
                 }
-                className={`flex h-11 w-11 shrink-0 sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 transition-all active:translate-x-[1px] active:translate-y-[1px] mb-0.5 ml-1.5 ${
+                className={`flex h-9 w-9 shrink-0 sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 transition-all active:translate-x-[1px] active:translate-y-[1px] mb-0.5 ml-1 sm:ml-1.5 ${
                   isListening
                     ? 'border-[#cf3e32] bg-[#cf3e32] text-white shadow-[0_0_12px_rgba(207,62,50,0.6)] animate-pulse'
                     : 'border-[#2d2015] bg-[#ede4d5] text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#fffaf2] hover:text-[#c25e2e] dark:border-[#453427] dark:bg-[#2a221b] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#211a14] dark:hover:text-[#e07a3f]'
@@ -968,7 +970,7 @@ export function ChatInterface({
               type="submit"
               disabled={isLoading || !input.trim()}
               aria-label="Gửi tin nhắn"
-              className="flex h-11 w-11 shrink-0 sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#c25e2e] text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed mb-0.5 ml-1.5 sm:ml-2 dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#f59e0b]"
+              className="flex h-9 w-9 shrink-0 sm:h-9.5 sm:w-9.5 touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#c25e2e] text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed mb-0.5 ml-1 sm:ml-2 dark:border-[#453427] dark:bg-[#e07a3f] dark:text-[#14110f] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#f59e0b]"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -979,12 +981,12 @@ export function ChatInterface({
           </form>
 
           {speechError && (
-            <p role="alert" className="mx-auto mt-2 max-w-3xl text-xs text-[#a63024] dark:text-[#f87171]">
+            <p role="alert" className="mx-auto mt-1.5 max-w-3xl text-xs text-[#a63024] dark:text-[#f87171]">
               {speechError}
             </p>
           )}
 
-          <div className="mx-auto mt-2 flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#786455] sm:flex-row dark:text-[#ba9f88]">
+          <div className="mx-auto mt-1 hidden sm:flex max-w-3xl flex-col items-center justify-between gap-1 text-[11px] text-[#786455] sm:flex-row dark:text-[#ba9f88]">
             <span className="text-center sm:text-left">
               ⚙️ Calendai Chrono-Engine • Google Calendar & Meet
             </span>

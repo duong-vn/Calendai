@@ -17,7 +17,7 @@ export function ReminderSettings() {
   };
   const button = 'min-h-11 rounded-xl border-2 border-[#2d2015] px-3 py-2 text-sm font-semibold dark:border-[#453427]';
   return <details className="relative">
-    <summary className="min-h-11 cursor-pointer rounded-full border-2 border-[#2d2015] px-3 py-2 text-sm font-semibold dark:border-[#453427]">Cài đặt</summary>
+    <summary className="flex min-h-8 sm:min-h-[34px] cursor-pointer items-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-2.5 py-0.5 text-xs font-bold shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]">Cài đặt</summary>
     <section aria-label="Cài đặt nhắc lịch" className="fixed inset-x-4 bottom-20 z-40 max-h-[70dvh] space-y-3 overflow-y-auto rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-4 text-[#2b1f17] shadow-lg sm:absolute sm:inset-auto sm:bottom-full sm:right-0 sm:mb-2 sm:w-72 sm:max-w-[calc(100vw-2rem)] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9]">
       <h3 className="font-bold">Nhắc lịch Google Calendar</h3>
       <p className="text-xs">Số phút trước giờ bắt đầu. Mặc định: 60 phút và 10 phút. Chỉ áp dụng khi xác nhận bản thảo mới, không đổi lịch đã tạo hoặc bản thảo đang thử lại.</p>
