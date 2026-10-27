@@ -874,7 +874,7 @@ export function ChatInterface({
         </div>
 
         {/* Floating Bottom Input Bar (Typewriter Console styling) */}
-        <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 backdrop-blur-md transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
+        <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
           {/* Workbench Control Bar: Model Selector, Tips & Chronometer Timezone */}
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 mb-2 px-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2">

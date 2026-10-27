@@ -112,7 +112,7 @@ export function Header({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-xl border-2 border-[#2d2015] bg-[#fffaf2] text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
+            className="flex h-11 w-11 sm:h-9 sm:w-9 touch-manipulation items-center justify-center rounded-xl border-2 border-[#2d2015] bg-[#fffaf2] text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
             title={isSidebarOpen ? 'Đóng thanh bên' : 'Mở danh sách phiên chat'}
             aria-label={isSidebarOpen ? 'Đóng thanh bên' : 'Mở danh sách phiên chat'}
           >
@@ -120,7 +120,7 @@ export function Header({
           </button>
         )}
 
-        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
+        <Link href="/" className="flex min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 items-center gap-2 sm:gap-2.5 group">
           <div className="relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-[#ede4d5] p-1 border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] group-hover:border-[#c25e2e] transition-all overflow-hidden shrink-0 dark:bg-[#211a14] dark:border-[#453427] dark:group-hover:border-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]">
             <Image
               src="/assets/logo.png"
@@ -135,7 +135,7 @@ export function Header({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <span
               id="header-app-name"
-              className="hidden min-[360px]:inline text-base sm:text-lg font-bold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9]"
+              className="hidden min-[440px]:inline text-base sm:text-lg font-bold tracking-tight text-[#2b1f17] dark:text-[#f5ebd9]"
             >
               Calendai
             </span>
@@ -225,7 +225,7 @@ export function Header({
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-2 focus-visible:ring-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b] dark:focus-visible:ring-[#e07a3f]"
+          className="flex h-11 w-11 sm:h-9 sm:w-9 touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus-visible:ring-2 focus-visible:ring-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b] dark:focus-visible:ring-[#e07a3f]"
           title={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối'}
           aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Giao diện Tối'}
         >
@@ -260,7 +260,7 @@ export function Header({
               onClick={onLogout}
               title="Đăng xuất"
               aria-label="Đăng xuất"
-              className="ml-0.5 sm:ml-1 rounded-full p-1 text-[#786455] hover:bg-black/5 transition-colors dark:text-[#ba9f88] dark:hover:bg-white/10"
+              className="ml-0.5 sm:ml-1 inline-flex min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 items-center justify-center rounded-full p-1 text-[#786455] hover:bg-black/5 transition-colors dark:text-[#ba9f88] dark:hover:bg-white/10"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -268,7 +268,7 @@ export function Header({
         ) : (
           <a
             href="/api/auth/google"
-            className="flex items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#c25e2e] px-2.5 py-1 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:px-3.5 sm:py-1.5 dark:bg-[#e07a3f] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427] dark:text-[#14110f] dark:hover:bg-[#f59e0b]"
+            className="flex min-h-11 sm:min-h-0 items-center gap-1 sm:gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#c25e2e] px-2.5 py-1 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#a6491e] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:px-3.5 sm:py-1.5 dark:bg-[#e07a3f] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427] dark:text-[#14110f] dark:hover:bg-[#f59e0b]"
           >
             {/* Google G icon */}
             <svg className="h-4 w-4 bg-white rounded-full p-0.5 shrink-0 border border-[#2d2015]" viewBox="0 0 24 24">
@@ -306,7 +306,7 @@ export function Header({
             onClick={() => setIsMobileMenuOpen((prev) => !prev)}
             aria-expanded={isMobileMenuOpen}
             aria-label="Menu tùy chọn"
-            className="flex h-8.5 w-8.5 min-h-[34px] min-w-[34px] touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+            className="flex h-11 w-11 sm:h-9 sm:w-9 touch-manipulation items-center justify-center rounded-full border-2 border-[#2d2015] bg-[#fffaf2] text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
           >
             {isMobileMenuOpen ? (
               <X className="h-4 w-4" />
@@ -328,7 +328,7 @@ export function Header({
                   setIsMobileMenuOpen(false);
                   onOpenUpcoming();
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
+                className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
               >
                 <Video className="h-4 w-4 text-[#1f7560] dark:text-[#2dd4bf]" />
                 <span>Lịch trình sắp tới</span>
@@ -342,7 +342,7 @@ export function Header({
                     setIsMobileMenuOpen(false);
                     onOpenHistory();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
                 >
                   <MessageSquare className="h-4 w-4 text-[#c25e2e] dark:text-[#e07a3f]" />
                   <span>Lịch sử phiên chat</span>
@@ -357,7 +357,7 @@ export function Header({
                     setIsMobileMenuOpen(false);
                     onOpenTips();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#2b1f17] hover:bg-[#ede4d5] transition-colors dark:text-[#f5ebd9] dark:hover:bg-[#2a221b]"
                 >
                   <Sparkles className="h-4 w-4 text-[#d49439] dark:text-[#fbbf24]" />
                   <span>Mẹo nâng cao</span>
@@ -372,7 +372,7 @@ export function Header({
                     setIsMobileMenuOpen(false);
                     onClearSession();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#a63024] hover:bg-[#fdf2f0] transition-colors dark:text-[#fca5a5] dark:hover:bg-[#2b1111]"
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#a63024] hover:bg-[#fdf2f0] transition-colors dark:text-[#fca5a5] dark:hover:bg-[#2b1111]"
                 >
                   <RotateCcw className="h-4 w-4" />
                   <span>Làm mới hội thoại</span>
@@ -385,7 +385,7 @@ export function Header({
                 href="/privacy"
                 role="menuitem"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#786455] hover:bg-[#ede4d5] transition-colors dark:text-[#ba9f88] dark:hover:bg-[#2a221b]"
+                className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#786455] hover:bg-[#ede4d5] transition-colors dark:text-[#ba9f88] dark:hover:bg-[#2a221b]"
               >
                 <Shield className="h-4 w-4 text-[#c25e2e] dark:text-[#e07a3f]" />
                 <span>Chính sách quyền riêng tư</span>
@@ -395,7 +395,7 @@ export function Header({
                 href="/terms"
                 role="menuitem"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#786455] hover:bg-[#ede4d5] transition-colors dark:text-[#ba9f88] dark:hover:bg-[#2a221b]"
+                className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-[#786455] hover:bg-[#ede4d5] transition-colors dark:text-[#ba9f88] dark:hover:bg-[#2a221b]"
               >
                 <FileText className="h-4 w-4 text-[#786455] dark:text-[#ba9f88]" />
                 <span>Điều khoản dịch vụ</span>

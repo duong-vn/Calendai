@@ -213,7 +213,7 @@ export function ChatSidebar({
                     }}
                     aria-label={`Xóa phiên chat: ${session.title}`}
                     title="Xóa phiên chat"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-[#786455] opacity-0 group-hover:opacity-100 hover:bg-[#fdf2f0] hover:text-[#cf3e32] transition-all focus:opacity-100 dark:text-[#ba9f88] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-[#786455] opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 hover:bg-[#fdf2f0] hover:text-[#cf3e32] transition-all focus:opacity-100 dark:text-[#ba9f88] dark:hover:bg-[#2b1111] dark:hover:text-[#fca5a5]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
