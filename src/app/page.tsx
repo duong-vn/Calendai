@@ -162,6 +162,7 @@ export default function Home() {
       await fetch('/api/auth/google/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setUser(null);
+      handleNewSession();
       setToast({
         type: 'success',
         message: 'Đã ngắt kết nối tài khoản Google.',

@@ -36,13 +36,13 @@ interface MeetingPreviewCardProps {
   compact?: boolean;
 }
 
-function formatVietnameseDate(isoString: string): string {
+function formatVietnameseDate(isoString: string, timeZone = 'Asia/Ho_Chi_Minh'): string {
   try {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return isoString;
 
     return new Intl.DateTimeFormat('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
+      timeZone,
       weekday: 'long',
       day: '2-digit',
       month: '2-digit',
@@ -53,14 +53,14 @@ function formatVietnameseDate(isoString: string): string {
   }
 }
 
-function formatVietnameseTimeRange(startIso: string, endIso: string): string {
+function formatVietnameseTimeRange(startIso: string, endIso: string, timeZone = 'Asia/Ho_Chi_Minh'): string {
   try {
     const s = new Date(startIso);
     const e = new Date(endIso);
     if (isNaN(s.getTime()) || isNaN(e.getTime())) return '';
 
     const timeFmt = new Intl.DateTimeFormat('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
+      timeZone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
@@ -68,6 +68,19 @@ function formatVietnameseTimeRange(startIso: string, endIso: string): string {
 
     const durationMin = Math.round((e.getTime() - s.getTime()) / (60 * 1000));
     return `${timeFmt.format(s)} – ${timeFmt.format(e)} (${durationMin} phút)`;
+  } catch {
+    return '';
+  }
+}
+
+function getTimeZoneOffsetLabel(timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(new Date());
+    const tzPart = parts.find((p) => p.type === 'timeZoneName');
+    return tzPart ? ` (${tzPart.value})` : '';
   } catch {
     return '';
   }
@@ -82,9 +95,11 @@ export function MeetingPreviewCard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const [createMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
   const confirmationPending = useRef(false);
+
+  const [createMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
   const submittedReminders = useRef<number[] | undefined>(undefined);
+
   const [conflicts, setConflicts] = useState<CalendarConflict[]>([]);
   const [conflictRevision, setConflictRevision] = useState(0);
   const draft = { ...proposal, createMeet };
@@ -114,6 +129,10 @@ export function MeetingPreviewCard({
     setLoading(true);
     setError(null);
 
+    const remindersToSubmit =
+      submittedReminders.current ??
+      (submittedReminders.current = proposal.reminderMinutes ?? readReminderSettings());
+
     try {
       const response = await fetch('/api/calendar/confirm', {
         method: 'POST',
@@ -128,7 +147,7 @@ export function MeetingPreviewCard({
           createMeet: Boolean(createMeet),
           proposalId: proposal.proposalId,
           allowConflict,
-          reminderMinutes: submittedReminders.current ?? (submittedReminders.current = proposal.reminderMinutes ?? readReminderSettings()),
+          reminderMinutes: remindersToSubmit,
         }),
       });
 
@@ -153,11 +172,14 @@ export function MeetingPreviewCard({
     }
   };
 
-  const formattedDate = formatVietnameseDate(proposal.startDateTime);
+  const timeZone = proposal.timeZone || 'Asia/Ho_Chi_Minh';
+  const formattedDate = formatVietnameseDate(proposal.startDateTime, timeZone);
   const formattedTimeRange = formatVietnameseTimeRange(
     proposal.startDateTime,
-    proposal.endDateTime
+    proposal.endDateTime,
+    timeZone
   );
+  const tzOffsetLabel = getTimeZoneOffsetLabel(timeZone);
 
   return (
     <div className={compact ? 'min-w-0 [overflow-wrap:anywhere]' : 'my-3 overflow-hidden rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] shadow-[4px_4px_0px_#2d2015] transition-all dark:border-[#453427] dark:bg-[#1f1813] dark:shadow-[4px_4px_0px_#453427]'}>
@@ -204,7 +226,7 @@ export function MeetingPreviewCard({
 
           <div className="flex items-center gap-2.5 text-xs text-[#786455] dark:text-[#ba9f88]">
             <Globe className="h-4 w-4 text-[#786455] shrink-0 dark:text-[#ba9f88]" />
-            <span>Múi giờ: {proposal.timeZone || 'Asia/Ho_Chi_Minh'} (GMT+7)</span>
+            <span>Múi giờ: {timeZone}{tzOffsetLabel}</span>
           </div>
 
           {/* Attendees */}

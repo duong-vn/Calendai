@@ -95,6 +95,7 @@ export async function POST(req: Request) {
       messages,
       tools,
       maxSteps: 3, // Bounded multi-step execution
+      maxTokens: 4000,
       abortSignal: req.signal,
     });
 

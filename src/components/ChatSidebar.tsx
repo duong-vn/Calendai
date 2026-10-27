@@ -72,7 +72,7 @@ export function ChatSidebar({
   const filteredSessions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return sessions;
-    return sessions.filter((s) => s.title.toLowerCase().includes(q));
+    return sessions.filter((s) => (s?.title || '').toLowerCase().includes(q));
   }, [sessions, searchQuery]);
 
   return (
@@ -88,6 +88,7 @@ export function ChatSidebar({
 
       {/* Sidebar Panel */}
       <aside
+        inert={!isOpen}
         className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r-2 border-[#2d2015] bg-[#fffaf2] shadow-2xl transition-all duration-300 ease-in-out lg:static lg:z-20 lg:shadow-none dark:border-[#453427] dark:bg-[#181310] ${
           isOpen
             ? 'w-72 max-w-[85vw] translate-x-0'
