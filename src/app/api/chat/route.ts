@@ -6,11 +6,44 @@ import { createCalendarTools } from '@/lib/ai/tools';
 import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
 import { getServerEnv } from '@/lib/env';
 
+const ToolCallSchema = z.object({
+  toolCallId: z.string(),
+  toolName: z.string(),
+  args: z.record(z.unknown()),
+  step: z.number().int().nonnegative().optional(),
+});
+const ToolInvocationSchema = z.discriminatedUnion('state', [
+  ToolCallSchema.extend({ state: z.literal('partial-call') }),
+  ToolCallSchema.extend({ state: z.literal('call') }),
+  ToolCallSchema.extend({ state: z.literal('result'), result: z.unknown() }),
+]);
+const MessagePartSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), text: z.string() }),
+  z.object({ type: z.literal('tool-invocation'), toolInvocation: ToolInvocationSchema }),
+  z.object({ type: z.literal('step-start') }),
+  z.object({
+    type: z.literal('reasoning'),
+    reasoning: z.string(),
+    details: z.array(z.discriminatedUnion('type', [
+      z.object({ type: z.literal('text'), text: z.string(), signature: z.string().optional() }),
+      z.object({ type: z.literal('redacted'), data: z.string() }),
+    ])),
+  }),
+  z.object({
+    type: z.literal('source'),
+    source: z.object({ sourceType: z.literal('url'), id: z.string(), url: z.string(), title: z.string().optional() }),
+  }),
+]);
+
 const ChatRequestSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string().max(30000),
-  }).passthrough()).min(1).max(200),
+    // Attachments and file parts are unsupported; never let the SDK download client URLs.
+    experimental_attachments: z.never().optional(),
+    toolInvocations: z.array(ToolInvocationSchema).optional(),
+    parts: z.array(MessagePartSchema).optional(),
+  })).min(1).max(200),
   model: z.string().trim().max(200).optional(),
 });
 
