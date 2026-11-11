@@ -65,6 +65,47 @@ describe('Native chat authentication and input boundary', () => {
     expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({ messages: [expect.objectContaining({ toolInvocations })] }));
   });
 
+  it.each(['user', 'assistant'])('rejects %s attachments before any SDK or network call', async (role) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network request'));
+    try {
+      const response = await POST(request({ messages: [{ role, content: 'Xin chào', experimental_attachments: [{ url: 'https://example.test/document.pdf', contentType: 'application/pdf' }] }] }));
+      expect(response.status).toBe(400);
+      expect(mocks.stream).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('rejects file parts before any SDK or network call', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network request'));
+    try {
+      const response = await POST(request({ messages: [{ role: 'user', content: '', parts: [{ type: 'file', mimeType: 'application/pdf', data: 'https://example.test/document.pdf' }] }] }));
+      expect(response.status).toBe(400);
+      expect(mocks.stream).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('preserves validated parts and removes unknown metadata at each boundary', async () => {
+    const toolInvocation = { toolCallId: '1', toolName: 'proposeMeeting', state: 'result', step: 0, args: { summary: 'Họp' }, result: { proposal: {} } };
+    const parts = [{ type: 'text', text: 'Bản thảo' }, { type: 'tool-invocation', toolInvocation }, { type: 'step-start' }];
+    const response = await POST(request({ messages: [{ role: 'assistant', content: '', untrusted: true, toolInvocations: [{ ...toolInvocation, untrusted: true }], parts: parts.map(part => ({ ...part, untrusted: true })) }] }));
+    expect(response.status).toBe(200);
+    expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({ messages: [{ role: 'assistant', content: '', toolInvocations: [toolInvocation], parts }] }));
+  });
+
+  it.each([
+    { toolInvocations: [{ state: 'result', toolCallId: 42, toolName: 'proposeMeeting', args: {}, result: {} }] },
+    { parts: [{ type: 'tool-invocation', toolInvocation: { state: 'unknown' } }] },
+    { parts: [{ type: 'text', text: 42 }] },
+  ])('rejects malformed SDK metadata: %j', async (metadata) => {
+    expect((await POST(request({ messages: [{ role: 'assistant', content: '', ...metadata }] }))).status).toBe(400);
+    expect(mocks.stream).not.toHaveBeenCalled();
+  });
+
   it('rejects models not in the server provider catalog', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: [{ id: 'allowed-model' }] }));
     try {
