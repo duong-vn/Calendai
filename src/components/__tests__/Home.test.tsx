@@ -86,11 +86,11 @@ describe('Home account-isolated history', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(authResponse('A')));
     render(<Home />);
     await waitFor(() => expect(screen.getAllByText('Nội dung tài khoản A').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', { name: 'Đoạn chat mới' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Đoạn chat mới' })));
     expect(loadAllSessions('user_A')).toHaveLength(2);
     const newId = getActiveSessionId('user_A');
     expect(newId).not.toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Xóa phiên chat: Cuộc trò chuyện mới' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Xóa phiên chat: Cuộc trò chuyện mới' })));
     expect(loadAllSessions('user_A')).toHaveLength(1);
     expect(getActiveSessionId('user_A')).not.toBe(newId);
     expect(loadAllSessions('user_B')).toHaveLength(1);
