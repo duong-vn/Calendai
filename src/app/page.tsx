@@ -30,6 +30,9 @@ const ChatHistoryModal = dynamic(
 export default function Home() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const historyScope = isAuthenticated && user ? `user_${user.id}` : 'guest';
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(true);
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -58,18 +61,21 @@ export default function Home() {
     }
   }, []);
 
-  // Load chat sessions on mount
+  // Never restore shared legacy history before the account is known.
   useEffect(() => {
-    const all = loadAllSessions();
+    if (!authReady) return;
+    const all = loadAllSessions(historyScope);
     setSessions(all);
-    const active = getActiveSessionId() || all[0]?.id || null;
+    const active = getActiveSessionId(historyScope) || all[0]?.id || null;
     setActiveSessionIdState(active);
-  }, []);
+    setLoadedScope(historyScope);
+  }, [authReady, historyScope]);
 
   const refreshSessions = useCallback(() => {
-    const all = loadAllSessions();
+    if (!authReady) return;
+    const all = loadAllSessions(historyScope);
     setSessions(all);
-  }, []);
+  }, [authReady, historyScope]);
 
   useEffect(() => {
     try {
@@ -92,13 +98,14 @@ export default function Home() {
   };
 
   const handleSelectSession = (session: ChatSession) => {
-    setActiveSessionId(session.id);
+    setActiveSessionId(session.id, historyScope);
     setActiveSessionIdState(session.id);
     setChatKey((prev) => prev + 1);
   };
 
   const handleNewSession = () => {
-    const newSession = createNewSession(selectedModel);
+    if (!authReady || loadedScope !== historyScope) return;
+    const newSession = createNewSession(selectedModel, historyScope);
     refreshSessions();
     setActiveSessionIdState(newSession.id);
     setChatKey((prev) => prev + 1);
@@ -109,7 +116,7 @@ export default function Home() {
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    const { remainingSessions, newActiveId } = deleteSessionById(sessionId);
+    const { remainingSessions, newActiveId } = deleteSessionById(sessionId, historyScope);
     setSessions(remainingSessions);
     if (activeSessionId === sessionId) {
       setActiveSessionIdState(newActiveId);
@@ -131,6 +138,8 @@ export default function Home() {
     } catch {
       setIsAuthenticated(false);
       setUser(null);
+    } finally {
+      setAuthReady(true);
     }
   };
 
@@ -162,7 +171,8 @@ export default function Home() {
       await fetch('/api/auth/google/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setUser(null);
-      handleNewSession();
+      setIsUpcomingOpen(false);
+      setIsHistoryOpen(false);
       setToast({
         type: 'success',
         message: 'Đã ngắt kết nối tài khoản Google.',
@@ -228,8 +238,8 @@ export default function Home() {
         onLogout={handleLogout}
       />
 
-      {/* Main Layout Area with ChatGPT-style Left Sidebar */}
-      <div className="flex flex-1 min-h-0 overflow-hidden relative">
+      {/* Mount history only after the matching account scope has loaded. */}
+      {authReady && loadedScope === historyScope && <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <ChatSidebar
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen((prev) => !prev)}
@@ -246,7 +256,8 @@ export default function Home() {
         {/* Main Chat Interface */}
         <main className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
           <ChatInterface
-            key={chatKey}
+            key={`${historyScope}:${chatKey}`}
+            historyScope={historyScope}
             isAuthenticated={isAuthenticated}
             selectedModel={selectedModel}
             onSelectModel={handleSelectModel}
@@ -262,7 +273,7 @@ export default function Home() {
             }}
           />
         </main>
-      </div>
+      </div>}
 
       {/* Upcoming Events Modal Drawer */}
       <UpcomingEventsModal
@@ -272,7 +283,7 @@ export default function Home() {
 
       {/* Multi-Session History Modal Drawer (fallback / direct open) */}
       <ChatHistoryModal
-        isOpen={isHistoryOpen}
+        isOpen={isHistoryOpen && authReady && loadedScope === historyScope}
         onClose={() => setIsHistoryOpen(false)}
         sessions={sessions}
         activeSessionId={activeSessionId}

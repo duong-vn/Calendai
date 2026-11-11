@@ -379,6 +379,7 @@ type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 interface ChatInterfaceProps {
   isAuthenticated: boolean;
+  historyScope?: string;
   selectedModel?: string;
   onSelectModel?: (modelId: string) => void;
   activeSessionId?: string | null;
@@ -390,6 +391,7 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({
   isAuthenticated,
+  historyScope = 'guest',
   selectedModel: propSelectedModel,
   onSelectModel,
   activeSessionId: propActiveSessionId,
@@ -405,7 +407,7 @@ export function ChatInterface({
     externalToggleTips || (() => setInternalTipsOpen((prev) => !prev));
 
   const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
-    return propActiveSessionId || getActiveSessionId() || generateSessionId();
+    return propActiveSessionId || getActiveSessionId(historyScope) || generateSessionId();
   });
 
   const [internalSelectedModel, setInternalSelectedModel] = useState<string>('');
@@ -621,44 +623,24 @@ export function ChatInterface({
 
   // Restore chat session from localStorage on mount or when activeSessionId changes
   useEffect(() => {
-    const sessions = loadAllSessions();
-    const targetId = propActiveSessionId || getActiveSessionId();
+    const sessions = loadAllSessions(historyScope);
+    const targetId = propActiveSessionId || getActiveSessionId(historyScope);
     const target = sessions.find((s) => s.id === targetId) || sessions[0];
 
     if (target) {
       setCurrentSessionId(target.id);
-      setActiveSessionId(target.id);
+      setActiveSessionId(target.id, historyScope);
       if (typeof setMessages === 'function') {
         setMessages(target.messages || []);
       }
       setConfirmedEvents(target.confirmedEvents || {});
-    } else {
-      // Legacy single-session fallback
-      try {
-        const savedMessages = localStorage.getItem('calendai_chat_messages');
-        if (savedMessages) {
-          const parsed = JSON.parse(savedMessages);
-          if (Array.isArray(parsed) && parsed.length > 0 && typeof setMessages === 'function') {
-            setMessages(parsed);
-          }
-        }
-        const savedEvents = localStorage.getItem('calendai_confirmed_events');
-        if (savedEvents) {
-          const parsedEvents = JSON.parse(savedEvents);
-          if (parsedEvents && typeof parsedEvents === 'object') {
-            setConfirmedEvents(parsedEvents);
-          }
-        }
-      } catch {
-        // Ignore parse errors
-      }
     }
-  }, [propActiveSessionId, setMessages]);
+  }, [propActiveSessionId, setMessages, historyScope]);
 
   // Persist messages & confirmedEvents to current session in localStorage
   useEffect(() => {
     if (messages.length > 0 || Object.keys(confirmedEvents).length > 0) {
-      const all = loadAllSessions();
+      const all = loadAllSessions(historyScope);
       const existing = all.find((s) => s.id === currentSessionId);
       const sessionToSave: ChatSession = {
         id: currentSessionId,
@@ -673,10 +655,10 @@ export function ChatInterface({
         model: activeModel,
       };
 
-      saveCurrentSession(sessionToSave);
+      saveCurrentSession(sessionToSave, historyScope);
       onSessionsChange?.();
     }
-  }, [messages, confirmedEvents, currentSessionId, activeModel, onSessionsChange]);
+  }, [messages, confirmedEvents, currentSessionId, activeModel, onSessionsChange, historyScope]);
 
   // Auto scroll to latest message
   useEffect(() => {
@@ -701,13 +683,7 @@ export function ChatInterface({
     setConfirmedEvents({});
     const newId = generateSessionId();
     setCurrentSessionId(newId);
-    setActiveSessionId(newId);
-    try {
-      localStorage.removeItem('calendai_chat_messages');
-      localStorage.removeItem('calendai_confirmed_events');
-    } catch {
-      // Ignore
-    }
+    setActiveSessionId(newId, historyScope);
     if (onClearSession) {
       onClearSession();
     }
