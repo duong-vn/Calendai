@@ -100,6 +100,9 @@ export async function exchangeCodeForTokens(
     code, client_id: clientId, client_secret: clientSecret,
     redirect_uri: redirectUri, grant_type: 'authorization_code',
   }));
+  if (!tokens.scope.split(/\s+/).includes('https://www.googleapis.com/auth/calendar.events')) {
+    throw new GoogleOAuthError('Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.', 401, 'google_calendar_permission_required');
+  }
   return { tokens, user: await fetchGoogleProfile(tokens.accessToken, false) };
 }
 
