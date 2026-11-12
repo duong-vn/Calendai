@@ -96,7 +96,7 @@ export async function createGoogleCalendarEvent(
     : undefined;
   const requestId = eventId ?? crypto.randomUUID();
 
-  const url = `${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events?conferenceDataVersion=1`;
+  const url = `${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events?conferenceDataVersion=1${input.attendees?.length ? '&sendUpdates=all' : ''}`;
 
   const requestBody: Record<string, unknown> = {
     summary: input.summary,

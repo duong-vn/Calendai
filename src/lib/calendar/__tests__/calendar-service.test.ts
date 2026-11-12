@@ -69,6 +69,7 @@ describe('Google Calendar Service Layer', () => {
     const calledOptions = mockFetch.mock.calls[0][1];
 
     expect(calledUrl).toContain('conferenceDataVersion=1');
+    expect(new URL(calledUrl).searchParams.get('sendUpdates')).toBe('all');
     expect(calledOptions.headers.Authorization).toBe('Bearer mock-access-token');
 
     const parsedBody = JSON.parse(calledOptions.body);
@@ -79,6 +80,24 @@ describe('Google Calendar Service Layer', () => {
     expect(result.id).toBe('google-event-id-999');
     expect(result.hangoutLink).toBe('https://meet.google.com/abc-defg-hij');
     expect(result.conferenceStatus).toBe('success');
+  });
+
+  it.each([undefined, []])('omits invitation updates when attendees are %j', async (attendees) => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'event-without-guests' }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await createGoogleCalendarEvent('mock-access-token', {
+      summary: 'Lịch cá nhân',
+      startDateTime: '2026-10-12T09:00:00+07:00',
+      endDateTime: '2026-10-12T10:00:00+07:00',
+      attendees,
+    });
+
+    expect(new URL(mockFetch.mock.calls[0][0]).searchParams.has('sendUpdates')).toBe(false);
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).attendees).toBeUndefined();
   });
 
   it('falls back to entryPoints video uri when top-level hangoutLink is absent', async () => {
