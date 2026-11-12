@@ -94,6 +94,29 @@ describe('Google OAuth Layer', () => {
     expect(result.user.name).toBe('Nguyen Van Test');
   });
 
+  it.each([
+    'openid email profile',
+    undefined,
+    '',
+    'https://www.googleapis.com/auth/calendar.events.readonly',
+  ])('rejects web consent without Calendar events permission (scope: %s)', async (scope) => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({
+        access_token: 'access-value', refresh_token: 'refresh-value', expires_in: 3600,
+        token_type: 'Bearer', scope,
+      }))
+      .mockResolvedValueOnce(Response.json({ id: 'google-id', email: 'user@example.com', name: 'Test' }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    await expect(exchangeCodeForTokens('code', 'http://localhost:3000/callback', 'client', 'key'))
+      .rejects.toMatchObject({
+        status: 401,
+        code: 'google_calendar_permission_required',
+        message: 'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.',
+      });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   const nativeGrant = {
     access_token: 'access-value', refresh_token: 'refresh-value', expires_in: 3600,
     token_type: 'Bearer', scope: 'https://www.googleapis.com/auth/calendar.events',
