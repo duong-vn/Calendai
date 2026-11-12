@@ -40,7 +40,7 @@ const getRecognition = () => MockSpeechRecognition.instances.at(-1)!;
 // Mock ai/react useChat hook
 const mockUseChat = vi.fn();
 vi.mock('ai/react', () => ({
-  useChat: () => mockUseChat(),
+  useChat: () => ({ stop: vi.fn(), ...mockUseChat() }),
 }));
 
 describe('ChatInterface Component UX & States', () => {
@@ -180,7 +180,7 @@ describe('ChatInterface Component UX & States', () => {
     expect(clearBtns.length).toBeGreaterThan(0);
 
     fireEvent.click(clearBtns[0]);
-    expect(mockSetMessages).toHaveBeenCalledWith([]);
+    expect(mockSetMessages).not.toHaveBeenCalledWith([]);
     expect(mockClearSession).toHaveBeenCalled();
   });
 });

@@ -265,12 +265,7 @@ export default function Home() {
             onSessionsChange={refreshSessions}
             isTipsOpen={isTipsOpen}
             onToggleTips={() => setIsTipsOpen((prev) => !prev)}
-            onClearSession={() => {
-              setToast({
-                type: 'success',
-                message: 'Đã tạo cuộc trò chuyện mới.',
-              });
-            }}
+            onClearSession={handleNewSession}
           />
         </main>
       </div>}
