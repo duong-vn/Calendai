@@ -436,6 +436,7 @@ export function ChatInterface({
     error,
     reload,
     setInput,
+    stop,
   } = useChat({
     api: '/api/chat',
     body: {
@@ -677,6 +678,11 @@ export function ChatInterface({
 
   const handleClearChat = () => {
     cancelVoiceRecognition();
+    stop();
+    if (onClearSession) {
+      onClearSession();
+      return;
+    }
     if (typeof setMessages === 'function') {
       setMessages([]);
     }
@@ -684,9 +690,6 @@ export function ChatInterface({
     const newId = generateSessionId();
     setCurrentSessionId(newId);
     setActiveSessionId(newId, historyScope);
-    if (onClearSession) {
-      onClearSession();
-    }
     onSessionsChange?.();
   };
 
