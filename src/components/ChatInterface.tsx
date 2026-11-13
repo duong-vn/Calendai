@@ -29,6 +29,7 @@ import {
   getActiveSessionId,
   loadAllSessions,
   saveCurrentSession,
+  saveSessionsList,
   setActiveSessionId,
 } from '@/lib/chat/session-storage';
 import { EventCreatedCard } from './EventCreatedCard';
@@ -698,11 +699,20 @@ export function ChatInterface({
     event: CalendarEventResult,
     isMock?: boolean
   ) => {
+    // Persist before updating React state: this callback can finish after unmount.
+    const sessions = loadAllSessions(historyScope);
+    const session = sessions.find((item) => item.id === currentSessionId);
+    if (session) {
+      session.confirmedEvents = { ...session.confirmedEvents, [proposalId]: { event, isMock } };
+      session.updatedAt = Date.now();
+      saveSessionsList(sessions, historyScope);
+      onSessionsChange?.();
+    }
     setConfirmedEvents((prev) => ({
       ...prev,
       [proposalId]: { event, isMock },
     }));
-  }, []);
+  }, [currentSessionId, historyScope, onSessionsChange]);
 
   const handleEditRequest = useCallback((proposal: MeetingProposalData) => {
     setInput(`Tôi muốn chỉnh sửa thông tin cuộc họp "${proposal.summary}": `);
