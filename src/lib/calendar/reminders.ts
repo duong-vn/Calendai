@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const DEFAULT_REMINDER_MINUTES = [60, 10];
 export const REMINDER_SETTINGS_KEY = 'calendai_reminder_minutes';
+export const REMINDER_SETTINGS_CHANGED_EVENT = 'calendai:reminder-settings-changed';
 export const ReminderMinutesSchema = z.array(z.number().int().min(0).max(40320)).max(5)
   .refine(values => new Set(values).size === values.length, 'Các mốc nhắc không được trùng nhau.');
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Bell,
@@ -14,7 +14,7 @@ import {
   Video,
 } from 'lucide-react';
 import type { CalendarEventResult } from '@/lib/calendar/types';
-import { DEFAULT_REMINDER_MINUTES, readReminderSettings } from '@/lib/calendar/reminders';
+import { DEFAULT_REMINDER_MINUTES, readReminderSettings, REMINDER_SETTINGS_CHANGED_EVENT } from '@/lib/calendar/reminders';
 import { CalendarConflictChoices, type CalendarConflict } from './CalendarConflictChoices';
 
 export interface MeetingProposalData {
@@ -99,6 +99,14 @@ export function MeetingPreviewCard({
 
   const [createMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
   const submittedReminders = useRef<number[] | undefined>(undefined);
+  const [savedReminders, setSavedReminders] = useState(DEFAULT_REMINDER_MINUTES);
+  useEffect(() => {
+    const updateReminders = () => setSavedReminders(readReminderSettings());
+    updateReminders();
+    window.addEventListener(REMINDER_SETTINGS_CHANGED_EVENT, updateReminders);
+    return () => window.removeEventListener(REMINDER_SETTINGS_CHANGED_EVENT, updateReminders);
+  }, []);
+  const reminderMinutes = submittedReminders.current ?? proposal.reminderMinutes ?? savedReminders;
 
   const [conflicts, setConflicts] = useState<CalendarConflict[]>([]);
   const [conflictRevision, setConflictRevision] = useState(0);
@@ -131,7 +139,7 @@ export function MeetingPreviewCard({
 
     const remindersToSubmit =
       submittedReminders.current ??
-      (submittedReminders.current = proposal.reminderMinutes ?? readReminderSettings());
+      (submittedReminders.current = reminderMinutes);
 
     try {
       const response = await fetch('/api/calendar/confirm', {
@@ -284,8 +292,8 @@ export function MeetingPreviewCard({
           <Bell className="h-3.5 w-3.5 shrink-0" />
           <span>
             Nhắc qua Google Calendar:{' '}
-            {(submittedReminders.current ?? proposal.reminderMinutes ?? readReminderSettings()).length
-              ? `trước ${(submittedReminders.current ?? proposal.reminderMinutes ?? readReminderSettings()).join(' và ')} phút (0 = lúc bắt đầu)`
+            {reminderMinutes.length
+              ? `trước ${reminderMinutes.join(' và ')} phút (0 = lúc bắt đầu)`
               : 'Đã tắt'}
           </span>
         </div>

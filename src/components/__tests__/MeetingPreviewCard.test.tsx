@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ReminderSettings } from '../ReminderSettings';
 import {
   MeetingPreviewCard,
   type MeetingProposalData,
@@ -115,15 +116,35 @@ describe('MeetingPreviewCard Component', () => {
     expect(JSON.parse(mockFetch.mock.calls[0][1].body).reminderMinutes).toEqual([60, 10]);
   });
 
+  it.each([undefined, [15]])('keeps the preview and confirmation aligned after saving settings (proposal reminders: %j)', async (reminderMinutes) => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, event: { id: 'created' } }) });
+    vi.stubGlobal('fetch', mockFetch);
+    render(<><ReminderSettings /><MeetingPreviewCard proposal={{ ...mockProposal, reminderMinutes }} onConfirmSuccess={vi.fn()} /></>);
+    expect(screen.getByText(`Nhắc qua Google Calendar: trước ${reminderMinutes ? '15' : '60 và 10'} phút (0 = lúc bắt đầu)`)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Cài đặt'));
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ mốc nhắc 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ mốc nhắc 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
+    expect(screen.getByText(reminderMinutes ? 'Nhắc qua Google Calendar: trước 15 phút (0 = lúc bắt đầu)' : 'Nhắc qua Google Calendar: Đã tắt')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await screen.findByText('Đã đóng dấu tạo lịch');
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).reminderMinutes).toEqual(reminderMinutes ?? []);
+  });
+
   it('uses saved reminder settings and keeps them fixed for retries', async () => {
     localStorage.setItem('calendai_reminder_minutes', '[30,5]');
     const mockFetch = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ success: false, error: 'Thử lại' }) });
     vi.stubGlobal('fetch', mockFetch);
-    render(<MeetingPreviewCard proposal={mockProposal} onConfirmSuccess={vi.fn()} />);
+    render(<><ReminderSettings /><MeetingPreviewCard proposal={mockProposal} onConfirmSuccess={vi.fn()} /></>);
     fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
     await screen.findByText('Thử lại');
     expect(JSON.parse(mockFetch.mock.calls[0][1].body).reminderMinutes).toEqual([30, 5]);
-    localStorage.setItem('calendai_reminder_minutes', '[15]');
+    fireEvent.click(screen.getByText('Cài đặt'));
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ mốc nhắc 2' }));
+    fireEvent.change(screen.getByLabelText('Nhắc trước (phút) 1'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
+    expect(localStorage.getItem('calendai_reminder_minutes')).toBe('[15]');
+    expect(screen.getByText('Nhắc qua Google Calendar: trước 30 và 5 phút (0 = lúc bắt đầu)')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
     expect(JSON.parse(mockFetch.mock.calls[1][1].body).reminderMinutes).toEqual([30, 5]);
