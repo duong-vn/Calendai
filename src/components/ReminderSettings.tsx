@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DEFAULT_REMINDER_MINUTES, readReminderSettings, REMINDER_SETTINGS_KEY, ReminderMinutesSchema } from '@/lib/calendar/reminders';
+import { DEFAULT_REMINDER_MINUTES, readReminderSettings, REMINDER_SETTINGS_KEY, REMINDER_SETTINGS_CHANGED_EVENT, ReminderMinutesSchema } from '@/lib/calendar/reminders';
 
 export function ReminderSettings() {
   const [values, setValues] = useState(() => DEFAULT_REMINDER_MINUTES.map(String));
@@ -12,6 +12,7 @@ export function ReminderSettings() {
     if (!parsed.success) { setMessage('Nhập tối đa 5 mốc khác nhau, mỗi mốc là số phút nguyên từ 0 đến 40320.'); return; }
     try {
       localStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(parsed.data));
+      window.dispatchEvent(new Event(REMINDER_SETTINGS_CHANGED_EVENT));
       setMessage('Đã lưu. Áp dụng cho bản thảo mới xác nhận trên trình duyệt này.');
     } catch { setMessage('Không lưu được cài đặt. Vui lòng kiểm tra quyền lưu trữ của trình duyệt.'); }
   };
