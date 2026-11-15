@@ -47,18 +47,18 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
 
   if (!isOpen) return null;
 
-  const formatEventTime = (isoString: string) => {
+  const formatEventTime = (isoString: string, isAllDay: boolean) => {
     try {
       const d = new Date(isoString);
-      return new Intl.DateTimeFormat('vi-VN', {
-        timeZone: 'Asia/Ho_Chi_Minh',
+      const formatted = new Intl.DateTimeFormat('vi-VN', {
+        // Date-only values are calendar dates, not instants to shift into GMT+7.
+        timeZone: isAllDay ? 'UTC' : 'Asia/Ho_Chi_Minh',
         weekday: 'short',
         day: '2-digit',
         month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
+        ...(isAllDay ? {} : { hour: '2-digit', minute: '2-digit', hour12: false } as const),
       }).format(d);
+      return isAllDay ? `Cả ngày · ${formatted}` : formatted;
     } catch {
       return isoString;
     }
@@ -152,7 +152,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
 
                   <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-[#786455] dark:text-[#ba9f88]">
                     <Clock className="h-3.5 w-3.5 text-[#c25e2e] shrink-0 dark:text-[#e07a3f]" />
-                    <span>{formatEventTime(evt.start)}</span>
+                    <span>{formatEventTime(evt.start, evt.isAllDay)}</span>
                   </div>
 
                   {evt.hangoutLink && (
