@@ -27,7 +27,74 @@ function setup(value: MobileSession | null = null) {
   return { client, store, fetcher, stored: () => stored };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(done => { resolve = done; });
+  return { promise, resolve };
+}
+
 describe('native session lifecycle', () => {
+  it.each(['unauthorized', 'refresh-required', 'retry', 'error-body', 'success'] as const)(
+    'ignores a stale %s response after signing in to the same account again', async phase => {
+      const { client, fetcher, stored } = setup(session());
+      await client.restore();
+      const started = deferred<void>();
+      const delayed = deferred<Response>();
+      const body = deferred<unknown>();
+      const staleResponse = phase === 'success' ? response({ success: true })
+        : response(phase === 'refresh-required' ? { code: 'SESSION_REFRESH_REQUIRED' } : { error: 'Unauthorized' }, 401);
+      const resource = () => { started.resolve(); return delayed.promise; };
+      if (phase === 'retry') {
+        fetcher.mockResolvedValueOnce(response({ code: 'SESSION_REFRESH_REQUIRED' }, 401))
+          .mockResolvedValueOnce(response(session({ session: 'refreshed-old-session-not-real' })))
+          .mockImplementationOnce(resource);
+      } else if (phase === 'error-body') {
+        fetcher.mockResolvedValueOnce({ ...staleResponse, json: () => { started.resolve(); return body.promise; } });
+      } else {
+        fetcher.mockImplementationOnce(resource);
+      }
+      const pending = client.fetch(`${API_ORIGIN}/api/calendar/confirm`, { method: 'POST', body: '{}' });
+      await started.promise;
+      await client.clear();
+      const next = session({ session: 'new-login-session-not-real' });
+      fetcher.mockResolvedValueOnce(response(next));
+      await client.exchange('new-login-code');
+      const callsBeforeResponse = fetcher.mock.calls.length;
+      fetcher.mockResolvedValue(response(next));
+      delayed.resolve(staleResponse);
+      body.resolve({ code: 'SESSION_REFRESH_REQUIRED' });
+      await expect(pending).rejects.toBeInstanceOf(ApiError);
+      expect(client.getSnapshot()).toEqual(next);
+      expect(JSON.parse(stored()!)).toEqual({ origin: API_ORIGIN, ...next });
+      expect(fetcher).toHaveBeenCalledTimes(callsBeforeResponse);
+    },
+  );
+  it('does not send an old request if login changes while authorization resolves', async () => {
+    const { client, fetcher, stored } = setup(session());
+    await client.restore();
+    const pending = client.fetch(`${API_ORIGIN}/api/calendar/confirm`, { method: 'POST', body: '{}' });
+    await client.clear();
+    const next = session({ session: 'new-login-session-not-real' });
+    fetcher.mockResolvedValueOnce(response(next));
+    await client.exchange('new-login-code');
+    await expect(pending).rejects.toBeInstanceOf(ApiError);
+    expect(client.getSnapshot()).toEqual(next);
+    expect(JSON.parse(stored()!)).toEqual({ origin: API_ORIGIN, ...next });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it.each([false, true])('clears a current-session 401 (after retry: %s) without another mutation retry', async retry => {
+    const { client, fetcher, stored } = setup(session());
+    await client.restore();
+    if (retry) {
+      fetcher.mockResolvedValueOnce(response({ code: 'SESSION_REFRESH_REQUIRED' }, 401))
+        .mockResolvedValueOnce(response(session()));
+    }
+    fetcher.mockResolvedValueOnce(response({ error: 'Unauthorized' }, 401));
+    expect((await client.fetch(`${API_ORIGIN}/api/calendar/confirm`, { method: 'POST', body: '{}' })).status).toBe(401);
+    expect(client.getSnapshot()).toBeNull();
+    expect(stored()).toBeNull();
+    expect(fetcher).toHaveBeenCalledTimes(retry ? 3 : 1);
+  });
   it('restores a server session only from SecureStore and clears it on logout', async () => {
     const { client, store } = setup(session());
     await client.restore();
