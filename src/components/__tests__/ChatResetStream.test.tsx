@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Home from '@/app/page';
-import { getActiveSessionId, loadAllSessions } from '@/lib/chat/session-storage';
+import { createNewSession, getActiveSessionId, loadAllSessions, saveCurrentSession } from '@/lib/chat/session-storage';
 
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@/components/Header', () => ({ Header: () => null }));
@@ -10,6 +10,45 @@ vi.mock('@/components/Header', () => ({ Header: () => null }));
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 
 describe('Reset during an AI response', () => {
+  it('does not recreate the reset conversation after deleting it and sending another message', async () => {
+    const original = createNewSession(undefined, 'guest');
+    original.messages = [{ id: 'original', role: 'user', content: 'Hội thoại ban đầu' }];
+    saveCurrentSession(original, 'guest');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url === '/api/chat') {
+        return new Response('0:"Đã nhận yêu cầu"\n', {
+          headers: { 'Content-Type': 'text/plain', 'x-vercel-ai-data-stream': 'v1' },
+        });
+      }
+      return new Response(JSON.stringify({ authenticated: false, isConfigured: true }));
+    }));
+
+    render(<Home />);
+    await screen.findByText('Hội thoại ban đầu', { selector: 'p' });
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới hội thoại' }));
+    const resetId = getActiveSessionId('guest');
+    expect(resetId).not.toBe(original.id);
+
+    const input = screen.getByPlaceholderText('Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)');
+    fireEvent.change(input, { target: { value: 'Tin nhắn phiên reset' } });
+    fireEvent.submit(input.closest('form')!);
+    await screen.findByText('Đã nhận yêu cầu');
+    await waitFor(() => expect(loadAllSessions('guest').find((s) => s.id === resetId)?.title).toBe('Tin nhắn phiên reset'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa phiên chat: Tin nhắn phiên reset' }));
+    await waitFor(() => expect(screen.queryByText('Tin nhắn phiên reset')).not.toBeInTheDocument());
+    expect(getActiveSessionId('guest')).toBe(original.id);
+
+    const restoredInput = screen.getByPlaceholderText('Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)');
+    fireEvent.change(restoredInput, { target: { value: 'Tin nhắn sau khi xóa' } });
+    fireEvent.submit(restoredInput.closest('form')!);
+    await screen.findByText('Đã nhận yêu cầu');
+    await waitFor(() => expect(loadAllSessions('guest').find((s) => s.id === original.id)?.messages)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ content: 'Tin nhắn sau khi xóa' })])));
+    expect(loadAllSessions('guest').map((s) => s.id)).toEqual([original.id]);
+    expect(getActiveSessionId('guest')).toBe(original.id);
+  });
+
   it('keeps late chunks out of the new session and restores that empty session on reload', async () => {
     localStorage.clear();
     let stream!: ReadableStreamDefaultController<Uint8Array>;
