@@ -105,9 +105,9 @@ export class AuthClient {
     try { return await flight; } finally { if (this.refreshFlight === flight) this.refreshFlight = null; }
   }
   fetch: Fetcher = async (input, init) => {
-    const account = this.current?.user.id;
+    const revision = this.revision;
     const authorization = await this.authorization();
-    if (!account || account !== this.current?.user.id) throw new ApiError('Tài khoản đã thay đổi.', 401);
+    if (revision !== this.revision) throw new ApiError('Tài khoản đã thay đổi.', 401);
     const headers = new Headers(init?.headers);
     headers.set('Authorization', `Bearer ${authorization}`);
     let response = await this.fetcher(input, { ...init, headers });
@@ -116,13 +116,14 @@ export class AuthClient {
       // Consume the error body directly; error responses do not need to be read again by the caller.
       let data: unknown = null;
       try { data = await response.json(); } catch { data = null; }
+      if (revision !== this.revision) throw new ApiError('Tài khoản đã thay đổi.', 401);
       if (data && typeof data === 'object' && 'code' in data && data.code === 'SESSION_REFRESH_REQUIRED') {
         // Server guarantees SESSION_REFRESH_REQUIRED is emitted before chat/calendar side effects.
         headers.set('Authorization', `Bearer ${await this.authorization(true)}`);
-        if (account !== this.current?.user.id) throw new ApiError('Tài khoản đã thay đổi.', 401);
+        if (revision !== this.revision) throw new ApiError('Tài khoản đã thay đổi.', 401);
         response = await this.fetcher(input, { ...init, headers });
       } else {
-        if (account === this.current?.user.id) await this.clear();
+        await this.clear();
         const errorBody = JSON.stringify(data || { error: 'Unauthorized' });
         return new Response(errorBody, {
           status: 401,
@@ -130,12 +131,16 @@ export class AuthClient {
           headers: { 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 401 && account === this.current?.user.id) {
+      if (revision !== this.revision) {
+        await response.body?.cancel();
+        throw new ApiError('Tài khoản đã thay đổi.', 401);
+      }
+      if (response.status === 401) {
         await this.clear();
         return response;
       }
     }
-    if (this.current !== null && account !== this.current.user.id) {
+    if (revision !== this.revision) {
       await response.body?.cancel();
       throw new ApiError('Phiên đã hết hạn hoặc tài khoản đã thay đổi. Vui lòng đăng nhập lại.', 401);
     }
