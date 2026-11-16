@@ -32,6 +32,14 @@ function authResponse(id?: string) {
   }));
 }
 
+function logoutOkResponse() {
+  return new Response(JSON.stringify({ success: true }), { status: 200 });
+}
+
+function logoutErrorResponse() {
+  return new Response(JSON.stringify({ success: false, error: 'Lỗi server' }), { status: 500 });
+}
+
 beforeEach(() => localStorage.clear());
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -60,7 +68,10 @@ describe('Home account-isolated history', () => {
     const activeA = seed('user_A', 'Nội dung tài khoản A');
     const activeB = seed('user_B', 'Nội dung tài khoản B');
     const guest = seed('guest', 'Nội dung khách');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(authResponse('A')));
+    vi.stubGlobal('fetch', vi.fn((url: string, opts?: RequestInit) => {
+      if (url.includes('/logout') && opts?.method === 'POST') return Promise.resolve(logoutOkResponse());
+      return Promise.resolve(authResponse('A'));
+    }));
     const view = render(<Home />);
     await waitFor(() => expect(screen.getAllByText('Nội dung tài khoản A').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
@@ -106,5 +117,34 @@ describe('Home account-isolated history', () => {
     await screen.findByPlaceholderText('Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)');
     expect(screen.queryByText('Đề xuất riêng của tài khoản cũ')).not.toBeInTheDocument();
     expect(loadAllSessions('user_B')).toEqual([]);
+  });
+});
+
+describe('Home logout error handling', () => {
+  it('stays authenticated and shows error toast when logout returns HTTP 500', async () => {
+    seed('user_A', 'Nội dung tài khoản A');
+    vi.stubGlobal('fetch', vi.fn((url: string, opts?: RequestInit) => {
+      if (url.includes('/logout') && opts?.method === 'POST') return Promise.resolve(logoutErrorResponse());
+      return Promise.resolve(authResponse('A'));
+    }));
+    render(<Home />);
+    await waitFor(() => expect(screen.getAllByText('Nội dung tài khoản A').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
+    await waitFor(() => expect(screen.getByText('Ngắt kết nối thất bại. Vui lòng thử lại.')).toBeInTheDocument());
+    // Still showing user content — not switched to guest
+    expect(screen.getAllByText('Nội dung tài khoản A').length).toBeGreaterThan(0);
+  });
+
+  it('stays authenticated and shows error toast when fetch throws (network error)', async () => {
+    seed('user_A', 'Nội dung tài khoản A');
+    vi.stubGlobal('fetch', vi.fn((url: string, opts?: RequestInit) => {
+      if (url.includes('/logout') && opts?.method === 'POST') return Promise.reject(new Error('Network error'));
+      return Promise.resolve(authResponse('A'));
+    }));
+    render(<Home />);
+    await waitFor(() => expect(screen.getAllByText('Nội dung tài khoản A').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
+    await waitFor(() => expect(screen.getByText('Ngắt kết nối thất bại. Vui lòng thử lại.')).toBeInTheDocument());
+    expect(screen.getAllByText('Nội dung tài khoản A').length).toBeGreaterThan(0);
   });
 });
