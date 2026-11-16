@@ -168,7 +168,16 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/google/logout', { method: 'POST' });
+      const res = await fetch('/api/auth/google/logout', { method: 'POST' });
+      if (!res.ok) {
+        setToast({ type: 'error', message: 'Ngắt kết nối thất bại. Vui lòng thử lại.' });
+        return;
+      }
+      const data = await res.json() as { success?: boolean };
+      if (!data.success) {
+        setToast({ type: 'error', message: 'Ngắt kết nối thất bại. Vui lòng thử lại.' });
+        return;
+      }
       setIsAuthenticated(false);
       setUser(null);
       setIsUpcomingOpen(false);
@@ -178,7 +187,7 @@ export default function Home() {
         message: 'Đã ngắt kết nối tài khoản Google.',
       });
     } catch {
-      // Ignored
+      setToast({ type: 'error', message: 'Ngắt kết nối thất bại. Vui lòng thử lại.' });
     }
   };
 
