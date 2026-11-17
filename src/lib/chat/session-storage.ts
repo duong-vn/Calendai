@@ -1,5 +1,13 @@
 import type { Message } from 'ai';
-import type { CalendarEventResult } from '@/lib/calendar/types';
+import type { CalendarEventResult, CreateCalendarEventInput } from '@/lib/calendar/types';
+
+export interface MeetingConfirmationPayload extends Omit<CreateCalendarEventInput, 'attendees'> {
+  attendees: Array<{ email: string; name?: string }>;
+  proposalId: string;
+  allowConflict: boolean;
+  createMeet: boolean;
+  reminderMinutes: number[];
+}
 
 export interface ChatSession {
   id: string;
@@ -9,6 +17,7 @@ export interface ChatSession {
   messages: Message[];
   confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
   model?: string;
+  confirmationPayloads?: Record<string, MeetingConfirmationPayload>;
 }
 
 interface StorageKeys {
@@ -108,6 +117,19 @@ export function saveSessionsList(sessions: ChatSession[], scope?: string | null)
   } catch {
     // Ignore quota errors
   }
+}
+
+export function saveConfirmationPayload(
+  sessionId: string,
+  payload: MeetingConfirmationPayload,
+  scope?: string | null,
+): void {
+  const sessions = loadAllSessions(scope);
+  const session = sessions.find((item) => item.id === sessionId);
+  if (!session) throw new Error('Không tìm thấy cuộc trò chuyện. Vui lòng tải lại trước khi xác nhận.');
+  session.confirmationPayloads = { ...session.confirmationPayloads, [payload.proposalId]: payload };
+  // Unlike history autosave, this write must succeed before a calendar mutation.
+  localStorage.setItem(getStorageKeys(scope).SESSIONS, JSON.stringify(sessions));
 }
 
 export function getActiveSessionId(scope?: string | null): string | null {

@@ -14,6 +14,7 @@ import {
   Video,
 } from 'lucide-react';
 import type { CalendarEventResult } from '@/lib/calendar/types';
+import type { MeetingConfirmationPayload } from '@/lib/chat/session-storage';
 import { DEFAULT_REMINDER_MINUTES, readReminderSettings, REMINDER_SETTINGS_CHANGED_EVENT } from '@/lib/calendar/reminders';
 import { CalendarConflictChoices, type CalendarConflict } from './CalendarConflictChoices';
 
@@ -31,6 +32,8 @@ export interface MeetingProposalData {
 
 interface MeetingPreviewCardProps {
   proposal: MeetingProposalData;
+  submittedPayload?: MeetingConfirmationPayload;
+  onSubmitPayload?: (payload: MeetingConfirmationPayload) => void;
   onConfirmSuccess: (event: CalendarEventResult, isMock?: boolean) => void;
   onEditRequest?: () => void;
   compact?: boolean;
@@ -87,7 +90,9 @@ function getTimeZoneOffsetLabel(timeZone: string): string {
 }
 
 export function MeetingPreviewCard({
-  proposal,
+  proposal: currentProposal,
+  submittedPayload,
+  onSubmitPayload,
   onConfirmSuccess,
   onEditRequest,
   compact = false,
@@ -97,8 +102,11 @@ export function MeetingPreviewCard({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const confirmationPending = useRef(false);
 
-  const [createMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
-  const submittedReminders = useRef<number[] | undefined>(undefined);
+  const [snapshot, setSnapshot] = useState(submittedPayload);
+  const proposal = snapshot ?? submittedPayload ?? currentProposal;
+  const [draftCreateMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
+  const createMeet = snapshot?.createMeet ?? submittedPayload?.createMeet ?? draftCreateMeet;
+  const locked = Boolean(snapshot || submittedPayload);
   const [savedReminders, setSavedReminders] = useState(DEFAULT_REMINDER_MINUTES);
   useEffect(() => {
     const updateReminders = () => setSavedReminders(readReminderSettings());
@@ -106,7 +114,7 @@ export function MeetingPreviewCard({
     window.addEventListener(REMINDER_SETTINGS_CHANGED_EVENT, updateReminders);
     return () => window.removeEventListener(REMINDER_SETTINGS_CHANGED_EVENT, updateReminders);
   }, []);
-  const reminderMinutes = submittedReminders.current ?? proposal.reminderMinutes ?? savedReminders;
+  const reminderMinutes = proposal.reminderMinutes ?? savedReminders;
 
   const [conflicts, setConflicts] = useState<CalendarConflict[]>([]);
   const [conflictRevision, setConflictRevision] = useState(0);
@@ -137,15 +145,11 @@ export function MeetingPreviewCard({
     setLoading(true);
     setError(null);
 
-    const remindersToSubmit =
-      submittedReminders.current ??
-      (submittedReminders.current = reminderMinutes);
-
     try {
-      const response = await fetch('/api/calendar/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const previous = snapshot ?? submittedPayload;
+      const payload: MeetingConfirmationPayload = previous
+        ? { ...previous, allowConflict: previous.allowConflict || allowConflict }
+        : {
           summary: proposal.summary,
           description: proposal.description,
           startDateTime: proposal.startDateTime,
@@ -155,8 +159,14 @@ export function MeetingPreviewCard({
           createMeet: Boolean(createMeet),
           proposalId: proposal.proposalId,
           allowConflict,
-          reminderMinutes: remindersToSubmit,
-        }),
+          reminderMinutes,
+        };
+      onSubmitPayload?.(payload);
+      setSnapshot(payload);
+      const response = await fetch('/api/calendar/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -258,13 +268,13 @@ export function MeetingPreviewCard({
         {/* Google Meet toggleable row */}
         <button
           type="button"
-          onClick={() => !isConfirmed && !loading && setCreateMeet(!createMeet)}
-          disabled={isConfirmed || loading}
+          onClick={() => !isConfirmed && !loading && !locked && setCreateMeet(!createMeet)}
+          disabled={isConfirmed || loading || locked}
           className={`mt-3 flex min-h-[44px] touch-manipulation flex-wrap gap-2 items-center justify-between w-full rounded-xl p-3 text-xs sm:text-sm border-2 transition-all text-left ${
             createMeet
               ? 'bg-[#f0f9f4] text-[#1f7560] border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#172b22] dark:text-[#2dd4bf] dark:border-[#453427]'
               : 'bg-[#f5eee1] text-[#786455] border-[#2d2015]/40 hover:bg-[#ede4d5] dark:bg-[#16120f] dark:text-[#ba9f88] dark:border-[#453427]'
-          } ${isConfirmed || loading ? 'cursor-default' : 'cursor-pointer active:translate-x-[1px] active:translate-y-[1px]'}`}
+          } ${isConfirmed || loading || locked ? 'cursor-default' : 'cursor-pointer active:translate-x-[1px] active:translate-y-[1px]'}`}
           title="Bấm để bật hoặc tắt tạo link Google Meet"
         >
           <div className="flex items-center gap-2">
@@ -317,7 +327,7 @@ export function MeetingPreviewCard({
             <button
               type="button"
               onClick={onEditRequest}
-              disabled={loading}
+              disabled={loading || locked}
               className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-4 py-2 text-xs font-bold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] hover:bg-[#ede4d5] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:text-sm disabled:opacity-50 dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427]"
             >
               <Edit3 className="h-3.5 w-3.5" />
