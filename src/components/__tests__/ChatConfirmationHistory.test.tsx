@@ -15,7 +15,8 @@ vi.mock('ai/react', () => ({
 }));
 
 const proposal = {
-  proposalId: 'proposal-A', summary: 'Họp dự án',
+  proposalId: 'proposal-A', summary: 'Họp dự án', description: 'Trao đổi tiến độ',
+  attendees: [{ email: 'guest@example.com', name: 'Khách mời' }],
   startDateTime: '2026-11-14T09:00:00+07:00', endDateTime: '2026-11-14T10:00:00+07:00',
   timeZone: 'Asia/Ho_Chi_Minh', createMeet: false,
 };
@@ -25,7 +26,115 @@ const event = {
 };
 
 beforeEach(() => localStorage.clear());
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+function seedProposal(scope = 'user_A') {
+  const session = createNewSession(undefined, scope);
+  saveCurrentSession({ ...session, messages: [{ id: 'message-A', role: 'assistant', content: '', toolInvocations: [{
+    toolCallId: 'tool-A', toolName: 'proposeMeeting', state: 'result', args: {}, result: proposal,
+  }] }] }, scope);
+  return session;
+}
+
+describe('Confirmation payload recovery', () => {
+  it('does not send a mutation when saving the snapshot fails', async () => {
+    const original = seedProposal();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    const button = await screen.findByRole('button', { name: /Xác nhận tạo lịch/ });
+    const storage = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('Quota exceeded'); });
+    fireEvent.click(button);
+    expect(await screen.findByText('Không thể lưu bản xác nhận. Vui lòng kiểm tra bộ nhớ trình duyệt rồi thử lại.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /Google Meet/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Chỉnh sửa' })).toBeEnabled();
+    storage.mockRestore();
+  });
+
+  it('retains an explicit conflict override after a lost response and remount', async () => {
+    const original = seedProposal();
+    const conflict = { id: 'old', summary: 'Lịch đã có', start: proposal.startDateTime, end: proposal.endDateTime, etag: 'v1', timeZone: proposal.timeZone, isAllDay: false };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [conflict] }), { status: 409 }))
+      .mockRejectedValueOnce(new Error('Mất kết nối'))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true, event })));
+    vi.stubGlobal('fetch', fetchMock);
+    const view = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Vẫn tạo lịch mới, giữ lịch cũ' }));
+    await screen.findByText('Mất kết nối');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).allowConflict).toBe(false);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).allowConflict).toBe(true);
+    view.unmount();
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ }));
+    expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
+    expect(fetchMock.mock.calls[2][1].body).toBe(fetchMock.mock.calls[1][1].body);
+  });
+
+  it.each(['user_A', 'user_B', 'guest'])('isolates the same proposal ID from another session in %s', async (scope) => {
+    const original = seedProposal();
+    const other = seedProposal(scope);
+    const fetchMock = vi.fn().mockRejectedValue(new Error('Mất kết nối'));
+    vi.stubGlobal('fetch', fetchMock);
+    let view = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Google Meet/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận tạo lịch/ }));
+    await screen.findByText('Mất kết nối');
+    view.unmount();
+
+    localStorage.setItem('calendai_reminder_minutes', '[15]');
+    view = render(<ChatInterface isAuthenticated={scope !== 'guest'} historyScope={scope} activeSessionId={other.id} />);
+    expect(await screen.findByRole('button', { name: /Google Meet \(Đang tắt\)/ })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận tạo lịch/ }));
+    await screen.findByText('Mất kết nối');
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ createMeet: false, reminderMinutes: [15] });
+    view.unmount();
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    expect(await screen.findByRole('button', { name: /Google Meet \(Đang bật\)/ })).toBeDisabled();
+    expect(screen.getByText('Nhắc qua Google Calendar: trước 60 và 10 phút (0 = lúc bắt đầu)')).toBeInTheDocument();
+  });
+
+  it('persists before sending and restores the exact payload and locked preview after a lost response', async () => {
+    const original = createNewSession(undefined, 'user_A');
+    const messages: Message[] = [{ id: 'message-A', role: 'assistant', content: '', toolInvocations: [{
+      toolCallId: 'tool-A', toolName: 'proposeMeeting', state: 'result', args: {}, result: proposal,
+    }] }];
+    saveCurrentSession({ ...original, messages }, 'user_A');
+    localStorage.setItem('calendai_reminder_minutes', '[30,5]');
+    let storedBeforeRequest = '';
+    const fetchMock = vi.fn().mockImplementationOnce(() => {
+      storedBeforeRequest = localStorage.getItem('calendai_user_A_chat_sessions') || '';
+      return Promise.reject(new Error('Mất kết nối'));
+    }).mockResolvedValueOnce(new Response(JSON.stringify({ success: true, event })));
+    vi.stubGlobal('fetch', fetchMock);
+    const view = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Google Meet/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận tạo lịch/ }));
+    await screen.findByText('Mất kết nối');
+    const firstBody = fetchMock.mock.calls[0][1].body;
+    expect(storedBeforeRequest).toContain('"reminderMinutes":[30,5]');
+    expect(screen.getByRole('button', { name: /Google Meet/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Chỉnh sửa' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Google Meet/ }));
+    view.unmount();
+
+    localStorage.setItem('calendai_reminder_minutes', '[15]');
+    saveCurrentSession({ ...loadAllSessions('user_A')[0], messages: [{ ...messages[0], toolInvocations: [{
+      toolCallId: 'tool-A', toolName: 'proposeMeeting', state: 'result', args: {},
+      result: { ...proposal, summary: 'Nội dung đã đổi', description: 'Không được dùng', attendees: [{ email: 'changed@example.com' }], startDateTime: '2026-12-01T12:00:00Z' },
+    }] }] }, 'user_A');
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    expect(await screen.findByText(proposal.summary)).toBeInTheDocument();
+    expect(screen.queryByText('Nội dung đã đổi')).not.toBeInTheDocument();
+    expect(screen.getByText('Nhắc qua Google Calendar: trước 30 và 5 phút (0 = lúc bắt đầu)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Google Meet \(Đang bật\)/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận tạo lịch/ }));
+    expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
+    expect(fetchMock.mock.calls[1][1].body).toBe(firstBody);
+  });
+});
 
 describe('Confirmation completing after chat unmount', () => {
   it.each(['switch', 'new', 'logout', 'delete'] as const)('preserves the originating history after %s without changing the active session', async (action) => {

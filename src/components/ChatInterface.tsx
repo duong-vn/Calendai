@@ -29,6 +29,8 @@ import {
   getActiveSessionId,
   loadAllSessions,
   saveCurrentSession,
+  saveConfirmationPayload,
+  type MeetingConfirmationPayload,
   saveSessionsList,
   setActiveSessionId,
 } from '@/lib/chat/session-storage';
@@ -92,6 +94,8 @@ interface ChatMessageItemProps {
   isLoading: boolean;
   error?: Error;
   confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
+  confirmationPayloads: Record<string, MeetingConfirmationPayload>;
+  onSubmitPayload: (payload: MeetingConfirmationPayload) => void;
   onConfirmSuccess: (proposalId: string, event: CalendarEventResult, isMock?: boolean) => void;
   onEditRequest: (proposal: MeetingProposalData) => void;
   onReload: () => void;
@@ -103,6 +107,8 @@ const ChatMessageItem = memo(function ChatMessageItem({
   isLoading,
   error,
   confirmedEvents,
+  confirmationPayloads,
+  onSubmitPayload,
   onConfirmSuccess,
   onEditRequest,
   onReload,
@@ -116,6 +122,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
     const confirmedEvent = confirmedEvents[proposal.proposalId];
     if (confirmedEvent) return <EventCreatedCard key={toolCallId} event={confirmedEvent.event} isMock={confirmedEvent.isMock} />;
     return <MeetingPreviewCard key={toolCallId} compact={compactProposals} proposal={proposal}
+      submittedPayload={confirmationPayloads[proposal.proposalId]} onSubmitPayload={onSubmitPayload}
       onConfirmSuccess={(event, isMock) => onConfirmSuccess(proposal.proposalId, event, isMock)}
       onEditRequest={() => onEditRequest(proposal)} />;
   };
@@ -449,6 +456,8 @@ export function ChatInterface({
     Record<string, { event: CalendarEventResult; isMock?: boolean }>
   >({});
 
+  const [confirmationPayloads, setConfirmationPayloads] = useState<Record<string, MeetingConfirmationPayload>>({});
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -636,6 +645,7 @@ export function ChatInterface({
         setMessages(target.messages || []);
       }
       setConfirmedEvents(target.confirmedEvents || {});
+      setConfirmationPayloads(target.confirmationPayloads || {});
     }
   }, [propActiveSessionId, setMessages, historyScope]);
 
@@ -654,6 +664,7 @@ export function ChatInterface({
         updatedAt: Date.now(),
         messages,
         confirmedEvents,
+        confirmationPayloads: existing?.confirmationPayloads,
         model: activeModel,
       };
 
@@ -688,11 +699,21 @@ export function ChatInterface({
       setMessages([]);
     }
     setConfirmedEvents({});
+    setConfirmationPayloads({});
     const newId = generateSessionId();
     setCurrentSessionId(newId);
     setActiveSessionId(newId, historyScope);
     onSessionsChange?.();
   };
+
+  const handleSubmitPayload = useCallback((payload: MeetingConfirmationPayload) => {
+    try {
+      saveConfirmationPayload(currentSessionId, payload, historyScope);
+    } catch {
+      throw new Error('Không thể lưu bản xác nhận. Vui lòng kiểm tra bộ nhớ trình duyệt rồi thử lại.');
+    }
+    setConfirmationPayloads((prev) => ({ ...prev, [payload.proposalId]: payload }));
+  }, [currentSessionId, historyScope]);
 
   const handleConfirmSuccess = useCallback((
     proposalId: string,
@@ -811,6 +832,8 @@ export function ChatInterface({
                   isLoading={isLoading}
                   error={error}
                   confirmedEvents={confirmedEvents}
+                  confirmationPayloads={confirmationPayloads}
+                  onSubmitPayload={handleSubmitPayload}
                   onConfirmSuccess={handleConfirmSuccess}
                   onEditRequest={handleEditRequest}
                   onReload={reload}
