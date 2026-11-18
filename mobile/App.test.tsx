@@ -4,7 +4,7 @@ import { Alert, TouchableOpacity, FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ReminderSettings } from './src/components/ReminderSettings';
 import { saveReminderMinutes } from './src/services/reminders';
-import type { ChatSession } from './src/types';
+import type { ChatSession, MeetingProposal } from './src/types';
 import App from './App';
 import { Action, Copy, IconButton } from './src/theme';
 import { loadHistory, loadConversation, newConversation, saveConversation, deleteConversation } from './src/services/history';
@@ -52,9 +52,40 @@ it('shows a retryable history error without mounting chat or overwriting stored 
   await flush();
   expect(tree.root.findAllByType(Copy).some(node => String(node.props.children).includes('Dữ liệu cũ được giữ nguyên'))).toBe(true);
   expect(saveConversation).not.toHaveBeenCalled();
+  expect(tree.root.findAllByType(Action).find(node => node.props.label === 'Cuộc trò chuyện mới')!.props.disabled).toBe(true);
   await act(async () => { tree.root.findAllByType(Action).find(node => node.props.label === 'Thử đọc lại lịch sử')!.props.onPress(); });
   await flush();
   expect(loadHistory).toHaveBeenCalledTimes(2);
+  act(() => tree.unmount());
+});
+
+it('waits for the history index before creating a writable chat and persisting confirmation', async () => {
+  let resolveHistory!: (value: Awaited<ReturnType<typeof loadHistory>>) => void;
+  jest.mocked(loadHistory).mockImplementationOnce(() => new Promise(resolve => { resolveHistory = resolve; }));
+  let tree!: ReactTestRenderer;
+  await act(async () => { tree = create(<App />); });
+  await flush();
+  const newChat = () => tree.root.findAllByType(Action).find(node => node.props.label === 'Cuộc trò chuyện mới')!;
+  expect(newChat().props.disabled).toBe(true);
+  expect(tree.root.findAllByType(FlatList)).toHaveLength(0);
+  expect(saveConversation).not.toHaveBeenCalled();
+
+  const previous: ChatSession = { ...newConversation(), id: 'previous', messages: [{ id: 'm', role: 'user', content: 'Lịch cũ' }] };
+  jest.mocked(loadConversation).mockResolvedValueOnce(previous);
+  await act(async () => resolveHistory([previous]));
+  expect(newChat().props.disabled).toBe(false);
+  act(() => newChat().props.onPress());
+  const list = tree.root.findAllByType(FlatList)[0];
+  expect(list.props.data).toEqual([]);
+  const proposal: MeetingProposal = { proposalId: 'new-proposal', summary: 'Họp nhóm', startDateTime: '2026-11-19T09:00:00+07:00', endDateTime: '2026-11-19T10:00:00+07:00', timeZone: 'Asia/Ho_Chi_Minh', attendees: [], createMeet: true };
+  const message = { id: 'new-message', role: 'user', content: 'Họp nhóm sáng mai' };
+  // The chat hook owns streamed messages; feed its list through the existing render callback.
+  list.props.data.push(message);
+  const rendered = list.props.renderItem({ item: message });
+  await act(async () => { await rendered.props.onSubmit(proposal); });
+  expect(saveConversation).toHaveBeenLastCalledWith(null, expect.objectContaining({
+    id: expect.not.stringMatching(/^previous$/), messages: [message], submitted: { 'new-proposal': proposal },
+  }));
   act(() => tree.unmount());
 });
 

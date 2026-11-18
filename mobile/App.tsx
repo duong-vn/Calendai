@@ -197,7 +197,7 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
     });
   } }]);
   const history = <View style={{ gap: 14 }}>
-    <Action label="Cuộc trò chuyện mới" icon={Plus} primary onPress={() => { updateActive(newConversation()); setPage(null); }} />
+    <Action label="Cuộc trò chuyện mới" icon={Plus} primary disabled={!historyWritable.current} onPress={() => { updateActive(newConversation()); setPage(null); }} />
     <Copy style={{ color: colors.muted, fontSize: 12 }}>Lưu trên thiết bị · {user?.email || 'Khách'} · Không đồng bộ với web</Copy>
     {sessions.length === 0 && <Copy style={{ color: colors.muted }}>Chưa có cuộc trò chuyện nào.</Copy>}
     {sessions.map(item => <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: item.id === active.id ? colors.raised : 'transparent', borderRadius: 10 }}>
