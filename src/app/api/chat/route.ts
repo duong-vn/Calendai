@@ -4,6 +4,7 @@ import { getChatModel } from '@/lib/ai/provider';
 import { buildSystemPrompt } from '@/lib/ai/system-prompt';
 import { createCalendarTools } from '@/lib/ai/tools';
 import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
+import { checkChatRateLimit } from '@/lib/chat/rate-limit';
 import { getServerEnv } from '@/lib/env';
 
 const ToolCallSchema = z.object({
@@ -94,6 +95,20 @@ export async function POST(req: Request) {
           return Response.json({ error: 'Vui lòng kết nối lại tài khoản Google.', code: 'AUTH_REQUIRED' }, { status: 401 });
         }
       }
+    }
+
+    const rateLimit = checkChatRateLimit(req, Boolean(session));
+    if (!rateLimit.allowed) {
+      return Response.json(
+        { error: 'Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ một chút rồi thử lại.' },
+        {
+          status: 429,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Retry-After': String(rateLimit.retryAfterSeconds),
+          },
+        }
+      );
     }
 
     const systemPrompt = buildSystemPrompt(session?.user?.email);

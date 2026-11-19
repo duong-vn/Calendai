@@ -1,4 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  ANONYMOUS_CHAT_RATE_LIMIT,
+  AUTHENTICATED_CHAT_RATE_LIMIT,
+  CHAT_RATE_LIMIT_WINDOW_MS,
+  MAX_TRACKED_IPS,
+  checkChatRateLimit,
+  getClientIp,
+  resetChatRateLimit,
+} from '@/lib/chat/rate-limit';
 
 const mocks = vi.hoisted(() => ({ session: vi.fn(), access: vi.fn(), stream: vi.fn(), authError: vi.fn() }));
 vi.mock('@/lib/auth/server-session', () => ({ getServerSession: mocks.session, getValidAccessToken: mocks.access, authErrorResponse: mocks.authError }));
@@ -9,15 +18,28 @@ vi.mock('@/lib/ai/tools', () => ({ createCalendarTools: () => ({}) }));
 vi.mock('ai', () => ({ streamText: mocks.stream }));
 import { POST } from '@/app/api/chat/route';
 
-function request(body: unknown, authorization?: string) {
-  return new Request('https://calendai.tduong.online/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: authorization } : {}) }, body: JSON.stringify(body) });
+function request(body: unknown, authorization?: string, headers?: Record<string, string>) {
+  return new Request('https://calendai.tduong.online/api/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authorization ? { Authorization: authorization } : {}),
+      ...headers,
+    },
+    body: JSON.stringify(body),
+  });
 }
 
 beforeEach(() => {
   vi.resetAllMocks();
+  resetChatRateLimit();
   mocks.session.mockResolvedValue(null);
   mocks.authError.mockReturnValue(null);
   mocks.stream.mockReturnValue({ toDataStreamResponse: () => new Response('stream') });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('Native chat authentication and input boundary', () => {
@@ -138,5 +160,97 @@ describe('Native chat authentication and input boundary', () => {
     const response = await POST(request({ messages: [{ role: 'user', content: 'x'.repeat(512001) }] }));
     expect(response.status).toBe(413);
     expect(mocks.stream).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/chat per-IP rate limiting', () => {
+  it('returns 429 with a Vietnamese message when logged-out requests exceed the per-minute IP limit', async () => {
+    const headers = { 'x-forwarded-for': '203.0.113.10, 10.0.0.1' };
+    for (let i = 0; i < ANONYMOUS_CHAT_RATE_LIMIT; i += 1) {
+      const response = await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, headers));
+      expect(response.status).toBe(200);
+    }
+    expect(mocks.stream).toHaveBeenCalledTimes(ANONYMOUS_CHAT_RATE_LIMIT);
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network request'));
+    try {
+      const blocked = await POST(
+        request({ model: 'custom-model', messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, headers)
+      );
+      expect(blocked.status).toBe(429);
+      expect(blocked.headers.get('Cache-Control')).toBe('no-store');
+      expect(Number(blocked.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1);
+      const data = await blocked.json() as { error?: string };
+      expect(typeof data.error).toBe('string');
+      expect(data.error).toMatch(/quá nhanh|vui lòng chờ|thử lại/i);
+      expect(mocks.stream).toHaveBeenCalledTimes(ANONYMOUS_CHAT_RATE_LIMIT);
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('applies a higher limit for logged-in users and allows upgrading from anonymous on the same IP', async () => {
+    expect(AUTHENTICATED_CHAT_RATE_LIMIT).toBeGreaterThan(ANONYMOUS_CHAT_RATE_LIMIT);
+    const headers = { 'x-forwarded-for': '203.0.113.20' };
+
+    for (let i = 0; i < ANONYMOUS_CHAT_RATE_LIMIT; i += 1) {
+      expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, headers))).status).toBe(200);
+    }
+    expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, headers))).status).toBe(429);
+
+    mocks.session.mockResolvedValue({ user: { email: 'person@example.com' } });
+    mocks.access.mockResolvedValue({ accessToken: 'access' });
+
+    for (let i = ANONYMOUS_CHAT_RATE_LIMIT; i < AUTHENTICATED_CHAT_RATE_LIMIT; i += 1) {
+      expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, 'Bearer mobile', headers))).status).toBe(200);
+    }
+    expect(mocks.stream).toHaveBeenCalledTimes(AUTHENTICATED_CHAT_RATE_LIMIT);
+
+    const blocked = await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, 'Bearer mobile', headers));
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1);
+    const data = await blocked.json() as { error?: string };
+    expect(data.error).toMatch(/quá nhanh|vui lòng chờ|thử lại/i);
+    expect(mocks.stream).toHaveBeenCalledTimes(AUTHENTICATED_CHAT_RATE_LIMIT);
+  });
+
+  it('isolates limits per IP and resets after the 1-minute sliding window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-19T10:00:00Z'));
+
+    const ipOne = { 'x-real-ip': '198.51.100.1' };
+    const ipTwo = { 'x-real-ip': '198.51.100.2' };
+
+    for (let i = 0; i < ANONYMOUS_CHAT_RATE_LIMIT; i += 1) {
+      expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipOne))).status).toBe(200);
+    }
+    expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipOne))).status).toBe(429);
+
+    expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipTwo))).status).toBe(200);
+
+    vi.advanceTimersByTime(CHAT_RATE_LIMIT_WINDOW_MS);
+    expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipOne))).status).toBe(200);
+  });
+
+  it('extracts proxy headers and bounds tracked IP entries', () => {
+    expect(getClientIp(new Request('https://example.test/api/chat', {
+      headers: { 'x-forwarded-for': ' 2001:DB8::1 , 10.0.0.1 ', 'x-real-ip': '198.51.100.9' },
+    }))).toBe('2001:db8::1');
+    expect(getClientIp(new Request('https://example.test/api/chat', {
+      headers: { 'x-forwarded-for': '   ', 'x-real-ip': ' 198.51.100.9 ' },
+    }))).toBe('198.51.100.9');
+    expect(getClientIp(new Request('https://example.test/api/chat', {
+      headers: { 'cf-connecting-ip': ' 198.51.100.10 ' },
+    }))).toBe('198.51.100.10');
+    expect(getClientIp(new Request('https://example.test/api/chat'))).toBe('unknown');
+
+    const start = 1_000_000;
+    for (let i = 0; i <= MAX_TRACKED_IPS + 5; i += 1) {
+      const req = new Request('https://example.test/api/chat', {
+        headers: { 'x-real-ip': `10.0.${Math.floor(i / 256)}.${i % 256}` },
+      });
+      expect(checkChatRateLimit(req, false, start).allowed).toBe(true);
+    }
   });
 });
