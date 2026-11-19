@@ -24,9 +24,15 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
 
-      - name: Install dependencies
+      - name: Install web dependencies
         run: npm ci
+
+      - name: Install mobile dependencies for web tests
+        run: npm --prefix mobile ci
 
       - name: Typecheck
         run: npm run typecheck
