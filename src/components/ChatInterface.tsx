@@ -95,7 +95,7 @@ interface ChatMessageItemProps {
   error?: Error;
   confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
   confirmationPayloads: Record<string, MeetingConfirmationPayload>;
-  onSubmitPayload: (payload: MeetingConfirmationPayload) => void;
+  onSubmitPayload: (payload: MeetingConfirmationPayload) => () => boolean;
   onConfirmSuccess: (proposalId: string, event: CalendarEventResult, isMock?: boolean) => void;
   onEditRequest: (proposal: MeetingProposalData) => void;
   onReload: () => void;
@@ -665,6 +665,7 @@ export function ChatInterface({
         messages,
         confirmedEvents,
         confirmationPayloads: existing?.confirmationPayloads,
+        confirmationAttempts: existing?.confirmationAttempts,
         model: activeModel,
       };
 
@@ -707,12 +708,27 @@ export function ChatInterface({
   };
 
   const handleSubmitPayload = useCallback((payload: MeetingConfirmationPayload) => {
+    let discardSnapshot: () => boolean;
     try {
-      saveConfirmationPayload(currentSessionId, payload, historyScope);
+      discardSnapshot = saveConfirmationPayload(currentSessionId, payload, historyScope);
     } catch {
       throw new Error('Không thể lưu bản xác nhận. Vui lòng kiểm tra bộ nhớ trình duyệt rồi thử lại.');
     }
     setConfirmationPayloads((prev) => ({ ...prev, [payload.proposalId]: payload }));
+    return () => {
+      try {
+        if (!discardSnapshot()) return false;
+      } catch {
+        throw new Error('Không thể xóa bản xác nhận đã bị từ chối. Vui lòng kiểm tra bộ nhớ trình duyệt rồi thử lại.');
+      }
+      setConfirmationPayloads((prev) => {
+        if (prev[payload.proposalId] !== payload) return prev;
+        const next = { ...prev };
+        delete next[payload.proposalId];
+        return next;
+      });
+      return true;
+    };
   }, [currentSessionId, historyScope]);
 
   const handleConfirmSuccess = useCallback((

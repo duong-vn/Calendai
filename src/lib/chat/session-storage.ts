@@ -18,6 +18,7 @@ export interface ChatSession {
   confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
   model?: string;
   confirmationPayloads?: Record<string, MeetingConfirmationPayload>;
+  confirmationAttempts?: Record<string, string>;
 }
 
 interface StorageKeys {
@@ -123,13 +124,30 @@ export function saveConfirmationPayload(
   sessionId: string,
   payload: MeetingConfirmationPayload,
   scope?: string | null,
-): void {
+): () => boolean {
   const sessions = loadAllSessions(scope);
   const session = sessions.find((item) => item.id === sessionId);
   if (!session) throw new Error('Không tìm thấy cuộc trò chuyện. Vui lòng tải lại trước khi xác nhận.');
-  session.confirmationPayloads = { ...session.confirmationPayloads, [payload.proposalId]: payload };
+  const { proposalId } = payload;
+  const firstAttempt = !session.confirmationPayloads?.[proposalId];
+  const attemptId = crypto.getRandomValues(new Uint32Array(4)).join('-');
+  session.confirmationPayloads = { ...session.confirmationPayloads, [proposalId]: payload };
+  session.confirmationAttempts = { ...session.confirmationAttempts, [proposalId]: attemptId };
+  const key = getStorageKeys(scope).SESSIONS;
   // Unlike history autosave, this write must succeed before a calendar mutation.
-  localStorage.setItem(getStorageKeys(scope).SESSIONS, JSON.stringify(sessions));
+  localStorage.setItem(key, JSON.stringify(sessions));
+
+  return () => {
+    if (!firstAttempt) return false;
+    const latest = loadAllSessions(scope);
+    const current = latest.find((item) => item.id === sessionId);
+    // A late rejection must not clear a more recent attempt's recovery payload.
+    if (!current?.confirmationPayloads || current.confirmationAttempts?.[proposalId] !== attemptId) return false;
+    delete current.confirmationPayloads[proposalId];
+    delete current.confirmationAttempts[proposalId];
+    localStorage.setItem(key, JSON.stringify(latest));
+    return true;
+  };
 }
 
 export function getActiveSessionId(scope?: string | null): string | null {

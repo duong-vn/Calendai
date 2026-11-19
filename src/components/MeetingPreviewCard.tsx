@@ -33,7 +33,7 @@ export interface MeetingProposalData {
 interface MeetingPreviewCardProps {
   proposal: MeetingProposalData;
   submittedPayload?: MeetingConfirmationPayload;
-  onSubmitPayload?: (payload: MeetingConfirmationPayload) => void;
+  onSubmitPayload?: (payload: MeetingConfirmationPayload) => () => boolean;
   onConfirmSuccess: (event: CalendarEventResult, isMock?: boolean) => void;
   onEditRequest?: () => void;
   compact?: boolean;
@@ -161,7 +161,7 @@ export function MeetingPreviewCard({
           allowConflict,
           reminderMinutes,
         };
-      onSubmitPayload?.(payload);
+      const discardSnapshot = onSubmitPayload?.(payload);
       setSnapshot(payload);
       const response = await fetch('/api/calendar/confirm', {
         method: 'POST',
@@ -171,11 +171,23 @@ export function MeetingPreviewCard({
 
       const data = await response.json();
 
-      if (response.status === 409 && data.code === 'CALENDAR_CONFLICT' && Array.isArray(data.conflicts)) {
+      const calendarConflict = response.status === 409 && data?.success === false &&
+        data.code === 'CALENDAR_CONFLICT' && Array.isArray(data.conflicts) && data.conflicts.length > 0;
+      if (calendarConflict) {
         setConflicts(data.conflicts);
         setConflictRevision(value => value + 1);
-        return;
       }
+      const requestRejected = typeof data?.error === 'string' && (
+        (response.status === 400 && data.success === false) ||
+        (response.status === 401 && [
+          'AUTH_REQUIRED', 'UNAUTHORIZED', 'google_reauthorization_required', 'google_calendar_permission_required',
+        ].includes(data.code))
+      );
+      // A rejection settles this request only. Any earlier attempt may still have written.
+      if (!previous && (calendarConflict || requestRejected) && (discardSnapshot?.() ?? true)) {
+        setSnapshot(undefined);
+      }
+      if (calendarConflict) return;
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Tạo lịch thất bại. Vui lòng thử lại.');
       }
