@@ -151,6 +151,13 @@ Dự án có hệ thống kiểm thử toàn diện:
 
 ---
 
+## Giám Sát Tình Trạng
+
+- `GET /api/health/ai` trả HTTP 200 khi ứng dụng phản hồi. Dùng URL này cho UptimeRobot và các công cụ kiểm tra uptime định kỳ.
+- `GET /api/health/ai/probe` kiểm tra mô hình AI mặc định và trả HTTP 503 nếu lần kiểm tra thất bại. Chỉ gọi khi cần chẩn đoán hoặc với tần suất thấp vì mỗi lần kiểm tra mới có thể phát sinh chi phí. Kết quả được giữ trong 60 giây trên mỗi tiến trình.
+
+---
+
 ## Thiết Lập Google Cloud OAuth Thật
 
 Để kết nối với tài khoản Google thực tế và tạo sự kiện thật trên Google Calendar:

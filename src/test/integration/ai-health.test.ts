@@ -13,11 +13,24 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
+it('reports app liveness without contacting an unavailable AI provider', async () => {
+  mocks.generate.mockRejectedValue(new Error('provider unavailable'));
+
+  const { GET } = await import('@/app/api/health/ai/route');
+  const response = await GET();
+
+  expect(response.status).toBe(200);
+  expect(response.headers.get('Cache-Control')).toBe('no-store');
+  expect(await response.json()).toEqual({ status: 'ok', checkedAt: expect.any(String) });
+  expect(mocks.model).not.toHaveBeenCalled();
+  expect(mocks.generate).not.toHaveBeenCalled();
+});
+
 async function handler() {
-  return (await import('@/app/api/health/ai/route')).GET;
+  return (await import('@/app/api/health/ai/probe/route')).GET;
 }
 
-describe('Public AI health endpoint', () => {
+describe('AI provider probe', () => {
   it('reports a real nonempty response using the configured default model', async () => {
     const response = await (await handler())();
     expect(response.status).toBe(200);
