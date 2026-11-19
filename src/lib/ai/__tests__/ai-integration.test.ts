@@ -1,9 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getChatModel, getAIProvider } from '../provider';
 import { buildSystemPrompt, getVietnamTimeContext } from '../system-prompt';
-import { ProposeMeetingSchema, createCalendarTools } from '../tools';
+import { ListUpcomingEventsSchema, ProposeMeetingSchema, createCalendarTools } from '../tools';
 
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+function createMockSession() {
+  return {
+    user: { id: 'person', email: 'person@example.com', name: 'Người dùng' },
+    tokens: { accessToken: 'access', expiresAt: Date.now() + 3600000, tokenType: 'Bearer' as const, scope: 'calendar' },
+    createdAt: Date.now(),
+  };
+}
 
 describe('AI & LLM Integration Layer', () => {
   it('uses the requested daysAhead interval for Calendar lookup', async () => {
@@ -23,6 +31,164 @@ describe('AI & LLM Integration Layer', () => {
     expect(url.searchParams.get('maxResults')).toBe('3');
   });
 
+  it('bounds "today" lookup to Asia/Ho_Chi_Minh calendar day in the evening and excludes tomorrow events', async () => {
+    vi.useFakeTimers();
+    // 20:00 on Wednesday 11/11/2026 GMT+7
+    vi.setSystemTime(new Date('2026-11-11T13:00:00Z'));
+
+    const mockFetch = vi.fn().mockResolvedValue(Response.json({
+      items: [
+        {
+          id: 'earlier-today',
+          summary: 'Họp sáng nay',
+          start: { dateTime: '2026-11-11T09:00:00+07:00' },
+          end: { dateTime: '2026-11-11T10:00:00+07:00' },
+          htmlLink: 'https://calendar.google.com/event?eid=earlier',
+        },
+        {
+          id: 'tonight',
+          summary: 'Họp tối nay',
+          start: { dateTime: '2026-11-11T21:00:00+07:00' },
+          end: { dateTime: '2026-11-11T22:00:00+07:00' },
+          htmlLink: 'https://calendar.google.com/event?eid=tonight',
+        },
+        {
+          id: 'tomorrow-morning',
+          summary: 'Họp sáng mai',
+          start: { dateTime: '2026-11-12T08:00:00+07:00' },
+          end: { dateTime: '2026-11-12T09:00:00+07:00' },
+          htmlLink: 'https://calendar.google.com/event?eid=tomorrow',
+        },
+        {
+          id: 'tomorrow-all-day',
+          summary: 'Sự kiện cả ngày mai',
+          start: { date: '2026-11-12' },
+          end: { date: '2026-11-13' },
+          htmlLink: 'https://calendar.google.com/event?eid=tomorrow-allday',
+        },
+      ],
+    }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today' },
+      { toolCallId: 'lookup-today', messages: [] }
+    );
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const url = new URL(mockFetch.mock.calls[0][0]);
+    expect(url.searchParams.get('timeMin')).toBe('2026-11-11T00:00:00+07:00');
+    expect(url.searchParams.get('timeMax')).toBe('2026-11-12T00:00:00+07:00');
+    expect(url.searchParams.get('maxResults')).toBe('50');
+    expect(result).toMatchObject({
+      success: true,
+      mode: 'google',
+      timeZone: 'Asia/Ho_Chi_Minh',
+      timeMin: '2026-11-11T00:00:00+07:00',
+      timeMax: '2026-11-12T00:00:00+07:00',
+    });
+    if (result && 'events' in result && result.events) {
+      expect(result.events.map((event) => event.id)).toEqual(['earlier-today', 'tonight']);
+    }
+  });
+
+  it('bounds "this_week" lookup to Monday-Sunday in Asia/Ho_Chi_Minh near the Sunday/Monday boundary', async () => {
+    vi.useFakeTimers();
+    const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ items: [] })));
+    vi.stubGlobal('fetch', mockFetch);
+    const session = createMockSession();
+    const tools = createCalendarTools(session, 'access');
+
+    // Sunday 2026-11-15 23:30 GMT+7 (still Sunday night in Vietnam) -> Mon Nov 9 .. Mon Nov 16
+    vi.setSystemTime(new Date('2026-11-15T16:30:00Z'));
+    await tools.listUpcomingEvents.execute?.({ range: 'this_week' }, { toolCallId: 'lookup-sun-night', messages: [] });
+    const sundayUrl = new URL(mockFetch.mock.calls[0][0]);
+    expect(sundayUrl.searchParams.get('timeMin')).toBe('2026-11-09T00:00:00+07:00');
+    expect(sundayUrl.searchParams.get('timeMax')).toBe('2026-11-16T00:00:00+07:00');
+
+    // Monday 2026-11-16 00:30 GMT+7 (still Sunday 17:30 UTC, but Monday in Vietnam!) -> Mon Nov 16 .. Mon Nov 23
+    vi.setSystemTime(new Date('2026-11-15T17:30:00Z'));
+    await tools.listUpcomingEvents.execute?.({ range: 'this_week' }, { toolCallId: 'lookup-mon-early', messages: [] });
+    const mondayUrl = new URL(mockFetch.mock.calls[1][0]);
+    expect(mondayUrl.searchParams.get('timeMin')).toBe('2026-11-16T00:00:00+07:00');
+    expect(mondayUrl.searchParams.get('timeMax')).toBe('2026-11-23T00:00:00+07:00');
+  });
+
+  it('supports explicit timezone-aware timeMin/timeMax separated from daysAhead', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(Response.json({ items: [] }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const parsedExplicit = ListUpcomingEventsSchema.safeParse({
+      timeMin: '2026-11-11T20:00:00+07:00',
+      timeMax: '2026-11-12T00:00:00+07:00',
+    });
+    expect(parsedExplicit.success).toBe(true);
+
+    // Invalid combinations must be rejected by schema
+    expect(ListUpcomingEventsSchema.safeParse({
+      timeMin: '2026-11-11T00:00:00+07:00',
+    }).success).toBe(false);
+    expect(ListUpcomingEventsSchema.safeParse({
+      timeMax: '2026-11-12T00:00:00+07:00',
+    }).success).toBe(false);
+    expect(ListUpcomingEventsSchema.safeParse({
+      timeMin: '2026-11-11T00:00:00',
+      timeMax: '2026-11-12T00:00:00',
+    }).success).toBe(false);
+    expect(ListUpcomingEventsSchema.safeParse({
+      timeMin: '2026-11-12T00:00:00+07:00',
+      timeMax: '2026-11-11T00:00:00+07:00',
+    }).success).toBe(false);
+    expect(ListUpcomingEventsSchema.safeParse({
+      timeMin: '2026-11-11T00:00:00+07:00',
+      timeMax: '2026-11-12T00:00:00+07:00',
+      daysAhead: 1,
+    }).success).toBe(false);
+    expect(ListUpcomingEventsSchema.safeParse({
+      timeMin: '2026-11-11T00:00:00+07:00',
+      timeMax: '2026-11-12T00:00:00+07:00',
+      range: 'today',
+    }).success).toBe(false);
+    expect(ListUpcomingEventsSchema.safeParse({
+      range: 'today',
+      daysAhead: 1,
+    }).success).toBe(false);
+
+    const invalidResult = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today', daysAhead: 1 },
+      { toolCallId: 'lookup-invalid', messages: [] }
+    );
+    expect(invalidResult).toMatchObject({ success: false });
+    expect(mockFetch).not.toHaveBeenCalled();
+
+    await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      {
+        timeMin: '2026-11-11T20:00:00+07:00',
+        timeMax: '2026-11-12T00:00:00+07:00',
+      },
+      { toolCallId: 'lookup-explicit', messages: [] }
+    );
+    const url = new URL(mockFetch.mock.calls[0][0]);
+    expect(url.searchParams.get('timeMin')).toBe('2026-11-11T20:00:00+07:00');
+    expect(url.searchParams.get('timeMax')).toBe('2026-11-12T00:00:00+07:00');
+  });
+
+  it('filters dev mock events to the requested Vietnam day range', async () => {
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('GOOGLE_CLIENT_ID', '');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', '');
+
+    // Default mock event is scheduled 24h in the future (tomorrow), so querying today must not include it
+    const result = await createCalendarTools().listUpcomingEvents.execute?.(
+      { range: 'today' },
+      { toolCallId: 'lookup-mock-today', messages: [] }
+    );
+    expect(result).toMatchObject({ success: true, mode: 'mock', isMock: true });
+    if (result && 'events' in result && result.events) {
+      expect(result.events.some((event) => event.id === 'mock-event-1')).toBe(false);
+    }
+  });
+
   it('does not use mock Calendar data in production tools', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('GOOGLE_CLIENT_ID', '');
@@ -32,16 +198,26 @@ describe('AI & LLM Integration Layer', () => {
     expect(result).not.toHaveProperty('isMock', true);
   });
   it('correctly provides Vietnam timezone context', () => {
-    const testDate = new Date('2026-10-12T02:00:00Z'); // 09:00 AM UTC+7
+    const testDate = new Date('2026-10-12T02:00:00Z'); // 09:00 AM Monday UTC+7
     const context = getVietnamTimeContext(testDate);
 
     expect(context.timeZone).toBe('Asia/Ho_Chi_Minh');
     expect(context.formattedDate).toContain('09:00');
     expect(context.formattedDate).toContain('2026');
+    expect(context.todayRange).toEqual({
+      timeMin: '2026-10-12T00:00:00+07:00',
+      timeMax: '2026-10-13T00:00:00+07:00',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    });
+    expect(context.thisWeekRange).toEqual({
+      timeMin: '2026-10-12T00:00:00+07:00',
+      timeMax: '2026-10-19T00:00:00+07:00',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    });
   });
 
   it('builds system prompt with mandatory Vietnamese instructions and safety rules', () => {
-    const prompt = buildSystemPrompt('user@example.com');
+    const prompt = buildSystemPrompt('user@example.com', new Date('2026-11-11T13:00:00Z'));
 
     expect(prompt).toContain('Asia/Ho_Chi_Minh');
     expect(prompt).toContain('user@example.com');
@@ -49,6 +225,12 @@ describe('AI & LLM Integration Layer', () => {
     expect(prompt).toContain('TUYỆT ĐỐI KHÔNG BAO GIỜ');
     expect(prompt).toContain('Chủ động tạo thẻ xem trước');
     expect(prompt).toContain('TỰ SUY LUẬN TIÊU ĐỀ');
+    expect(prompt).toContain('2026-11-11T00:00:00+07:00');
+    expect(prompt).toContain('2026-11-12T00:00:00+07:00');
+    expect(prompt).toContain('2026-11-09T00:00:00+07:00');
+    expect(prompt).toContain('2026-11-16T00:00:00+07:00');
+    expect(prompt).toContain('range: "today"');
+    expect(prompt).toContain('range: "this_week"');
   });
 
   it('validates proposeMeeting schema correctly', () => {

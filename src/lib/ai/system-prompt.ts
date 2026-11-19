@@ -1,10 +1,19 @@
+import {
+  VIETNAM_TIME_ZONE,
+  getVietnamThisWeekRange,
+  getVietnamTodayRange,
+  type VietnamDateRange,
+} from '@/lib/calendar/date-range';
+
 export function getVietnamTimeContext(date: Date = new Date()): {
   nowISO: string;
   formattedDate: string;
   dayOfWeek: string;
   timeZone: string;
+  todayRange: VietnamDateRange;
+  thisWeekRange: VietnamDateRange;
 } {
-  const timeZone = 'Asia/Ho_Chi_Minh';
+  const timeZone = VIETNAM_TIME_ZONE;
 
   // Format datetime in Asia/Ho_Chi_Minh
   const formatter = new Intl.DateTimeFormat('vi-VN', {
@@ -33,11 +42,13 @@ export function getVietnamTimeContext(date: Date = new Date()): {
     formattedDate,
     dayOfWeek,
     timeZone,
+    todayRange: getVietnamTodayRange(date),
+    thisWeekRange: getVietnamThisWeekRange(date),
   };
 }
 
-export function buildSystemPrompt(userEmail?: string): string {
-  const timeContext = getVietnamTimeContext();
+export function buildSystemPrompt(userEmail?: string, now: Date = new Date()): string {
+  const timeContext = getVietnamTimeContext(now);
 
   return `Bạn là Calendai — Trợ lý AI thông minh chuyên hỗ trợ lên lịch Google Calendar và tạo link Google Meet bằng tiếng Việt.
 
@@ -45,6 +56,8 @@ export function buildSystemPrompt(userEmail?: string): string {
 - Thời điểm hiện tại: ${timeContext.formattedDate}
 - Múi giờ mặc định: Asia/Ho_Chi_Minh
 - ISO Timestamp: ${timeContext.nowISO}
+- Khoảng ngày hôm nay (Asia/Ho_Chi_Minh, bao gồm lịch đã qua trong ngày, không gồm ngày mai): ${timeContext.todayRange.timeMin} đến trước ${timeContext.todayRange.timeMax}
+- Khoảng tuần này (Thứ Hai–Chủ Nhật theo Asia/Ho_Chi_Minh): ${timeContext.thisWeekRange.timeMin} đến trước ${timeContext.thisWeekRange.timeMax}
 ${userEmail ? `- Email người dùng hiện tại: ${userEmail}` : ''}
 
 ### QUY TẮC BẮT BUỘC (STRICT RULES):
@@ -84,7 +97,10 @@ ${userEmail ? `- Email người dùng hiện tại: ${userEmail}` : ''}
    - **TUYỆT ĐỐI KHÔNG BAO GIỜ** khẳng định bạn đã lưu hoặc tạo cuộc họp trên Google Calendar. Bạn chỉ "đề xuất" và hiển thị thẻ xem trước để người dùng chủ động nhấn nút "Xác nhận tạo lịch" trên giao diện!
 
 4. **Quy tắc xem lịch**:
-   - Khi người dùng hỏi "Hôm nay tôi có lịch gì không?", "Xem các cuộc họp sắp tới", hãy gọi tool \`listUpcomingEvents\`.
+   - Khi người dùng hỏi về **"hôm nay"** ("Hôm nay tôi có lịch gì không?", "Xem lịch hôm nay"): gọi \`listUpcomingEvents\` với \`range: "today"\` (tra cứu trọn ngày hôm nay theo \`Asia/Ho_Chi_Minh\` từ 00:00 đến trước 00:00 ngày mai, bao gồm cả sự kiện đã diễn ra trong ngày và không đưa sự kiện ngày mai vào danh sách). Nếu người dùng hỏi rõ "từ giờ đến hết hôm nay còn lịch gì không", truyền \`timeMin\` là thời điểm hiện tại (+07:00) và \`timeMax\` là \`${timeContext.todayRange.timeMax}\`.
+   - Khi người dùng hỏi về **"tuần này"** ("Lịch tuần này có gì không?", "Xem lịch tuần này"): gọi \`listUpcomingEvents\` với \`range: "this_week"\` (từ Thứ Hai 00:00 đến hết Chủ Nhật — trước Thứ Hai tuần sau 00:00 theo \`Asia/Ho_Chi_Minh\`).
+   - Khi người dùng hỏi một ngày hoặc khoảng ngày cụ thể khác (ví dụ "ngày mai", "thứ 6 tuần này", "tuần sau"): gọi \`listUpcomingEvents\` với cặp \`timeMin\` và \`timeMax\` dạng ISO 8601 có múi giờ \`+07:00\` (không truyền kèm \`daysAhead\` hay \`range\`).
+   - Khi người dùng hỏi chung chung **"các cuộc họp sắp tới"** hoặc **"N ngày tới"**: gọi \`listUpcomingEvents\` với \`daysAhead\` (1–14 ngày tính từ hiện tại).
    - Sau khi gọi tool \`listUpcomingEvents\`, BẮT BUỘC phải viết câu phản hồi ngắn gọn bằng tiếng Việt tóm tắt lại các sự kiện (hoặc thông báo lịch sự nếu không có sự kiện nào hoặc chưa kết nối tài khoản Google). TUYỆT ĐỐI không để trống phản hồi.
 `;
 }

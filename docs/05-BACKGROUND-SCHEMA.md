@@ -106,10 +106,21 @@ export interface MeetingProposal extends ProposeMeetingInput {
 
 #### B. Schema tra cứu sự kiện (`listUpcomingEvents`)
 
+Quy ước ranh giới ngày/tuần theo múi giờ Việt Nam (`Asia/Ho_Chi_Minh`, `UTC+07:00`):
+- **Hôm nay (`range: 'today'`)**: khoảng nửa mở `[00:00:00+07:00 hôm nay, 00:00:00+07:00 ngày mai)`. Bao gồm cả các sự kiện đã diễn ra trước giờ hiện tại trong ngày hôm nay và loại trừ mọi sự kiện bắt đầu từ `00:00:00+07:00` ngày mai trở đi. (Khi chỉ cần phần còn lại trong ngày, truyền tường minh `timeMin` = hiện tại và `timeMax` = `00:00:00+07:00` ngày mai.)
+- **Tuần này (`range: 'this_week'`)**: theo chuẩn lịch Việt Nam / ISO 8601 từ Thứ Hai đến hết Chủ Nhật — khoảng nửa mở `[Thứ Hai 00:00:00+07:00, Thứ Hai tuần kế tiếp 00:00:00+07:00)`, bao gồm cả sự kiện đã diễn ra từ đầu tuần.
+- **Khoảng thời gian cụ thể (`timeMin` + `timeMax`)**: cặp timestamp ISO 8601 có múi giờ (`timeMax > timeMin`), tách biệt với `daysAhead` và `range`.
+- **N ngày sắp tới (`daysAhead`, hoặc `range: 'upcoming'`)**: khoảng trượt từ hiện tại đến `N × 24h` sau đó (`1 <= daysAhead <= 14`, mặc định `7`).
+
 ```typescript
+export const CalendarLookupRangeSchema = z.enum(['today', 'this_week', 'upcoming']);
+
 export const ListUpcomingEventsSchema = z.object({
-  maxResults: z.number().int().min(1).max(10).default(5),
-  daysAhead: z.number().int().min(1).max(14).default(7),
+  maxResults: z.number().int().min(1).max(50).optional(),
+  range: CalendarLookupRangeSchema.optional(),
+  daysAhead: z.number().int().min(1).max(14).optional(),
+  timeMin: OffsetDateTimeSchema.optional(),
+  timeMax: OffsetDateTimeSchema.optional(),
 });
 
 export type ListUpcomingEventsInput = z.infer<typeof ListUpcomingEventsSchema>;
@@ -118,8 +129,8 @@ export interface CalendarEventSummary {
   id: string;
   summary: string;
   description?: string;
-  start: string; // ISO string
-  end: string;   // ISO string
+  start: string; // ISO string hoặc YYYY-MM-DD (all-day)
+  end: string;   // ISO string hoặc YYYY-MM-DD (all-day)
   hangoutLink?: string;
   htmlLink: string;
   isAllDay: boolean;
