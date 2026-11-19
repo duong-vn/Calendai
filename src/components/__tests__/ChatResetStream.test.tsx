@@ -20,7 +20,7 @@ describe('Reset during an AI response', () => {
           headers: { 'Content-Type': 'text/plain', 'x-vercel-ai-data-stream': 'v1' },
         });
       }
-      return new Response(JSON.stringify({ authenticated: false, isConfigured: true }));
+      return Response.json({ authenticated: false, user: null, isConfigured: true });
     }));
 
     render(<Home />);
@@ -61,7 +61,7 @@ describe('Reset during an AI response', () => {
           start(controller) { stream = controller; },
         }), { headers: { 'Content-Type': 'text/plain', 'x-vercel-ai-data-stream': 'v1' } });
       }
-      return new Response(JSON.stringify({ authenticated: false, isConfigured: true }));
+      return Response.json({ authenticated: false, user: null, isConfigured: true });
     }));
 
     const view = render(<Home />);
