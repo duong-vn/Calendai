@@ -25,11 +25,11 @@ function seed(scope: string | undefined, title: string) {
   return session.id;
 }
 
-function authResponse(id?: string) {
-  return new Response(JSON.stringify({
+function authResponse(id?: string, status = 200) {
+  return Response.json({
     authenticated: Boolean(id), isConfigured: true,
     user: id ? { id, email: `${id}@example.test`, name: id } : null,
-  }));
+  }, { status });
 }
 
 function logoutOkResponse() {
@@ -117,6 +117,59 @@ describe('Home account-isolated history', () => {
     await screen.findByPlaceholderText('Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)');
     expect(screen.queryByText('Đề xuất riêng của tài khoản cũ')).not.toBeInTheDocument();
     expect(loadAllSessions('user_B')).toEqual([]);
+  });
+});
+
+describe('Home session status errors', () => {
+  it.each([
+    { name: 'HTTP 500', response: () => authResponse(undefined, 500) },
+    { name: 'a network error', response: () => { throw new Error('Network error'); } },
+    { name: 'malformed JSON', response: () => new Response('{') },
+    {
+      name: 'a non-boolean authenticated field',
+      response: () => Response.json({ authenticated: 'false', user: null, isConfigured: true }),
+    },
+    {
+      name: 'a guest status without a user field',
+      response: () => Response.json({ authenticated: false, isConfigured: true }),
+    },
+    {
+      name: 'an authenticated status without a user ID',
+      response: () => Response.json({ authenticated: true, user: { email: 'a@example.test', name: 'A' }, isConfigured: true }),
+    },
+    {
+      name: 'a guest status with a user profile',
+      response: () => Response.json({ authenticated: false, user: { id: 'A', email: 'a@example.test', name: 'A' }, isConfigured: true }),
+    },
+  ])('keeps chat closed after $name and opens the resolved account on retry', async ({ response }) => {
+    seed('guest', 'Nội dung khách');
+    seed(undefined, 'Lịch sử dùng chung');
+    const accountSession = seed('user_A', 'Nội dung tài khoản A');
+    const guestHistory = loadAllSessions('guest');
+    const legacyHistory = loadAllSessions();
+    vi.stubGlobal('fetch', vi.fn()
+      .mockImplementationOnce(async () => response())
+      .mockResolvedValueOnce(authResponse('A')));
+
+    await act(async () => { render(<Home />); });
+
+    const composer = 'Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)';
+    expect(screen.queryByPlaceholderText(composer)).not.toBeInTheDocument();
+    expect(screen.queryByText('Nội dung khách')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nội dung tài khoản A')).not.toBeInTheDocument();
+    expect(loadAllSessions('guest')).toEqual(guestHistory);
+    expect(screen.getByRole('alert')).toHaveTextContent('Không thể kiểm tra phiên đăng nhập.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
+
+    expect(await screen.findByPlaceholderText(composer)).toBeInTheDocument();
+    expect(await screen.findByText('Nội dung tài khoản A', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nội dung khách')).not.toBeInTheDocument();
+    expect(screen.queryByText('Lịch sử dùng chung')).not.toBeInTheDocument();
+    expect(getActiveSessionId('user_A')).toBe(accountSession);
+    expect(loadAllSessions('guest')).toEqual(guestHistory);
+    expect(loadAllSessions()).toEqual(legacyHistory);
   });
 });
 

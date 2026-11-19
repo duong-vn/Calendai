@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
-import type { UserProfile } from '@/lib/auth/types';
+import { z } from 'zod';
+import { UserProfileSchema, type UserProfile } from '@/lib/auth/types';
 import {
   type ChatSession,
   createNewSession,
@@ -27,13 +28,24 @@ const ChatHistoryModal = dynamic(
   { ssr: false }
 );
 
+const AuthStatusSchema = z.object({
+  authenticated: z.boolean(),
+  user: UserProfileSchema.nullable(),
+  isConfigured: z.boolean(),
+}).refine(({ authenticated, user }) => authenticated === (user !== null));
+
+type AuthStatus =
+  | { status: 'checking' | 'error' }
+  | { status: 'ready'; user: UserProfile | null; isConfigured: boolean };
+
 export default function Home() {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
-  const historyScope = isAuthenticated && user ? `user_${user.id}` : 'guest';
+  const [auth, setAuth] = useState<AuthStatus>({ status: 'checking' });
+  const isAuthenticated = auth.status === 'ready' && auth.user !== null;
+  const historyScope = auth.status === 'ready'
+    ? (auth.user ? `user_${auth.user.id}` : 'guest')
+    : null;
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
-  const [isConfigured, setIsConfigured] = useState(true);
+  const historyReady = historyScope !== null && loadedScope === historyScope;
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTipsOpen, setIsTipsOpen] = useState(false);
@@ -63,19 +75,19 @@ export default function Home() {
 
   // Never restore shared legacy history before the account is known.
   useEffect(() => {
-    if (!authReady) return;
+    if (historyScope === null) return;
     const all = loadAllSessions(historyScope);
     setSessions(all);
     const active = getActiveSessionId(historyScope) || all[0]?.id || null;
     setActiveSessionIdState(active);
     setLoadedScope(historyScope);
-  }, [authReady, historyScope]);
+  }, [historyScope]);
 
   const refreshSessions = useCallback(() => {
-    if (!authReady) return;
+    if (historyScope === null) return;
     const all = loadAllSessions(historyScope);
     setSessions(all);
-  }, [authReady, historyScope]);
+  }, [historyScope]);
 
   useEffect(() => {
     try {
@@ -98,13 +110,14 @@ export default function Home() {
   };
 
   const handleSelectSession = (session: ChatSession) => {
+    if (!historyReady) return;
     setActiveSessionId(session.id, historyScope);
     setActiveSessionIdState(session.id);
     setChatKey((prev) => prev + 1);
   };
 
   const handleNewSession = () => {
-    if (!authReady || loadedScope !== historyScope) return;
+    if (!historyReady) return;
     const newSession = createNewSession(selectedModel, historyScope);
     refreshSessions();
     setActiveSessionIdState(newSession.id);
@@ -116,6 +129,7 @@ export default function Home() {
   };
 
   const handleDeleteSession = (sessionId: string) => {
+    if (!historyReady) return;
     const { remainingSessions, newActiveId } = deleteSessionById(sessionId, historyScope);
     setSessions(remainingSessions);
     if (activeSessionId === sessionId) {
@@ -128,24 +142,27 @@ export default function Home() {
     });
   };
 
-  const fetchAuthStatus = async () => {
-    try {
-      const res = await fetch('/api/auth/google/status');
-      const data = await res.json();
-      setIsAuthenticated(Boolean(data.authenticated));
-      setUser(data.user);
-      setIsConfigured(data.isConfigured !== false);
-    } catch {
-      setIsAuthenticated(false);
-      setUser(null);
-    } finally {
-      setAuthReady(true);
+  useEffect(() => {
+    if (auth.status !== 'checking') return;
+
+    const controller = new AbortController();
+    const { signal } = controller;
+    async function fetchAuthStatus() {
+      try {
+        const res = await fetch('/api/auth/google/status', { signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { user, isConfigured } = AuthStatusSchema.parse(await res.json());
+        if (!signal.aborted) setAuth({ status: 'ready', user, isConfigured });
+      } catch {
+        if (!signal.aborted) setAuth({ status: 'error' });
+      }
     }
-  };
+
+    void fetchAuthStatus();
+    return () => controller.abort();
+  }, [auth.status]);
 
   useEffect(() => {
-    fetchAuthStatus();
-
     // Check URL parameters for OAuth redirect feedback
     const url = new URL(window.location.href);
     const authSuccess = url.searchParams.get('auth_success');
@@ -178,8 +195,7 @@ export default function Home() {
         setToast({ type: 'error', message: 'Ngắt kết nối thất bại. Vui lòng thử lại.' });
         return;
       }
-      setIsAuthenticated(false);
-      setUser(null);
+      setAuth((current) => current.status === 'ready' ? { ...current, user: null } : current);
       setIsUpcomingOpen(false);
       setIsHistoryOpen(false);
       setToast({
@@ -226,10 +242,10 @@ export default function Home() {
       )}
 
       {/* Navigation Header */}
-      <Header
-        user={user}
+      {auth.status === 'ready' && <Header
+        user={auth.user}
         isAuthenticated={isAuthenticated}
-        isConfigured={isConfigured}
+        isConfigured={auth.isConfigured}
         selectedModel={selectedModel}
         onSelectModel={handleSelectModel}
         isSidebarOpen={isSidebarOpen}
@@ -245,10 +261,29 @@ export default function Home() {
         onOpenTips={() => setIsTipsOpen((prev) => !prev)}
         onClearSession={handleClearSession}
         onLogout={handleLogout}
-      />
+      />}
+
+      {auth.status !== 'ready' && (
+        <main className="flex flex-1 items-center justify-center p-4 text-center">
+          {auth.status === 'checking' ? (
+            <p role="status">Đang kiểm tra phiên đăng nhập…</p>
+          ) : (
+            <div>
+              <p role="alert">Không thể kiểm tra phiên đăng nhập.</p>
+              <button
+                type="button"
+                onClick={() => setAuth({ status: 'checking' })}
+                className="mt-3 min-h-11 rounded-xl border-2 border-[var(--ink-border)] bg-[var(--surface)] px-4 py-2 font-semibold hover:bg-[var(--surface-container)]"
+              >
+                Thử lại
+              </button>
+            </div>
+          )}
+        </main>
+      )}
 
       {/* Mount history only after the matching account scope has loaded. */}
-      {authReady && loadedScope === historyScope && <div className="flex flex-1 min-h-0 overflow-hidden relative">
+      {historyReady && <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <ChatSidebar
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen((prev) => !prev)}
@@ -287,7 +322,7 @@ export default function Home() {
 
       {/* Multi-Session History Modal Drawer (fallback / direct open) */}
       <ChatHistoryModal
-        isOpen={isHistoryOpen && authReady && loadedScope === historyScope}
+        isOpen={isHistoryOpen && historyReady}
         onClose={() => setIsHistoryOpen(false)}
         sessions={sessions}
         activeSessionId={activeSessionId}
