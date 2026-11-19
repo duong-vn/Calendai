@@ -34,6 +34,7 @@ Calendai là ứng dụng web trợ lý lịch trình AI ưu tiên tiếng Việ
 
 ```text
 Calendai/
+├── .github/workflows/ci.yml         # Kiểm tra web trên GitHub Actions
 ├── docs/                           # Bộ 6 tài liệu thiết kế & tài liệu vận hành
 │   ├── 01-PRD.md                   # Product Requirements Document
 │   ├── 02-TRD.md                   # Technical Requirements Document
@@ -43,27 +44,50 @@ Calendai/
 │   ├── 06-IMPLEMENTATION-PLAN.md   # Kế hoạch triển khai & nghiệm thu
 │   ├── PROGRESS.md                 # Nhật ký tiến độ các cột mốc
 │   └── HUMAN_ACTIONS.md            # Hướng dẫn chi tiết thiết lập Google Cloud
+├── mobile/                         # Ứng dụng Expo native với cấu hình và kiểm thử riêng
+├── public/                         # Tệp tĩnh của web
 ├── src/
 │   ├── app/                        # Next.js App Router
 │   │   ├── api/
-│   │   │   ├── auth/google/        # Google OAuth login, callback, status, logout
-│   │   │   ├── calendar/           # Endpoints confirm tạo lịch & upcoming events
-│   │   │   └── chat/               # Streaming chat route với AI SDK tool calling
+│   │   │   ├── auth/
+│   │   │   │   ├── google/         # Đăng nhập Google, callback, trạng thái và đăng xuất
+│   │   │   │   └── mobile/         # Đổi mã OAuth và làm mới phiên mobile
+│   │   │   ├── calendar/
+│   │   │   │   ├── confirm/        # Xác nhận tạo sự kiện
+│   │   │   │   ├── conflicts/      # Kiểm tra sự kiện trùng giờ
+│   │   │   │   ├── resolve/        # Xử lý sự kiện trùng giờ
+│   │   │   │   └── upcoming/       # Tra cứu sự kiện sắp tới
+│   │   │   ├── chat/               # Streaming chat route với AI SDK tool calling
+│   │   │   ├── health/ai/          # Kiểm tra kết nối AI
+│   │   │   └── models/             # Danh sách model AI
 │   │   ├── globals.css             # Tailwind CSS styles
 │   │   ├── layout.tsx              # Root Layout
-│   │   └── page.tsx                # Giao diện ứng dụng chính
+│   │   ├── not-found.tsx           # Trang 404
+│   │   ├── page.tsx                # Giao diện ứng dụng chính
+│   │   ├── privacy/                # Chính sách quyền riêng tư
+│   │   └── terms/                  # Điều khoản sử dụng
 │   ├── components/                 # UI Components
-│   │   ├── Header.tsx              # Thanh điều hướng, avatar & Google status
+│   │   ├── CalendarConflictChoices.tsx # Lựa chọn khi trùng lịch
+│   │   ├── ChatHistoryModal.tsx     # Hộp thoại lịch sử hội thoại
 │   │   ├── ChatInterface.tsx       # Khung chat streaming & danh sách tin nhắn
-│   │   ├── MeetingPreviewCard.tsx  # Thẻ xem trước & nút xác nhận tạo lịch
+│   │   ├── ChatSidebar.tsx         # Thanh bên quản lý hội thoại
 │   │   ├── EventCreatedCard.tsx    # Thẻ sự kiện thành công & Google Meet link
+│   │   ├── Header.tsx              # Thanh điều hướng, avatar & Google status
+│   │   ├── MeetingPreviewCard.tsx  # Thẻ xem trước & nút xác nhận tạo lịch
+│   │   ├── ModelSelector.tsx       # Bộ chọn model AI
+│   │   ├── PageHeader.tsx          # Điều hướng các trang chính sách
+│   │   ├── ReminderSettings.tsx    # Cài đặt nhắc lịch
+│   │   ├── Sidenote.tsx            # Ghi chú bên lề
+│   │   ├── ThemeToggle.tsx         # Chuyển giao diện sáng hoặc tối
 │   │   └── UpcomingEventsModal.tsx # Hộp thoại tra cứu lịch trình sắp tới
 │   └── lib/
 │       ├── ai/                     # Provider OpenRouter, system prompt, tools
-│       ├── auth/                   # Session encryption, Google OAuth helpers
+│       ├── auth/                   # Google OAuth và phiên mã hóa cho web, mobile
 │       ├── calendar/               # Client Google Calendar & Mock service
+│       ├── chat/                   # Lưu lịch sử hội thoại trên trình duyệt
 │       └── env.ts                  # Zod validation cho biến môi trường
-├── CLAUDE.md                       # Quy chuẩn phát triển dự án
+├── AGENTS.md                       # Quy chuẩn phát triển dự án
+├── CLAUDE.md                       # Nạp chỉ dẫn từ AGENTS.md
 ├── vitest.config.ts                # Cấu hình test runner Vitest
 └── .env.example                    # Mẫu khai báo biến môi trường
 ```
@@ -78,7 +102,7 @@ Calendai/
 
 ### 2. Cài đặt dependencies
 ```bash
-git clone https://github.com/<your-username>/Calendai.git
+git clone https://github.com/duong-vn/Calendai.git
 cd Calendai
 npm install
 ```
@@ -126,6 +150,14 @@ Chạy bản build production:
 npm run build
 npm start
 ```
+
+---
+
+## Triển Khai Production
+
+- Vercel chạy web và API tại `https://calendai.tduong.online`. Nhánh PR có bản Preview. Khi có commit mới trên `main`, Vercel tự tạo bản Production. Theo dõi trạng thái trong tab **Deployments** của dự án. [Triển khai qua Git trên Vercel](https://vercel.com/docs/git)
+- Máy local dùng `.env.local`. Trên Vercel, vào **Settings → Environment Variables** của dự án và chọn **Production** khi khai báo `AI_API_KEY`, `AI_MODEL`, `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET`. Đặt `SESSION_SECRET` ngẫu nhiên tối thiểu 32 ký tự và cấu hình `AI_BASE_URL` nếu dùng endpoint khác mặc định. Thay đổi biến có hiệu lực ở lần triển khai tiếp theo. [Biến môi trường trên Vercel](https://vercel.com/docs/environment-variables)
+- Đặt `NEXT_PUBLIC_APP_URL=https://calendai.tduong.online` trong môi trường Production. Đăng ký `https://calendai.tduong.online/api/auth/google/callback` trong danh sách **Authorized redirect URIs** của Web OAuth client trên Google Cloud. Máy local dùng `http://localhost:3000` và callback tương ứng.
 
 ---
 
