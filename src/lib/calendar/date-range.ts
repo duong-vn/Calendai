@@ -2,6 +2,7 @@ import type { UpcomingEventItem } from './types';
 
 export const VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh' as const;
 export const VIETNAM_UTC_OFFSET = '+07:00' as const;
+export const VIETNAM_DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface VietnamDateRange {
   timeMin: string;
@@ -144,7 +145,7 @@ export function isEventInTimeRange(
 
   if (Number.isFinite(startMs)) {
     if (event.isAllDay && DATE_ONLY_PATTERN.test(event.start)) {
-      return startMs < windowEndMs && startMs + 24 * 60 * 60 * 1000 > windowStartMs;
+      return startMs < windowEndMs && startMs + VIETNAM_DAY_MS > windowStartMs;
     }
     return startMs >= windowStartMs && startMs < windowEndMs;
   }
