@@ -71,4 +71,19 @@ describe('Chat Session Storage', () => {
     expect(newActiveId).toBe(s1.id);
     expect(getActiveSessionId()).toBe(s1.id);
   });
+
+  it('clears legacy keys when deleting the last session even if active id was missing or stale', () => {
+    const session = createNewSession();
+    session.messages = [{ id: 'm1', role: 'user', content: 'Tin nhắn cần xóa hẳn' }];
+    saveCurrentSession(session);
+    localStorage.removeItem('calendai_active_session_id');
+
+    const { remainingSessions, newActiveId } = deleteSessionById(session.id);
+    expect(remainingSessions).toEqual([]);
+    expect(newActiveId).toBeNull();
+    expect(localStorage.getItem('calendai_active_session_id')).toBeNull();
+    expect(localStorage.getItem('calendai_chat_messages')).toBeNull();
+    expect(localStorage.getItem('calendai_confirmed_events')).toBeNull();
+    expect(loadAllSessions()).toEqual([]);
+  });
 });

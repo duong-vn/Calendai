@@ -417,6 +417,10 @@ export function ChatInterface({
   const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
     return propActiveSessionId || getActiveSessionId(historyScope) || generateSessionId();
   });
+  const currentSessionIdRef = useRef(currentSessionId);
+  currentSessionIdRef.current = currentSessionId;
+  const prevPropActiveSessionIdRef = useRef(propActiveSessionId);
+  const hydratedSessionKeyRef = useRef<string | null>(null);
 
   const [internalSelectedModel, setInternalSelectedModel] = useState<string>('');
 
@@ -537,6 +541,11 @@ export function ChatInterface({
   }, [releaseRecognition]);
 
   useEffect(() => {
+    const prevPropActiveSessionId = prevPropActiveSessionIdRef.current;
+    prevPropActiveSessionIdRef.current = propActiveSessionId;
+    if (prevPropActiveSessionId === propActiveSessionId) return;
+    // Adopting this instance's own newly persisted session ID is not a session switch.
+    if (!prevPropActiveSessionId && propActiveSessionId === currentSessionIdRef.current) return;
     cancelVoiceRecognition();
   }, [propActiveSessionId, cancelVoiceRecognition]);
 
@@ -638,15 +647,23 @@ export function ChatInterface({
     const targetId = propActiveSessionId || getActiveSessionId(historyScope);
     const target = sessions.find((s) => s.id === targetId) || sessions[0];
 
-    if (target) {
-      setCurrentSessionId(target.id);
-      setActiveSessionId(target.id, historyScope);
-      if (typeof setMessages === 'function') {
-        setMessages(target.messages || []);
-      }
-      setConfirmedEvents(target.confirmedEvents || {});
-      setConfirmationPayloads(target.confirmationPayloads || {});
+    if (!target) return;
+
+    const targetKey = `${historyScope}:${target.id}`;
+    // Avoid overwriting live in-memory state when the parent adopts the session ID we already own.
+    if (hydratedSessionKeyRef.current === targetKey && target.id === currentSessionIdRef.current) {
+      return;
     }
+
+    hydratedSessionKeyRef.current = targetKey;
+    currentSessionIdRef.current = target.id;
+    setCurrentSessionId(target.id);
+    setActiveSessionId(target.id, historyScope);
+    if (typeof setMessages === 'function') {
+      setMessages(target.messages || []);
+    }
+    setConfirmedEvents(target.confirmedEvents || {});
+    setConfirmationPayloads(target.confirmationPayloads || {});
   }, [propActiveSessionId, setMessages, historyScope]);
 
   // Persist messages & confirmedEvents to current session in localStorage
@@ -669,6 +686,7 @@ export function ChatInterface({
         model: activeModel,
       };
 
+      hydratedSessionKeyRef.current = `${historyScope}:${currentSessionId}`;
       saveCurrentSession(sessionToSave, historyScope);
       onSessionsChange?.();
     }
@@ -702,6 +720,8 @@ export function ChatInterface({
     setConfirmedEvents({});
     setConfirmationPayloads({});
     const newId = generateSessionId();
+    hydratedSessionKeyRef.current = null;
+    currentSessionIdRef.current = newId;
     setCurrentSessionId(newId);
     setActiveSessionId(newId, historyScope);
     onSessionsChange?.();
