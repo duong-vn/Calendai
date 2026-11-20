@@ -28,10 +28,12 @@ import {
   generateSessionId,
   getActiveSessionId,
   loadAllSessions,
+  saveConfirmedEvent,
   saveCurrentSession,
   saveConfirmationPayload,
   type MeetingConfirmationPayload,
-  saveSessionsList,
+  SESSION_CONFIRMATION_CHANGED_EVENT,
+  type SessionConfirmationChangedDetail,
   setActiveSessionId,
 } from '@/lib/chat/session-storage';
 import { EventCreatedCard } from './EventCreatedCard';
@@ -49,6 +51,17 @@ const Sidenote = dynamic(
 );
 
 const MARKDOWN_PLUGINS = [remarkGfm];
+
+function areRecordsEqual<T>(a: Record<string, T>, b: Record<string, T>): boolean {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(b, key) &&
+      (a[key] === b[key] || JSON.stringify(a[key]) === JSON.stringify(b[key]))
+  );
+}
 
 const MARKDOWN_COMPONENTS = {
   p: ({ children }: { children?: React.ReactNode }) => (
@@ -649,6 +662,30 @@ export function ChatInterface({
     }
   }, [propActiveSessionId, setMessages, historyScope]);
 
+  // Keep confirmation state synced if an unmounted instance settles while this session is open.
+  useEffect(() => {
+    const syncConfirmationState = () => {
+      const target = loadAllSessions(historyScope).find((s) => s.id === currentSessionId);
+      if (!target) return;
+      const nextConfirmed = target.confirmedEvents || {};
+      const nextPayloads = target.confirmationPayloads || {};
+      setConfirmedEvents((prev) => (areRecordsEqual(prev, nextConfirmed) ? prev : nextConfirmed));
+      setConfirmationPayloads((prev) => (areRecordsEqual(prev, nextPayloads) ? prev : nextPayloads));
+    };
+
+    syncConfirmationState();
+
+    const handleConfirmationChange = (event: Event) => {
+      const detail = (event as CustomEvent<SessionConfirmationChangedDetail>).detail;
+      if (!detail) return;
+      if (detail.scope !== (historyScope ?? null) || detail.sessionId !== currentSessionId) return;
+      syncConfirmationState();
+    };
+
+    window.addEventListener(SESSION_CONFIRMATION_CHANGED_EVENT, handleConfirmationChange);
+    return () => window.removeEventListener(SESSION_CONFIRMATION_CHANGED_EVENT, handleConfirmationChange);
+  }, [currentSessionId, historyScope]);
+
   // Persist messages & confirmedEvents to current session in localStorage
   useEffect(() => {
     if (messages.length > 0 || Object.keys(confirmedEvents).length > 0) {
@@ -663,7 +700,7 @@ export function ChatInterface({
         createdAt: existing?.createdAt || Date.now(),
         updatedAt: Date.now(),
         messages,
-        confirmedEvents,
+        confirmedEvents: { ...existing?.confirmedEvents, ...confirmedEvents },
         confirmationPayloads: existing?.confirmationPayloads,
         confirmationAttempts: existing?.confirmationAttempts,
         model: activeModel,
@@ -737,12 +774,7 @@ export function ChatInterface({
     isMock?: boolean
   ) => {
     // Persist before updating React state: this callback can finish after unmount.
-    const sessions = loadAllSessions(historyScope);
-    const session = sessions.find((item) => item.id === currentSessionId);
-    if (session) {
-      session.confirmedEvents = { ...session.confirmedEvents, [proposalId]: { event, isMock } };
-      session.updatedAt = Date.now();
-      saveSessionsList(sessions, historyScope);
+    if (saveConfirmedEvent(currentSessionId, proposalId, event, isMock, historyScope)) {
       onSessionsChange?.();
     }
     setConfirmedEvents((prev) => ({

@@ -250,4 +250,92 @@ describe('Confirmation completing after chat unmount', () => {
       expect(screen.queryByRole('button', { name: /Xác nhận tạo lịch/ })).not.toBeInTheDocument();
     }
   });
+
+  it('updates a reopened session in place when its pending confirmation resolves and preserves it across model changes', async () => {
+    const original = seedProposal();
+    const other = createNewSession(undefined, 'user_A');
+    let resolve!: (response: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((done) => { resolve = done; }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const viewA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    viewA.unmount();
+
+    const viewB = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={other.id} selectedModel="model-1" />);
+    viewB.unmount();
+
+    const reopenedA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    expect(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ })).toBeInTheDocument();
+
+    await act(async () => resolve(new Response(JSON.stringify({ success: true, event }))));
+
+    expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Xác nhận tạo lịch/ })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    reopenedA.rerender(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+    reopenedA.unmount();
+
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+    expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
+    expect(loadAllSessions('user_A').find((s) => s.id === original.id)?.confirmedEvents[proposal.proposalId]).toEqual({ event });
+  });
+
+  it('preserves a model change made after reopening A before the pending confirmation resolves', async () => {
+    const original = seedProposal();
+    const other = createNewSession(undefined, 'user_A');
+    let resolve!: (response: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((done) => { resolve = done; }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const viewA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ }));
+    viewA.unmount();
+
+    const viewB = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={other.id} selectedModel="model-1" />);
+    viewB.unmount();
+
+    const reopenedA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    expect(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ })).toBeInTheDocument();
+    reopenedA.rerender(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+
+    await act(async () => resolve(new Response(JSON.stringify({ success: true, event }))));
+
+    expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    reopenedA.unmount();
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+    expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
+    const stored = loadAllSessions('user_A').find((s) => s.id === original.id);
+    expect(stored?.confirmedEvents[proposal.proposalId]).toEqual({ event });
+    expect(stored?.model).toBe('model-2');
+  });
+
+  it('unlocks a reopened session if its pending first-attempt confirmation is rejected before the write', async () => {
+    const original = seedProposal();
+    const other = createNewSession(undefined, 'user_A');
+    let resolve!: (response: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((done) => { resolve = done; }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const viewA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Google Meet/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận tạo lịch/ }));
+    viewA.unmount();
+
+    const viewB = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={other.id} />);
+    viewB.unmount();
+
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
+    expect(await screen.findByRole('button', { name: /Google Meet/ })).toBeDisabled();
+
+    await act(async () => resolve(calendarConflict()));
+
+    expect(await screen.findByRole('button', { name: /Google Meet/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Chỉnh sửa' })).toBeEnabled();
+    expect(loadAllSessions('user_A').find((s) => s.id === original.id)?.confirmationPayloads?.[proposal.proposalId]).toBeUndefined();
+  });
 });
