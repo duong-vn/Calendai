@@ -238,21 +238,64 @@ export async function createGoogleCalendarEvent(
   };
 }
 
+const MAX_CALENDAR_PAGES = 100;
+
+export interface ListGoogleCalendarEventsOptions {
+  /** Maximum total matching events to return across pages (unlimited when only `pageSize` is set). */
+  maxResults?: number;
+  /** Google Calendar API `maxResults` page size parameter; defaults to `maxResults` or 10. */
+  pageSize?: number;
+  timeMin?: string;
+  timeMax?: string;
+  paginate?: boolean;
+  /** Applied before counting toward `maxResults` so post-filtering does not yield short/empty pages. */
+  filter?: (event: UpcomingEventItem) => boolean;
+}
+
+function mapGoogleCalendarEvent(event: GoogleApiEventResponse): UpcomingEventItem {
+  let hangoutLink = event.hangoutLink;
+  if (!hangoutLink && event.conferenceData?.entryPoints) {
+    const videoEp = event.conferenceData.entryPoints.find((ep) => ep.entryPointType === 'video');
+    if (videoEp?.uri) {
+      hangoutLink = videoEp.uri;
+    }
+  }
+
+  const isAllDay = Boolean(event.start?.date && !event.start?.dateTime);
+
+  return {
+    id: event.id,
+    summary: event.summary || '(Không có tiêu đề)',
+    description: event.description,
+    start: event.start?.dateTime || event.start?.date || '',
+    end: event.end?.dateTime || event.end?.date || '',
+    hangoutLink,
+    htmlLink: event.htmlLink || `https://www.google.com/calendar/event?eid=${event.id}`,
+    isAllDay,
+  };
+}
+
+/**
+ * Lists Google Calendar events, following `nextPageToken` across short or empty pages
+ * until `maxResults` matching events are collected or all pages are exhausted.
+ */
 export async function listGoogleCalendarEvents(
   accessToken: string,
-  options: {
-    maxResults?: number;
-    timeMin?: string;
-    timeMax?: string;
-    paginate?: boolean;
-  } = {}
+  options: ListGoogleCalendarEventsOptions = {}
 ): Promise<UpcomingEventItem[]> {
-  const maxResults = options.maxResults || 10;
+  const hasPageSize = options.pageSize !== undefined;
+  const maxEvents = hasPageSize ? options.maxResults : (options.maxResults ?? 10);
+  const pageSize = options.pageSize ?? maxEvents ?? 10;
   const timeMin = options.timeMin || new Date().toISOString();
+  const shouldPaginate = options.paginate !== false;
+
+  if (maxEvents !== undefined && maxEvents < 1) {
+    return [];
+  }
 
   const queryParams = new URLSearchParams({
     calendarId: 'primary',
-    maxResults: String(maxResults),
+    maxResults: String(pageSize),
     timeMin,
     singleEvents: 'true',
     orderBy: 'startTime',
@@ -262,46 +305,50 @@ export async function listGoogleCalendarEvents(
     queryParams.set('timeMax', options.timeMax);
   }
 
-  const events: GoogleApiEventResponse[] = [];
+  const events: UpcomingEventItem[] = [];
   const seenPages = new Set<string>();
-  const signal = options.paginate ? AbortSignal.timeout(15_000) : undefined;
-  for (;;) {
+  const signal = shouldPaginate ? AbortSignal.timeout(15_000) : undefined;
+
+  for (let page = 0; page < MAX_CALENDAR_PAGES; page += 1) {
     const response = await fetch(`${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events?${queryParams}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       ...(signal ? { signal, cache: 'no-store' } : {}),
     });
-    const data = (await response.json()) as GoogleApiEventsListResponse;
-    if (!response.ok || data.error) {
-      const errorMsg = data.error?.message || response.statusText;
+    let data: GoogleApiEventsListResponse | null = null;
+    try {
+      data = (await response.json()) as GoogleApiEventsListResponse;
+    } catch (error) {
+      if (response.ok) throw error;
+    }
+    if (!response.ok || !data || typeof data !== 'object' || Array.isArray(data) || data.error) {
+      const errorMsg = data?.error?.message || response.statusText || 'Invalid response';
       throw new Error(`Google Calendar API Error (${response.status}): ${errorMsg}`);
     }
-    events.push(...(data.items ?? []));
-    if (!options.paginate || !data.nextPageToken) break;
-    if (seenPages.has(data.nextPageToken)) throw new Error('Google Calendar returned a repeated page');
+    if (
+      (data.items !== undefined && !Array.isArray(data.items)) ||
+      (data.nextPageToken !== undefined && typeof data.nextPageToken !== 'string')
+    ) {
+      throw new Error('Google Calendar returned an invalid response');
+    }
+
+    for (const rawEvent of data.items ?? []) {
+      const mapped = mapGoogleCalendarEvent(rawEvent);
+      if (options.filter && !options.filter(mapped)) continue;
+      events.push(mapped);
+      if (maxEvents !== undefined && events.length >= maxEvents) {
+        return events;
+      }
+    }
+
+    if (!shouldPaginate || !data.nextPageToken) {
+      return events;
+    }
+    if (seenPages.has(data.nextPageToken)) {
+      throw new Error('Google Calendar returned a repeated page');
+    }
     seenPages.add(data.nextPageToken);
     queryParams.set('pageToken', data.nextPageToken);
   }
 
-  return events.map((event) => {
-    let hangoutLink = event.hangoutLink;
-    if (!hangoutLink && event.conferenceData?.entryPoints) {
-      const videoEp = event.conferenceData.entryPoints.find((ep) => ep.entryPointType === 'video');
-      if (videoEp?.uri) {
-        hangoutLink = videoEp.uri;
-      }
-    }
-
-    const isAllDay = Boolean(event.start?.date && !event.start?.dateTime);
-
-    return {
-      id: event.id,
-      summary: event.summary || '(Không có tiêu đề)',
-      description: event.description,
-      start: event.start?.dateTime || event.start?.date || '',
-      end: event.end?.dateTime || event.end?.date || '',
-      hangoutLink,
-      htmlLink: event.htmlLink || `https://www.google.com/calendar/event?eid=${event.id}`,
-      isAllDay,
-    };
-  });
+  throw new Error('Google Calendar pagination exceeded maximum page limit');
 }

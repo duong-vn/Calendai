@@ -173,6 +173,171 @@ describe('AI & LLM Integration Layer', () => {
     expect(url.searchParams.get('timeMax')).toBe('2026-11-12T00:00:00+07:00');
   });
 
+  it('paginates through empty and short pages after time filtering until maxResults or last page', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-11T02:00:00Z'));
+
+    const emptyFirstFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'next' }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          {
+            id: 'today-after-empty',
+            summary: 'Họp hôm nay',
+            start: { dateTime: '2026-11-11T10:00:00+07:00' },
+            end: { dateTime: '2026-11-11T11:00:00+07:00' },
+          },
+        ],
+      }));
+    vi.stubGlobal('fetch', emptyFirstFetch);
+
+    const emptyFirstResult = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today' },
+      { toolCallId: 'lookup-empty-first', messages: [] }
+    );
+    expect(emptyFirstFetch).toHaveBeenCalledTimes(2);
+    expect(new URL(emptyFirstFetch.mock.calls[1][0]).searchParams.get('pageToken')).toBe('next');
+    expect(emptyFirstResult).toMatchObject({ success: true });
+    if (emptyFirstResult && 'events' in emptyFirstResult && emptyFirstResult.events) {
+      expect(emptyFirstResult.events.map((event) => event.id)).toEqual(['today-after-empty']);
+    }
+
+    const filteredShortFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          {
+            id: 'tomorrow-all-day-out-of-range',
+            summary: 'Nghỉ ngày mai',
+            start: { date: '2026-11-12' },
+            end: { date: '2026-11-13' },
+          },
+          {
+            id: 'today-1',
+            summary: 'Họp 1',
+            start: { dateTime: '2026-11-11T09:00:00+07:00' },
+            end: { dateTime: '2026-11-11T10:00:00+07:00' },
+          },
+        ],
+        nextPageToken: 'page-2',
+      }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          {
+            id: 'today-2',
+            summary: 'Họp 2',
+            start: { dateTime: '2026-11-11T14:00:00+07:00' },
+            end: { dateTime: '2026-11-11T15:00:00+07:00' },
+          },
+          {
+            id: 'today-3',
+            summary: 'Họp 3',
+            start: { dateTime: '2026-11-11T16:00:00+07:00' },
+            end: { dateTime: '2026-11-11T17:00:00+07:00' },
+          },
+        ],
+        nextPageToken: 'page-3',
+      }));
+    vi.stubGlobal('fetch', filteredShortFetch);
+
+    const filteredResult = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today', maxResults: 2 },
+      { toolCallId: 'lookup-filtered-short', messages: [] }
+    );
+    expect(filteredShortFetch).toHaveBeenCalledTimes(2);
+    expect(filteredResult).toMatchObject({ success: true });
+    if (filteredResult && 'events' in filteredResult && filteredResult.events) {
+      expect(filteredResult.events.map((event) => event.id)).toEqual(['today-1', 'today-2']);
+    }
+
+    const satisfiedFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          {
+            id: 'sat-1',
+            start: { dateTime: '2026-11-11T09:00:00+07:00' },
+            end: { dateTime: '2026-11-11T10:00:00+07:00' },
+          },
+          {
+            id: 'sat-2',
+            start: { dateTime: '2026-11-11T11:00:00+07:00' },
+            end: { dateTime: '2026-11-11T12:00:00+07:00' },
+          },
+        ],
+        nextPageToken: 'page-2',
+      }));
+    vi.stubGlobal('fetch', satisfiedFetch);
+
+    const satisfiedResult = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today', maxResults: 2 },
+      { toolCallId: 'lookup-satisfied', messages: [] }
+    );
+    expect(satisfiedFetch).toHaveBeenCalledTimes(1);
+    expect(satisfiedResult).toMatchObject({ success: true });
+    if (satisfiedResult && 'events' in satisfiedResult && satisfiedResult.events) {
+      expect(satisfiedResult.events.map((event) => event.id)).toEqual(['sat-1', 'sat-2']);
+    }
+
+    // Even when page 1 fills maxResults with raw events that are all excluded by the time filter, keep paging.
+    const allFilteredPageOneFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          {
+            id: 'out-1',
+            start: { date: '2026-11-12' },
+            end: { date: '2026-11-13' },
+          },
+          {
+            id: 'out-2',
+            start: { date: '2026-11-13' },
+            end: { date: '2026-11-14' },
+          },
+        ],
+        nextPageToken: 'page-2',
+      }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          {
+            id: 'in-after-filtered-page',
+            start: { dateTime: '2026-11-11T15:00:00+07:00' },
+            end: { dateTime: '2026-11-11T16:00:00+07:00' },
+          },
+        ],
+      }));
+    vi.stubGlobal('fetch', allFilteredPageOneFetch);
+
+    const afterFilteredResult = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today', maxResults: 2 },
+      { toolCallId: 'lookup-after-filtered-page', messages: [] }
+    );
+    expect(allFilteredPageOneFetch).toHaveBeenCalledTimes(2);
+    expect(afterFilteredResult).toMatchObject({ success: true });
+    if (afterFilteredResult && 'events' in afterFilteredResult && afterFilteredResult.events) {
+      expect(afterFilteredResult.events.map((event) => event.id)).toEqual(['in-after-filtered-page']);
+    }
+  });
+
+  it('fails lookup rather than returning an empty success when pagination errors or repeats tokens', async () => {
+    vi.stubGlobal('fetch', vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'next' }))
+      .mockResolvedValueOnce(Response.json({ error: { message: 'Upstream failure' } }, { status: 500 })));
+
+    const errorResult = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today' },
+      { toolCallId: 'lookup-page-error', messages: [] }
+    );
+    expect(errorResult).toMatchObject({ success: false });
+
+    vi.stubGlobal('fetch', vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'loop' }))
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'loop' })));
+
+    const loopResult = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today' },
+      { toolCallId: 'lookup-page-loop', messages: [] }
+    );
+    expect(loopResult).toMatchObject({ success: false });
+  });
+
   it('filters dev mock events to the requested Vietnam day range', async () => {
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('GOOGLE_CLIENT_ID', '');

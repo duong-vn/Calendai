@@ -179,12 +179,13 @@ export function createCalendarTools(
 
         try {
           if (session && accessToken) {
-            const rawEvents = await listGoogleCalendarEvents(accessToken, {
+            const events = await listGoogleCalendarEvents(accessToken, {
               maxResults,
               timeMin,
               timeMax,
+              paginate: true,
+              filter: (event) => isEventInTimeRange(event, timeMin, timeMax),
             });
-            const events = rawEvents.filter((event) => isEventInTimeRange(event, timeMin, timeMax));
 
             return {
               success: true,
