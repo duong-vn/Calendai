@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as exchange } from '@/app/api/auth/mobile/exchange/route';
 import { POST as refresh } from '@/app/api/auth/mobile/refresh/route';
@@ -188,6 +189,36 @@ describe('Native refresh and profile endpoints', () => {
     expect((await logout(await bearerRequest('/api/auth/google/logout'))).status).toBe(200);
     expect(cookieMocks.delete).not.toHaveBeenCalled();
     expect((await logout(new Request('https://app.example.com/api/auth/google/logout', { method: 'POST' }))).status).toBe(200);
+    expect(cookieMocks.delete).toHaveBeenCalledOnce();
+  });
+
+  it.each<Record<string, string>>([
+    { Origin: 'https://attacker.example' },
+    { Origin: 'https://other.tduong.online', 'Sec-Fetch-Site': 'same-site' },
+    { 'Sec-Fetch-Site': 'same-site' },
+    { Origin: 'null' },
+    { Origin: '' },
+    { 'Sec-Fetch-Site': 'cross-site' },
+    { Authorization: 'Bearer some-token', 'Sec-Fetch-Site': 'cross-site' },
+  ])('rejects cross-origin and cross-site logout requests %j', async (headers) => {
+    const response = await logout(new Request('https://calendai.tduong.online/api/auth/google/logout', {
+      method: 'POST',
+      headers,
+    }));
+    expect(response.status).toBe(403);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(cookieMocks.delete).not.toHaveBeenCalled();
+  });
+
+  it('allows same-origin web logout without JSON body or Content-Type', async () => {
+    const response = await logout(new Request('https://calendai.tduong.online/api/auth/google/logout', {
+      method: 'POST',
+      headers: {
+        Origin: 'https://calendai.tduong.online',
+        'Sec-Fetch-Site': 'same-origin',
+      },
+    }));
+    expect(response.status).toBe(200);
     expect(cookieMocks.delete).toHaveBeenCalledOnce();
   });
 

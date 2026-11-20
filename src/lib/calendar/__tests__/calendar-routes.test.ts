@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/calendar/confirm/route';
 import { GET } from '@/app/api/calendar/upcoming/route';
@@ -190,5 +191,83 @@ describe('Calendar route boundaries', () => {
 
   it.each(['-1', '0', '1.5', '101', 'NaN', ''])('rejects an invalid upcoming count %s', async (count) => {
     expect((await GET(new Request(`http://localhost/api/calendar/upcoming?maxResults=${count}`))).status).toBe(400);
+  });
+
+  it('requires application/json Content-Type on confirm before parsing or reading session', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const req = new Request('https://calendai.tduong.online/api/calendar/confirm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+        Origin: 'https://other.tduong.online',
+        'Sec-Fetch-Site': 'same-site',
+      },
+      body: JSON.stringify(proposal),
+    });
+    const response = await POST(req);
+    expect(response.status).toBe(415);
+    expect(getServerSession).not.toHaveBeenCalled();
+    expect(getValidAccessToken).not.toHaveBeenCalled();
+    expect(createMockCalendarEvent).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const missingType = new Request('https://calendai.tduong.online/api/calendar/confirm', {
+      method: 'POST',
+      body: JSON.stringify(proposal),
+    });
+    expect((await POST(missingType)).status).toBe(415);
+    expect(getServerSession).not.toHaveBeenCalled();
+  });
+
+  it.each<Record<string, string>>([
+    { Origin: 'https://attacker.example' },
+    { Origin: 'https://other.tduong.online', 'Sec-Fetch-Site': 'same-site' },
+    { 'Sec-Fetch-Site': 'same-site' },
+    { Origin: 'null' },
+    { Origin: '' },
+    { 'Sec-Fetch-Site': 'cross-site' },
+  ])('rejects cross-origin and cross-site confirm requests %j before reading session', async (extraHeaders) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const req = new Request('https://calendai.tduong.online/api/calendar/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify(proposal),
+    });
+    const response = await POST(req);
+    expect(response.status).toBe(403);
+    expect(getServerSession).not.toHaveBeenCalled();
+    expect(getValidAccessToken).not.toHaveBeenCalled();
+    expect(createMockCalendarEvent).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('allows same-origin web and Origin-free Bearer confirm requests', async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST'
+      ? Response.json({ ...JSON.parse(String(init.body)), id: 'created' })
+      : Response.json({}, { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const sameOriginReq = new Request('https://calendai.tduong.online/api/calendar/confirm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Origin: 'https://calendai.tduong.online',
+        'Sec-Fetch-Site': 'same-origin',
+      },
+      body: JSON.stringify({ ...proposal, allowConflict: true }),
+    });
+    expect((await POST(sameOriginReq)).status).toBe(200);
+
+    const mobileReq = new Request('https://calendai.tduong.online/api/calendar/confirm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer mobile-jwe',
+      },
+      body: JSON.stringify({ ...proposal, allowConflict: true }),
+    });
+    expect((await POST(mobileReq)).status).toBe(200);
   });
 });
