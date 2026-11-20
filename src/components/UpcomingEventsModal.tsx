@@ -1,16 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   Calendar,
-  Clock,
-  ExternalLink,
   Loader2,
   RefreshCw,
-  Video,
   X,
 } from 'lucide-react';
 import type { UpcomingEventItem } from '@/lib/calendar/types';
+import { UpcomingEventCard } from './UpcomingEventCard';
+import { WeeklyCalendar } from './WeeklyCalendar';
 
 interface UpcomingEventsModalProps {
   isOpen: boolean;
@@ -21,61 +20,61 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
   const [events, setEvents] = useState<UpcomingEventItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<'upcoming' | 'week'>('upcoming');
+  const dialog = useRef<HTMLDialogElement>(null);
+  const upcomingRequest = useRef<AbortController>(null);
+  const titleId = useId();
 
   const fetchEvents = async () => {
+    upcomingRequest.current?.abort();
+    const abort = new AbortController();
+    upcomingRequest.current = abort;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/calendar/upcoming');
+      const res = await fetch('/api/calendar/upcoming', { signal: abort.signal });
       const data = await res.json();
+      if (abort.signal.aborted) return;
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Không thể tải lịch trình.');
       }
       setEvents(data.events || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lỗi lấy danh sách sự kiện');
+      if (!abort.signal.aborted) setError(err instanceof Error ? err.message : 'Lỗi lấy danh sách sự kiện');
     } finally {
-      setLoading(false);
+      if (!abort.signal.aborted) setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isOpen) {
-      fetchEvents();
+    if (isOpen && view === 'upcoming') {
+      void fetchEvents();
+      return () => upcomingRequest.current?.abort();
     }
+  }, [isOpen, view]);
+
+  useEffect(() => {
+    const modal = dialog.current;
+    if (!isOpen || !modal) return;
+    modal.showModal();
+    return () => modal.close();
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const formatEventTime = (isoString: string, isAllDay: boolean) => {
-    try {
-      const d = new Date(isoString);
-      const formatted = new Intl.DateTimeFormat('vi-VN', {
-        // Date-only values are calendar dates, not instants to shift into GMT+7.
-        timeZone: isAllDay ? 'UTC' : 'Asia/Ho_Chi_Minh',
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-        ...(isAllDay ? {} : { hour: '2-digit', minute: '2-digit', hour12: false } as const),
-      }).format(d);
-      return isAllDay ? `Cả ngày · ${formatted}` : formatted;
-    } catch {
-      return isoString;
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="flex max-h-[85dvh] sm:max-h-[85dvh] w-full max-w-xl flex-col rounded-t-3xl sm:rounded-3xl bg-[#fffaf2] shadow-2xl border-2 border-[#2d2015] sm:shadow-[4px_4px_0px_#2d2015] pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0 dark:bg-[#1f1813] dark:border-[#453427] dark:sm:shadow-[4px_4px_0px_#453427]">
+    <dialog ref={dialog} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }}
+      className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none items-end justify-center bg-transparent p-0 open:flex sm:items-center sm:p-4 backdrop:bg-black/50 backdrop:backdrop-blur-xs">
+      <div className={`flex max-h-[85dvh] w-full flex-col rounded-t-3xl sm:rounded-3xl bg-[#fffaf2] shadow-2xl border-2 border-[#2d2015] sm:shadow-[4px_4px_0px_#2d2015] pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0 dark:bg-[#1f1813] dark:border-[#453427] dark:sm:shadow-[4px_4px_0px_#453427] ${view === 'week' ? 'h-[85dvh] max-w-6xl' : 'max-w-xl'}`}>
         <div className="w-10 h-1 bg-[#2d2015]/40 dark:bg-[#453427] rounded-full mx-auto mt-3 mb-1 shrink-0 sm:hidden" />
         {/* Header */}
-        <div className="shrink-0 flex flex-wrap gap-3 items-center justify-between border-b-2 border-[#2d2015]/20 px-5 sm:px-6 py-3.5 sm:py-4 dark:border-[#453427]">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-[#2d2015] bg-[#ede4d5] text-[#c25e2e] shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#fbbf24]">
+        <div className="shrink-0 flex gap-2 items-center justify-between border-b-2 border-[#2d2015]/20 px-5 sm:px-6 py-3.5 sm:py-4 dark:border-[#453427]">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-[#2d2015] bg-[#ede4d5] text-[#c25e2e] shadow-[1px_1px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#fbbf24]">
               <Calendar className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
+              <h3 id={titleId} className="text-base font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
                 Bảng Lịch Trình Hơi Nước
               </h3>
               <p className="text-[11px] font-mono text-[#786455] dark:text-[#ba9f88]">
@@ -83,8 +82,8 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
+          <div className="flex shrink-0 items-center gap-1">
+            {view === 'upcoming' && <button
               type="button"
               onClick={fetchEvents}
               disabled={loading}
@@ -93,7 +92,7 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
               aria-label="Làm mới lịch trình"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            </button>}
             <button
               type="button"
               onClick={onClose}
@@ -105,9 +104,17 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
             </button>
           </div>
         </div>
+        <div role="group" aria-label="Chế độ xem lịch" className="flex shrink-0 gap-2 border-b border-[#2d2015]/15 px-4 py-2 sm:px-6 dark:border-[#453427]">
+          {(['upcoming', 'week'] as const).map(mode => (
+            <button key={mode} type="button" aria-pressed={view === mode} onClick={() => setView(mode)}
+              className="min-h-9 rounded-lg px-3 text-sm font-semibold text-[#2b1f17] hover:bg-[#ede4d5] aria-pressed:bg-[#ede4d5] dark:text-[#f5ebd9] dark:hover:bg-[#34281f] dark:aria-pressed:bg-[#34281f]">
+              {mode === 'week' ? 'Lịch tuần' : 'Sắp tới'}
+            </button>
+          ))}
+        </div>
 
         {/* Content */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+        {view === 'week' ? <WeeklyCalendar /> : <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
           {loading ? (
             <div className="flex h-48 flex-col items-center justify-center gap-2 text-[#786455] dark:text-[#ba9f88]">
               <Loader2 className="h-6 w-6 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
@@ -131,52 +138,12 @@ export function UpcomingEventsModal({ isOpen, onClose }: UpcomingEventsModalProp
           ) : (
             <div className="space-y-3">
               {events.map((evt) => (
-                <div
-                  key={evt.id}
-                  className="rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-4 shadow-[2px_2px_0px_#2d2015] transition-all hover:border-[#c25e2e] dark:border-[#453427] dark:bg-[#16120f] dark:hover:border-[#e07a3f]"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="min-w-0 [overflow-wrap:anywhere] text-sm font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
-                      {evt.summary}
-                    </h4>
-                    <a
-                      href={evt.htmlLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#786455] hover:text-[#c25e2e] transition-colors dark:text-[#ba9f88] dark:hover:text-[#e07a3f]"
-                      title="Mở trên Google Calendar"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-
-                  <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-[#786455] dark:text-[#ba9f88]">
-                    <Clock className="h-3.5 w-3.5 text-[#c25e2e] shrink-0 dark:text-[#e07a3f]" />
-                    <span>{formatEventTime(evt.start, evt.isAllDay)}</span>
-                  </div>
-
-                  {evt.hangoutLink && (
-                    <div className="mt-3 flex flex-wrap gap-3 items-center justify-between border-t-2 border-[#2d2015]/10 pt-2.5 dark:border-[#453427]">
-                      <div className="flex items-center gap-1.5 text-xs text-[#1f7560] dark:text-[#2dd4bf]">
-                        <Video className="h-3.5 w-3.5" />
-                        <span className="font-bold">Google Meet</span>
-                      </div>
-                      <a
-                        href={evt.hangoutLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-full border-2 border-[#2d2015] bg-[#1f7560] px-3.5 py-1 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] hover:bg-[#165a4a] transition-all active:translate-x-[1px] active:translate-y-[1px] dark:border-[#453427] dark:bg-[#2dd4bf] dark:text-[#14110f]"
-                      >
-                        Tham gia
-                      </a>
-                    </div>
-                  )}
-                </div>
+                <UpcomingEventCard key={evt.id} event={evt} />
               ))}
             </div>
           )}
-        </div>
+        </div>}
       </div>
-    </div>
+    </dialog>
   );
 }

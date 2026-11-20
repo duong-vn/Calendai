@@ -57,6 +57,7 @@ interface GoogleApiEventResponse {
 
 interface GoogleApiEventsListResponse {
   items?: GoogleApiEventResponse[];
+  nextPageToken?: string;
   error?: {
     code?: number;
     message?: string;
@@ -243,6 +244,7 @@ export async function listGoogleCalendarEvents(
     maxResults?: number;
     timeMin?: string;
     timeMax?: string;
+    paginate?: boolean;
   } = {}
 ): Promise<UpcomingEventItem[]> {
   const maxResults = options.maxResults || 10;
@@ -260,26 +262,27 @@ export async function listGoogleCalendarEvents(
     queryParams.set('timeMax', options.timeMax);
   }
 
-  const url = `${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events?${queryParams.toString()}`;
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  const data = (await response.json()) as GoogleApiEventsListResponse;
-
-  if (!response.ok || data.error) {
-    const errorMsg = data.error?.message || response.statusText;
-    throw new Error(`Google Calendar API Error (${response.status}): ${errorMsg}`);
+  const events: GoogleApiEventResponse[] = [];
+  const seenPages = new Set<string>();
+  const signal = options.paginate ? AbortSignal.timeout(15_000) : undefined;
+  for (;;) {
+    const response = await fetch(`${GOOGLE_CALENDAR_BASE_URL}/calendars/primary/events?${queryParams}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      ...(signal ? { signal, cache: 'no-store' } : {}),
+    });
+    const data = (await response.json()) as GoogleApiEventsListResponse;
+    if (!response.ok || data.error) {
+      const errorMsg = data.error?.message || response.statusText;
+      throw new Error(`Google Calendar API Error (${response.status}): ${errorMsg}`);
+    }
+    events.push(...(data.items ?? []));
+    if (!options.paginate || !data.nextPageToken) break;
+    if (seenPages.has(data.nextPageToken)) throw new Error('Google Calendar returned a repeated page');
+    seenPages.add(data.nextPageToken);
+    queryParams.set('pageToken', data.nextPageToken);
   }
 
-  if (!data.items || data.items.length === 0) {
-    return [];
-  }
-
-  return data.items.map((event) => {
+  return events.map((event) => {
     let hangoutLink = event.hangoutLink;
     if (!hangoutLink && event.conferenceData?.entryPoints) {
       const videoEp = event.conferenceData.entryPoints.find((ep) => ep.entryPointType === 'video');

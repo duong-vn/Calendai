@@ -41,6 +41,40 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('Calendar route boundaries', () => {
+  it('loads every page for a Vietnam week and excludes events beyond its date boundaries', async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'overnight', start: { dateTime: '2026-11-15T23:30:00+07:00' }, end: { dateTime: '2026-11-16T00:30:00+07:00' } },
+          { id: 'previous', start: { date: '2026-11-15' }, end: { date: '2026-11-16' } },
+        ],
+        nextPageToken: 'next/page',
+      }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'sunday', start: { date: '2026-11-22' }, end: { date: '2026-11-23' } },
+          { id: 'following', start: { dateTime: '2026-11-23T00:00:00+07:00' }, end: { dateTime: '2026-11-23T01:00:00+07:00' } },
+        ],
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await GET(new Request('http://localhost/api/calendar/upcoming?week=2026-11-16'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect((await response.json()).events.map((event: { id: string }) => event.id)).toEqual(['overnight', 'sunday']);
+    const [first, second] = fetchMock.mock.calls.map(([url]) => new URL(url).searchParams);
+    expect(first.get('timeMin')).toBe('2026-11-15T00:00:00+07:00');
+    expect(first.get('timeMax')).toBe('2026-11-24T00:00:00+07:00');
+    expect(second.get('pageToken')).toBe('next/page');
+  });
+
+  it.each(['', '2026-11-15', '2026-02-30', '2026-11-16T00:00:00Z'])('rejects an invalid week %s before contacting Google', async (week) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await GET(new Request(`http://localhost/api/calendar/upcoming?week=${week}`))).status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it.each([{ reminderMinutes: [30, 5] }, { reminderMinutes: [] }])('passes reminder settings to Google %j', async ({ reminderMinutes }) => {
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST'
       ? Response.json({ ...JSON.parse(String(init.body)), id: 'created' })
