@@ -110,6 +110,20 @@ export function loadAllSessions(scope?: string | null): ChatSession[] {
   return [];
 }
 
+export const SESSION_CONFIRMATION_CHANGED_EVENT = 'calendai:session-confirmation-changed';
+
+export interface SessionConfirmationChangedDetail {
+  scope: string | null;
+  sessionId: string;
+}
+
+function notifySessionConfirmationChanged(sessionId: string, scope?: string | null): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<SessionConfirmationChangedDetail>(SESSION_CONFIRMATION_CHANGED_EVENT, {
+    detail: { scope: scope ?? null, sessionId },
+  }));
+}
+
 export function saveSessionsList(sessions: ChatSession[], scope?: string | null): void {
   if (typeof window === 'undefined') return;
   const keys = getStorageKeys(scope);
@@ -118,6 +132,24 @@ export function saveSessionsList(sessions: ChatSession[], scope?: string | null)
   } catch {
     // Ignore quota errors
   }
+}
+
+export function saveConfirmedEvent(
+  sessionId: string,
+  proposalId: string,
+  event: CalendarEventResult,
+  isMock?: boolean,
+  scope?: string | null,
+): boolean {
+  if (typeof window === 'undefined') return false;
+  const sessions = loadAllSessions(scope);
+  const session = sessions.find((item) => item.id === sessionId);
+  if (!session) return false;
+  session.confirmedEvents = { ...session.confirmedEvents, [proposalId]: { event, isMock } };
+  session.updatedAt = Date.now();
+  saveSessionsList(sessions, scope);
+  notifySessionConfirmationChanged(sessionId, scope);
+  return true;
 }
 
 export function saveConfirmationPayload(
@@ -136,6 +168,7 @@ export function saveConfirmationPayload(
   const key = getStorageKeys(scope).SESSIONS;
   // Unlike history autosave, this write must succeed before a calendar mutation.
   localStorage.setItem(key, JSON.stringify(sessions));
+  notifySessionConfirmationChanged(sessionId, scope);
 
   return () => {
     if (!firstAttempt) return false;
@@ -146,6 +179,7 @@ export function saveConfirmationPayload(
     delete current.confirmationPayloads[proposalId];
     delete current.confirmationAttempts[proposalId];
     localStorage.setItem(key, JSON.stringify(latest));
+    notifySessionConfirmationChanged(sessionId, scope);
     return true;
   };
 }

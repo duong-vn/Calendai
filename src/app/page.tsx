@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { z } from 'zod';
@@ -85,8 +85,11 @@ export default function Home() {
     setLoadedScope(historyScope);
   }, [historyScope]);
 
+  const historyScopeRef = useRef(historyScope);
+  historyScopeRef.current = historyScope;
+
   const refreshSessions = useCallback(() => {
-    if (historyScope === null) return;
+    if (historyScope === null || historyScopeRef.current !== historyScope) return;
     const all = loadAllSessions(historyScope);
     setSessions(all);
     const storedActiveId = getActiveSessionId(historyScope);

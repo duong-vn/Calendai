@@ -102,7 +102,7 @@ export function MeetingPreviewCard({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const confirmationPending = useRef(false);
 
-  const [snapshot, setSnapshot] = useState(submittedPayload);
+  const [snapshot, setSnapshot] = useState<MeetingConfirmationPayload | undefined>(undefined);
   const proposal = snapshot ?? submittedPayload ?? currentProposal;
   const [draftCreateMeet, setCreateMeet] = useState(Boolean(proposal.createMeet));
   const createMeet = snapshot?.createMeet ?? submittedPayload?.createMeet ?? draftCreateMeet;
