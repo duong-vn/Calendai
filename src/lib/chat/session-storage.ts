@@ -231,7 +231,8 @@ export function deleteSessionById(sessionId: string, scope?: string | null): {
   saveSessionsList(sessions, scope);
 
   let newActiveId = getActiveSessionId(scope);
-  if (newActiveId === sessionId) {
+  const activeWasInvalid = !newActiveId || !sessions.some((s) => s.id === newActiveId);
+  if (newActiveId === sessionId || activeWasInvalid) {
     newActiveId = sessions[0]?.id || null;
     if (newActiveId) {
       setActiveSessionId(newActiveId, scope);

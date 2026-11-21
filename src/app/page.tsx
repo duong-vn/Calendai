@@ -78,7 +78,9 @@ export default function Home() {
     if (historyScope === null) return;
     const all = loadAllSessions(historyScope);
     setSessions(all);
-    const active = getActiveSessionId(historyScope) || all[0]?.id || null;
+    const storedActiveId = getActiveSessionId(historyScope);
+    const active =
+      (storedActiveId && all.some((s) => s.id === storedActiveId) ? storedActiveId : all[0]?.id) ?? null;
     setActiveSessionIdState(active);
     setLoadedScope(historyScope);
   }, [historyScope]);
@@ -87,6 +89,12 @@ export default function Home() {
     if (historyScope === null) return;
     const all = loadAllSessions(historyScope);
     setSessions(all);
+    const storedActiveId = getActiveSessionId(historyScope);
+    if (storedActiveId && all.some((s) => s.id === storedActiveId)) {
+      setActiveSessionIdState(storedActiveId);
+    } else if (all.length === 0) {
+      setActiveSessionIdState(null);
+    }
   }, [historyScope]);
 
   useEffect(() => {
@@ -130,9 +138,14 @@ export default function Home() {
 
   const handleDeleteSession = (sessionId: string) => {
     if (!historyReady) return;
+    const currentPersistedActiveId = getActiveSessionId(historyScope);
     const { remainingSessions, newActiveId } = deleteSessionById(sessionId, historyScope);
     setSessions(remainingSessions);
-    if (activeSessionId === sessionId) {
+    if (
+      activeSessionId === sessionId ||
+      currentPersistedActiveId === sessionId ||
+      remainingSessions.length === 0
+    ) {
       setActiveSessionIdState(newActiveId);
       setChatKey((prev) => prev + 1);
     }
