@@ -23,8 +23,41 @@ describe('Blocking calendar overlap lookup', () => {
     ['2026-10-12T10:00:00+07:00', '2026-10-12T11:00:00+07:00', false],
     ['2026-10-12T02:00:00Z', '2026-10-12T03:00:00Z', true],
     ['2026-10-12T08:00:00+07:00', '2026-10-12T11:00:00+07:00', true],
+    ['2026-10-12T09:30:00+07:00', '2026-10-12T09:30:00+07:00', false],
+    ['2026-10-12T09:00:00+07:00', '2026-10-12T09:00:00+07:00', false],
+    ['2026-10-12T10:00:00+07:00', '2026-10-12T10:00:00+07:00', false],
+    ['2026-10-12T09:30:00+07:00', '2026-10-12T02:30:00Z', false],
   ])('uses exclusive interval boundaries %s / %s', (startDateTime, endDateTime, expected) => {
     expect(rangesOverlap(proposal, { startDateTime, endDateTime })).toBe(expected);
+    expect(rangesOverlap({ startDateTime, endDateTime }, proposal)).toBe(expected);
+  });
+
+  it('ignores valid zero-duration timed events without failing conflict lookup', async () => {
+    const zeroAtMid = {
+      id: 'zero-mid', etag: '"z1"', summary: 'Mốc nhắc việc', status: 'confirmed',
+      endTimeUnspecified: true,
+      start: { dateTime: '2026-10-12T09:30:00+07:00', timeZone: 'Asia/Ho_Chi_Minh' },
+      end: { dateTime: '2026-10-12T09:30:00+07:00', timeZone: 'Asia/Ho_Chi_Minh' },
+    };
+    const zeroDifferentOffset = {
+      ...zeroAtMid, id: 'zero-utc', etag: '"z2"', endTimeUnspecified: undefined,
+      end: { dateTime: '2026-10-12T02:30:00Z' },
+    };
+    const zeroBoundary = {
+      ...zeroAtMid, id: 'zero-start', etag: '"z3"',
+      start: { dateTime: proposal.startDateTime }, end: { dateTime: proposal.startDateTime },
+    };
+    const zeroOmittedEnd = {
+      id: 'zero-omitted-end', etag: '"z4"', summary: 'Không có end', status: 'confirmed',
+      endTimeUnspecified: true,
+      start: { dateTime: '2026-10-12T09:45:00+07:00' },
+    };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(page([zeroAtMid, zeroDifferentOffset, zeroBoundary, zeroOmittedEnd]))
+      .mockResolvedValueOnce(page([zeroAtMid, existing])));
+
+    expect(await findCalendarConflicts('access', proposal)).toEqual([]);
+    expect((await findCalendarConflicts('access', proposal)).map((event) => event.id)).toEqual(['busy-1']);
   });
 
   it('paginates every page and excludes cancelled, free, declined, boundary and own events', async () => {
@@ -62,6 +95,11 @@ describe('Blocking calendar overlap lookup', () => {
     { timeZone: 'Asia/Ho_Chi_Minh', items: 'bad' },
     { timeZone: 'bad-zone', items: [] },
     { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, etag: undefined }] },
+    { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, start: { dateTime: '2026-10-12T09:30:00+07:00' }, end: { dateTime: '2026-10-12T09:30:00+07:00' }, etag: undefined }] },
+    { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, end: { dateTime: '2026-10-12T09:00:00+07:00' } }] },
+    { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, start: { dateTime: '2026-10-12T09:30:00+07:00' }, end: undefined }] },
+    { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, start: { date: '2026-10-12' }, end: { date: '2026-10-12' } }] },
+    { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, start: { date: '2026-10-13' }, end: { date: '2026-10-12' } }] },
     { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, end: { dateTime: 'not-a-date' } }] },
     { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...existing, end: { date: '2026-10-13' } }] },
     { timeZone: 'Asia/Ho_Chi_Minh', items: [], error: { message: 'private diagnostic' } },
@@ -107,6 +145,7 @@ describe('Conditional conflict resolution', () => {
     { ...existing, transparency: 'transparent' },
     { ...existing, attendees: [{ self: true, responseStatus: 'declined' }] },
     { ...existing, start: { dateTime: proposal.endDateTime }, end: { dateTime: '2026-10-12T11:00:00+07:00' } },
+    { ...existing, start: { dateTime: '2026-10-12T09:30:00+07:00' }, end: { dateTime: '2026-10-12T09:30:00+07:00' } },
   ])('does not mutate stale or nonconflicting selection %j', async (event) => {
     const fetchMock = vi.fn().mockResolvedValueOnce(Response.json(event));
     vi.stubGlobal('fetch', fetchMock);
@@ -184,6 +223,22 @@ describe('Conditional conflict resolution', () => {
     vi.stubGlobal('fetch', fetchMock);
     await expect(resolveCalendarConflict('access', reschedule)).rejects.toBeInstanceOf(CalendarOverlapError);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('allows rescheduling across a zero-duration event in the replacement slot', async () => {
+    const moved = { ...existing, start: { dateTime: reschedule.startDateTime }, end: { dateTime: reschedule.endDateTime }, etag: '"v2"' };
+    const zeroInReplacement = {
+      id: 'zero-replacement', etag: '"z1"', summary: 'Deadline', status: 'confirmed', endTimeUnspecified: true,
+      start: { dateTime: '2026-10-12T11:30:00+07:00' }, end: { dateTime: '2026-10-12T11:30:00+07:00' },
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json(existing))
+      .mockResolvedValueOnce(page([zeroInReplacement]))
+      .mockResolvedValueOnce(Response.json(moved));
+    vi.stubGlobal('fetch', fetchMock);
+    await resolveCalendarConflict('access', reschedule);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2][1]?.method).toBe('PATCH');
   });
 
   it.each([
