@@ -4,6 +4,7 @@ import { Calendar, Check, Edit3 } from 'lucide-react-native';
 import type { CalendarEvent, MeetingProposal } from '../types';
 import { Action, Copy, Panel, useTheme } from '../theme';
 import { CalendarConflictError, mobileApi, type CalendarConflict } from '../services/api';
+import { ApiError } from '../services/transport';
 import { CalendarConflictChoices } from './CalendarConflictChoices';
 import { AgendaCard, formatDateTime } from './AgendaCard';
 import { DEFAULT_REMINDER_MINUTES } from '../types';
@@ -18,7 +19,7 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
   disabled: boolean;
   meetChoice?: boolean;
   onMeetChange?: (id: string, value: boolean) => void;
-  onSubmit: (proposal: MeetingProposal) => Promise<void>;
+  onSubmit: (proposal: MeetingProposal) => Promise<(() => Promise<boolean>) | void>;
   onCreated: (proposalId: string, event: CalendarEvent) => Promise<void>;
   onEdit: () => void;
 }) {
@@ -32,6 +33,7 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
   useEffect(() => () => { mounted.current = false; controller.current?.abort(); }, []);
   const sentDraft = useRef<MeetingProposal | undefined>(submitted);
   const draft = submitted || sentDraft.current || { ...proposal, createMeet: meetChoice ?? createMeet, reminderMinutes: proposal.reminderMinutes ?? [...reminderMinutes] };
+  const locked = Boolean(submitted || sentDraft.current);
   const [conflicts, setConflicts] = useState<CalendarConflict[]>([]);
   const [conflictRevision, setConflictRevision] = useState(0);
   const refreshConflicts = async () => {
@@ -55,19 +57,46 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
     setError('');
     const abort = new AbortController();
     controller.current = abort;
+    const previous = submitted || sentDraft.current;
+    const targetDraft = draft;
+    let discard: (() => Promise<boolean>) | undefined;
     try {
-      // Freeze before persisting so settings changes cannot mutate a retry payload.
-      sentDraft.current = draft;
-      await onSubmit(draft);
-      if (!mounted.current || abort.signal.aborted) return;
-      const created = await mobileApi.confirm(draft, abort.signal, allowConflict);
-      if (mounted.current) await onCreated(draft.proposalId, created);
+      const result = await onSubmit(targetDraft);
+      discard = typeof result === 'function' ? result : undefined;
+      if (!mounted.current || abort.signal.aborted) {
+        if (!previous) {
+          await discard?.().catch(() => undefined);
+        }
+        return;
+      }
+      // Freeze only after persistence succeeds so storage failures never lock the draft.
+      sentDraft.current = targetDraft;
+      const created = await mobileApi.confirm(targetDraft, abort.signal, allowConflict);
+      if (mounted.current) await onCreated(targetDraft.proposalId, created);
     } catch (failure) {
+      const conflict = failure instanceof CalendarConflictError && failure.conflicts.length > 0;
+      const preWriteRejection = conflict || (failure instanceof ApiError && (failure.status === 400 || failure.status === 401));
+      let discardError: unknown;
+      if (!previous && preWriteRejection) {
+        try {
+          if ((await discard?.()) ?? true) {
+            sentDraft.current = undefined;
+          }
+        } catch (cleanupFailure) {
+          discardError = cleanupFailure;
+        }
+      }
       if (mounted.current && !abort.signal.aborted) {
-        if (failure instanceof CalendarConflictError) {
+        if (conflict) {
           setConflicts(failure.conflicts);
           setConflictRevision(value => value + 1);
-        } else setError(failure instanceof Error ? failure.message : 'Chưa tạo được lịch. Vui lòng thử lại cùng bản thảo.');
+          if (discardError) {
+            setError(discardError instanceof Error ? discardError.message : 'Chưa mở khóa được bản thảo trên thiết bị.');
+          }
+        } else {
+          const shown = discardError ?? failure;
+          setError(shown instanceof Error ? shown.message : 'Chưa tạo được lịch. Vui lòng thử lại cùng bản thảo.');
+        }
       }
     } finally {
       busy.current = false;
@@ -85,13 +114,13 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
       <Copy style={{ color: colors.muted, fontSize: 12 }}>{draft.timeZone}</Copy>
       <Copy style={{ color: colors.muted }}>Khách mời: {draft.attendees.length ? draft.attendees.map(a => a.email).join(', ') : 'Không có'}</Copy>
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Copy strong style={{ flex: 1 }}>Tạo Google Meet</Copy><Switch accessibilityLabel="Tạo link Google Meet" value={draft.createMeet} onValueChange={value => { setCreateMeet(value); onMeetChange?.(proposal.proposalId, value); }} disabled={loading || !!submitted || disabled} trackColor={{ true: colors.teal }} /></View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Copy strong style={{ flex: 1 }}>Tạo Google Meet</Copy><Switch accessibilityLabel="Tạo link Google Meet" value={draft.createMeet} onValueChange={value => { setCreateMeet(value); onMeetChange?.(proposal.proposalId, value); }} disabled={loading || locked || disabled} trackColor={{ true: colors.teal }} /></View>
     <Copy style={{ color: colors.muted, fontSize: 12 }}>Nhắc qua Google Calendar: {(draft.reminderMinutes ?? DEFAULT_REMINDER_MINUTES).length ? `trước ${(draft.reminderMinutes ?? DEFAULT_REMINDER_MINUTES).join(' và ')} phút (0 = lúc bắt đầu)` : 'Đã tắt'}</Copy>
-    {submitted && <Copy style={{ color: colors.muted, fontSize: 12 }}>Bản thảo đã gửi được giữ nguyên để thử lại an toàn. Muốn đổi nội dung, hãy yêu cầu một bản thảo mới.</Copy>}
+    {locked && <Copy style={{ color: colors.muted, fontSize: 12 }}>Bản thảo đã gửi được giữ nguyên để thử lại an toàn. Muốn đổi nội dung, hãy yêu cầu một bản thảo mới.</Copy>}
     {conflicts.length > 0 && <CalendarConflictChoices key={conflictRevision} proposal={draft} conflicts={conflicts} disabled={loading || disabled} onResolved={() => { void refreshConflicts(); }} onContinue={() => { void confirm(true); }} />}
     {!!error && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Copy>}
     {loading && <ActivityIndicator color={colors.accent} accessibilityLabel="Đang tạo lịch" />}
-    <Action compact={compact} label={loading ? 'Đang xác nhận…' : submitted ? 'Thử xác nhận lại' : 'Xác nhận tạo lịch'} icon={Check} primary disabled={loading || disabled || conflicts.length > 0} onPress={() => { void confirm(); }} />
+    <Action compact={compact} label={loading ? 'Đang xác nhận…' : locked ? 'Thử xác nhận lại' : 'Xác nhận tạo lịch'} icon={Check} primary disabled={loading || disabled || conflicts.length > 0} onPress={() => { void confirm(); }} />
     <Action compact={compact} label="Chỉnh sửa qua trò chuyện" icon={Edit3} disabled={loading || disabled} onPress={onEdit} />
     <Copy style={{ color: colors.muted, fontSize: 11 }}>Chỉ khi bạn xác nhận, Calendai mới tạo lịch và gửi lời mời.</Copy>
   </Panel>;

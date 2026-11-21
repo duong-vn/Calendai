@@ -1,10 +1,12 @@
 import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { ProposalCard } from './ProposalModal';
-import { Action } from '../theme';
+import { Action, Copy } from '../theme';
 import { Switch } from 'react-native';
 import { CalendarConflictError, mobileApi } from '../services/api';
+import { ApiError } from '../services/transport';
 
+jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
 jest.mock('../services/api', () => ({
   CalendarConflictError: class extends Error {
     readonly conflicts: unknown[];
@@ -124,4 +126,171 @@ it('aborts and ignores stale calendar responses after leaving a conversation', a
   expect(signal?.aborted).toBe(true);
   await act(async () => { resolve(event); });
   expect(onCreated).not.toHaveBeenCalled();
+});
+
+it('unlocks Meet and reminders after a first-attempt 409 CALENDAR_CONFLICT and persists edited choices on confirm', async () => {
+  const conflict = { id: 'old', summary: 'Lịch cũ', start: draft.startDateTime, end: draft.endDateTime, etag: 'v1', timeZone: draft.timeZone, isAllDay: false };
+  jest.mocked(mobileApi.confirm).mockReset().mockRejectedValueOnce(new CalendarConflictError([conflict])).mockResolvedValueOnce(event);
+  jest.mocked(mobileApi.conflicts).mockReset().mockResolvedValueOnce([]);
+  const discard = jest.fn().mockResolvedValue(true);
+  const onSubmit = jest.fn().mockResolvedValue(discard);
+  const onCreated = jest.fn().mockResolvedValue(undefined);
+  let tree: ReactTestRenderer | undefined;
+  try {
+    act(() => { tree = create(<ProposalCard proposal={draft} reminderMinutes={[60, 10]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />); });
+
+    act(() => tree!.root.findAllByType(Action).find(action => action.props.label === 'Xác nhận tạo lịch')!.props.onPress());
+    await flush();
+
+    expect(discard).toHaveBeenCalledTimes(1);
+    expect(tree!.root.findAllByType(Switch)[0].props.disabled).toBe(false);
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Bản thảo đã gửi được giữ nguyên'))).toBe(false);
+    expect(JSON.stringify(tree!.root.findAllByType(Action).map(action => action.props.label))).not.toContain('Thử xác nhận lại');
+
+    act(() => tree!.root.findAllByType(Switch)[0].props.onValueChange(false));
+    act(() => tree!.update(<ProposalCard proposal={draft} reminderMinutes={[15]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />));
+    act(() => tree!.root.findAllByType(Action).find(action => action.props.label === 'Kiểm tra lại xung đột')!.props.onPress());
+    await flush();
+    act(() => tree!.root.findAllByType(Action).find(action => action.props.label === 'Xác nhận tạo lịch')!.props.onPress());
+    await flush();
+
+    expect(mobileApi.confirm).toHaveBeenLastCalledWith({ ...draft, createMeet: false, reminderMinutes: [15] }, expect.anything(), false);
+    expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
+  } finally {
+    if (tree) act(() => tree!.unmount());
+  }
+});
+
+it.each([
+  { label: 'HTTP 400', error: new ApiError('Không thể hoàn thành yêu cầu.', 400) },
+  { label: 'HTTP 401', error: new ApiError('Phiên đăng nhập đã hết hạn.', 401, 'AUTH_REQUIRED') },
+])('unlocks Meet and reminders on first-attempt pre-write $label rejection', async ({ error }) => {
+  jest.mocked(mobileApi.confirm).mockReset().mockRejectedValueOnce(error).mockResolvedValueOnce(event);
+  const discard = jest.fn().mockResolvedValue(true);
+  const onSubmit = jest.fn().mockResolvedValue(discard);
+  const onCreated = jest.fn().mockResolvedValue(undefined);
+  let tree: ReactTestRenderer | undefined;
+  try {
+    act(() => { tree = create(<ProposalCard proposal={draft} reminderMinutes={[60, 10]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />); });
+
+    act(() => tree!.root.findAllByType(Action)[0].props.onPress());
+    await flush();
+
+    expect(discard).toHaveBeenCalledTimes(1);
+    expect(tree!.root.findAllByType(Switch)[0].props.disabled).toBe(false);
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Bản thảo đã gửi được giữ nguyên'))).toBe(false);
+    expect(tree!.root.findAllByType(Action)[0].props.label).toBe('Xác nhận tạo lịch');
+
+    act(() => tree!.root.findAllByType(Switch)[0].props.onValueChange(false));
+    act(() => tree!.update(<ProposalCard proposal={draft} reminderMinutes={[15]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />));
+    act(() => tree!.root.findAllByType(Action)[0].props.onPress());
+    await flush();
+
+    expect(mobileApi.confirm).toHaveBeenLastCalledWith({ ...draft, createMeet: false, reminderMinutes: [15] }, expect.anything(), false);
+    expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
+  } finally {
+    if (tree) act(() => tree!.unmount());
+  }
+});
+
+it('keeps the draft unlocked and skips network calls when local persistence fails', async () => {
+  jest.mocked(mobileApi.confirm).mockReset().mockResolvedValueOnce(event);
+  const onSubmit = jest.fn().mockRejectedValueOnce(new Error('Chưa lưu được bản thảo trên thiết bị.')).mockResolvedValueOnce(undefined);
+  const onCreated = jest.fn().mockResolvedValue(undefined);
+  let tree: ReactTestRenderer | undefined;
+  try {
+    act(() => { tree = create(<ProposalCard proposal={draft} reminderMinutes={[60, 10]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />); });
+
+    act(() => tree!.root.findAllByType(Action)[0].props.onPress());
+    await flush();
+
+    expect(mobileApi.confirm).not.toHaveBeenCalled();
+    expect(tree!.root.findAllByType(Switch)[0].props.disabled).toBe(false);
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Bản thảo đã gửi được giữ nguyên'))).toBe(false);
+    expect(tree!.root.findAllByType(Action)[0].props.label).toBe('Xác nhận tạo lịch');
+
+    act(() => tree!.root.findAllByType(Switch)[0].props.onValueChange(false));
+    act(() => tree!.update(<ProposalCard proposal={draft} reminderMinutes={[15]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />));
+    act(() => tree!.root.findAllByType(Action)[0].props.onPress());
+    await flush();
+
+    expect(mobileApi.confirm).toHaveBeenCalledWith({ ...draft, createMeet: false, reminderMinutes: [15] }, expect.anything(), false);
+    expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
+  } finally {
+    if (tree) act(() => tree!.unmount());
+  }
+});
+
+it.each([
+  { label: 'network failure', initialError: new Error('Mất mạng') },
+  { label: 'HTTP 500', initialError: new ApiError('Lỗi máy chủ', 500) },
+  { label: '409 PROPOSAL_CONFLICT', initialError: new Error('Bản thảo đã thay đổi hoặc lịch đã được cập nhật.') },
+])('keeps frozen payload locked across later 409/400/401 rejections after $label', async ({ initialError }) => {
+  const conflict = { id: 'old', summary: 'Lịch cũ', start: draft.startDateTime, end: draft.endDateTime, etag: 'v1', timeZone: draft.timeZone, isAllDay: false };
+  jest.mocked(mobileApi.confirm).mockReset()
+    .mockRejectedValueOnce(initialError)
+    .mockRejectedValueOnce(new CalendarConflictError([conflict]))
+    .mockRejectedValueOnce(new ApiError('Unauthorized', 401))
+    .mockResolvedValueOnce(event);
+  const discard = jest.fn().mockResolvedValue(true);
+  const onSubmit = jest.fn().mockResolvedValue(discard);
+  const onCreated = jest.fn().mockResolvedValue(undefined);
+  let tree: ReactTestRenderer | undefined;
+  try {
+    act(() => { tree = create(<ProposalCard proposal={draft} reminderMinutes={[30, 5]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />); });
+
+    act(() => tree!.root.findAllByType(Action)[0].props.onPress());
+    await flush();
+
+    expect(discard).not.toHaveBeenCalled();
+    expect(tree!.root.findAllByType(Switch)[0].props.disabled).toBe(true);
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Bản thảo đã gửi được giữ nguyên'))).toBe(true);
+    expect(tree!.root.findAllByType(Action)[0].props.label).toBe('Thử xác nhận lại');
+
+    act(() => tree!.update(<ProposalCard proposal={draft} reminderMinutes={[90]} disabled={false} onSubmit={onSubmit} onCreated={onCreated} onEdit={jest.fn()} />));
+    act(() => tree!.root.findAllByType(Action)[0].props.onPress());
+    await flush();
+
+    expect(discard).not.toHaveBeenCalled();
+    expect(tree!.root.findAllByType(Switch)[0].props.disabled).toBe(true);
+    expect(mobileApi.confirm).toHaveBeenNthCalledWith(2, { ...draft, reminderMinutes: [30, 5] }, expect.anything(), false);
+
+    act(() => tree!.root.findAllByType(Action).find(action => action.props.label === 'Vẫn tạo lịch mới, giữ lịch cũ')!.props.onPress());
+    await flush();
+    expect(discard).not.toHaveBeenCalled();
+    expect(tree!.root.findAllByType(Switch)[0].props.disabled).toBe(true);
+
+    act(() => tree!.root.findAllByType(Action).find(action => action.props.label === 'Vẫn tạo lịch mới, giữ lịch cũ')!.props.onPress());
+    await flush();
+    expect(mobileApi.confirm).toHaveBeenLastCalledWith({ ...draft, reminderMinutes: [30, 5] }, expect.anything(), true);
+    expect(onCreated).toHaveBeenCalledWith(draft.proposalId, event);
+  } finally {
+    if (tree) act(() => tree!.unmount());
+  }
+});
+
+it('still discards persisted draft on 401 even if session clear unmounts the card first, but not on abort', async () => {
+  let rejectFirst!: (reason?: unknown) => void;
+  let rejectSecond!: (reason?: unknown) => void;
+  jest.mocked(mobileApi.confirm).mockReset()
+    .mockImplementationOnce(() => new Promise((_, reject) => { rejectFirst = reject; }))
+    .mockImplementationOnce(() => new Promise((_, reject) => { rejectSecond = reject; }));
+  const discardFirst = jest.fn().mockResolvedValue(true);
+  const discardSecond = jest.fn().mockResolvedValue(true);
+  const onSubmit = jest.fn().mockResolvedValueOnce(discardFirst).mockResolvedValueOnce(discardSecond);
+
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ProposalCard proposal={draft} disabled={false} onSubmit={onSubmit} onCreated={jest.fn()} onEdit={jest.fn()} />); });
+  act(() => tree.root.findAllByType(Action)[0].props.onPress());
+  await flush();
+  act(() => tree.unmount());
+  await act(async () => { rejectFirst(new ApiError('Phiên đăng nhập đã hết hạn.', 401, 'AUTH_REQUIRED')); });
+  expect(discardFirst).toHaveBeenCalledTimes(1);
+
+  act(() => { tree = create(<ProposalCard proposal={draft} disabled={false} onSubmit={onSubmit} onCreated={jest.fn()} onEdit={jest.fn()} />); });
+  act(() => tree.root.findAllByType(Action)[0].props.onPress());
+  await flush();
+  act(() => tree.unmount());
+  await act(async () => { rejectSecond(Object.assign(new Error('Aborted'), { name: 'AbortError' })); });
+  expect(discardSecond).not.toHaveBeenCalled();
 });
