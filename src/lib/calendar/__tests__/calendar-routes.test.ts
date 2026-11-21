@@ -69,6 +69,102 @@ describe('Calendar route boundaries', () => {
     expect(second.get('pageToken')).toBe('next/page');
   });
 
+  it('collects every event in a Vietnam week across multiple pages without truncating at pageSize 250', async () => {
+    const firstPage = Array.from({ length: 250 }, (_, index) => ({
+      id: `wk-1-${index}`,
+      start: { dateTime: '2026-11-16T09:00:00+07:00' },
+      end: { dateTime: '2026-11-16T10:00:00+07:00' },
+    }));
+    const secondPage = Array.from({ length: 15 }, (_, index) => ({
+      id: `wk-2-${index}`,
+      start: { dateTime: '2026-11-17T09:00:00+07:00' },
+      end: { dateTime: '2026-11-17T10:00:00+07:00' },
+    }));
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: firstPage, nextPageToken: 'wk-page-2' }))
+      .mockResolvedValueOnce(Response.json({ items: secondPage }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await GET(new Request('http://localhost/api/calendar/upcoming?week=2026-11-16'));
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const body = await response.json() as { events: Array<{ id: string }> };
+    expect(body.events).toHaveLength(265);
+    expect(body.events[264].id).toBe('wk-2-14');
+  });
+
+  it('paginates upcoming events across empty and short pages up to maxResults without extra fetches', async () => {
+    const emptyFirstFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'next' }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'upcoming-1', summary: 'Họp sau trang rỗng', start: { dateTime: '2026-11-16T09:00:00+07:00' }, end: { dateTime: '2026-11-16T10:00:00+07:00' } },
+        ],
+      }));
+    vi.stubGlobal('fetch', emptyFirstFetch);
+
+    const emptyFirstRes = await GET(new Request('http://localhost/api/calendar/upcoming?maxResults=5'));
+    expect(emptyFirstRes.status).toBe(200);
+    expect(emptyFirstFetch).toHaveBeenCalledTimes(2);
+    expect(new URL(emptyFirstFetch.mock.calls[1][0]).searchParams.get('pageToken')).toBe('next');
+    expect((await emptyFirstRes.json()).events.map((event: { id: string }) => event.id)).toEqual(['upcoming-1']);
+
+    const shortPageFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'u-1', start: { dateTime: '2026-11-16T09:00:00+07:00' }, end: { dateTime: '2026-11-16T10:00:00+07:00' } },
+        ],
+        nextPageToken: 'p2',
+      }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'u-2', start: { dateTime: '2026-11-16T11:00:00+07:00' }, end: { dateTime: '2026-11-16T12:00:00+07:00' } },
+          { id: 'u-3', start: { dateTime: '2026-11-16T13:00:00+07:00' }, end: { dateTime: '2026-11-16T14:00:00+07:00' } },
+          { id: 'u-4', start: { dateTime: '2026-11-16T15:00:00+07:00' }, end: { dateTime: '2026-11-16T16:00:00+07:00' } },
+        ],
+        nextPageToken: 'p3',
+      }));
+    vi.stubGlobal('fetch', shortPageFetch);
+
+    const shortPageRes = await GET(new Request('http://localhost/api/calendar/upcoming?maxResults=3'));
+    expect(shortPageRes.status).toBe(200);
+    expect(shortPageFetch).toHaveBeenCalledTimes(2);
+    expect((await shortPageRes.json()).events.map((event: { id: string }) => event.id)).toEqual(['u-1', 'u-2', 'u-3']);
+
+    const fullFirstPageFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'f-1', start: { dateTime: '2026-11-16T09:00:00+07:00' }, end: { dateTime: '2026-11-16T10:00:00+07:00' } },
+          { id: 'f-2', start: { dateTime: '2026-11-16T11:00:00+07:00' }, end: { dateTime: '2026-11-16T12:00:00+07:00' } },
+        ],
+        nextPageToken: 'p2',
+      }));
+    vi.stubGlobal('fetch', fullFirstPageFetch);
+
+    const fullFirstPageRes = await GET(new Request('http://localhost/api/calendar/upcoming?maxResults=2'));
+    expect(fullFirstPageRes.status).toBe(200);
+    expect(fullFirstPageFetch).toHaveBeenCalledTimes(1);
+    expect((await fullFirstPageRes.json()).events.map((event: { id: string }) => event.id)).toEqual(['f-1', 'f-2']);
+  });
+
+  it('returns an error rather than a false empty upcoming list when pagination fails or loops', async () => {
+    vi.stubGlobal('fetch', vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'next' }))
+      .mockResolvedValueOnce(Response.json({ error: { message: 'backend down' } }, { status: 500 })));
+
+    const failedPageRes = await GET(new Request('http://localhost/api/calendar/upcoming'));
+    expect(failedPageRes.status).toBe(500);
+    expect(await failedPageRes.json()).toMatchObject({ success: false });
+
+    vi.stubGlobal('fetch', vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'repeat' }))
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'repeat' })));
+
+    const repeatedTokenRes = await GET(new Request('http://localhost/api/calendar/upcoming'));
+    expect(repeatedTokenRes.status).toBe(500);
+    expect(await repeatedTokenRes.json()).toMatchObject({ success: false });
+  });
+
   it.each(['', '2026-11-15', '2026-02-30', '2026-11-16T00:00:00Z'])('rejects an invalid week %s before contacting Google', async (week) => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

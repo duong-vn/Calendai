@@ -172,6 +172,85 @@ describe('Google Calendar Service Layer', () => {
     expect(events[0].hangoutLink).toBe('https://meet.google.com/xyz-test-meet');
     expect(events[0].isAllDay).toBe(false);
   });
+
+  it('continues across empty and short pages until maxResults matching events are collected', async () => {
+    const mockFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'page-2' }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'evt-1', summary: 'First', start: { dateTime: '2026-10-12T09:00:00+07:00' }, end: { dateTime: '2026-10-12T10:00:00+07:00' } },
+        ],
+        nextPageToken: 'page-3',
+      }))
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'evt-2', summary: 'Second', start: { dateTime: '2026-10-12T11:00:00+07:00' }, end: { dateTime: '2026-10-12T12:00:00+07:00' } },
+          { id: 'evt-3', summary: 'Third', start: { dateTime: '2026-10-12T13:00:00+07:00' }, end: { dateTime: '2026-10-12T14:00:00+07:00' } },
+          { id: 'evt-4', summary: 'Fourth', start: { dateTime: '2026-10-12T15:00:00+07:00' }, end: { dateTime: '2026-10-12T16:00:00+07:00' } },
+        ],
+        nextPageToken: 'page-4',
+      }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const events = await listGoogleCalendarEvents('valid-token', { maxResults: 3 });
+
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(new URL(mockFetch.mock.calls[1][0]).searchParams.get('pageToken')).toBe('page-2');
+    expect(new URL(mockFetch.mock.calls[2][0]).searchParams.get('pageToken')).toBe('page-3');
+    expect(events.map((event) => event.id)).toEqual(['evt-1', 'evt-2', 'evt-3']);
+  });
+
+  it('stops paginating as soon as maxResults events are satisfied on the first page', async () => {
+    const mockFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({
+        items: [
+          { id: 'evt-1', start: { dateTime: '2026-10-12T09:00:00+07:00' }, end: { dateTime: '2026-10-12T10:00:00+07:00' } },
+          { id: 'evt-2', start: { dateTime: '2026-10-12T11:00:00+07:00' }, end: { dateTime: '2026-10-12T12:00:00+07:00' } },
+        ],
+        nextPageToken: 'page-2',
+      }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const events = await listGoogleCalendarEvents('valid-token', { maxResults: 2 });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(events.map((event) => event.id)).toEqual(['evt-1', 'evt-2']);
+  });
+
+  it('fails closed when a subsequent page fails or repeats a page token', async () => {
+    const errorFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'page-2' }))
+      .mockResolvedValueOnce(Response.json({ error: { message: 'Upstream error' } }, { status: 500 }));
+    vi.stubGlobal('fetch', errorFetch);
+
+    await expect(listGoogleCalendarEvents('valid-token', { maxResults: 5 })).rejects.toThrow('Google Calendar API Error (500): Upstream error');
+
+    const repeatedFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'same-token' }))
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'same-token' }));
+    vi.stubGlobal('fetch', repeatedFetch);
+
+    await expect(listGoogleCalendarEvents('valid-token', { maxResults: 5 })).rejects.toThrow('repeated page');
+  });
+
+  it('handles omitted items arrays on empty pages and rejects non-JSON next-page errors', async () => {
+    const omittedItemsFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ nextPageToken: 'page-2' }))
+      .mockResolvedValueOnce(Response.json({
+        items: [{ id: 'evt-ok', start: { dateTime: '2026-10-12T09:00:00+07:00' }, end: { dateTime: '2026-10-12T10:00:00+07:00' } }],
+      }));
+    vi.stubGlobal('fetch', omittedItemsFetch);
+
+    const events = await listGoogleCalendarEvents('valid-token', { maxResults: 3 });
+    expect(events.map((event) => event.id)).toEqual(['evt-ok']);
+
+    const badGatewayFetch = vi.fn<(url: string) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'page-2' }))
+      .mockResolvedValueOnce(new Response('Bad Gateway', { status: 502, statusText: 'Bad Gateway' }));
+    vi.stubGlobal('fetch', badGatewayFetch);
+
+    await expect(listGoogleCalendarEvents('valid-token', { maxResults: 3 })).rejects.toThrow('Google Calendar API Error (502): Bad Gateway');
+  });
 });
 
 describe('Mock Calendar Service', () => {

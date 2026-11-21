@@ -30,12 +30,12 @@ export async function GET(request: Request) {
     if (session) {
       const { accessToken } = await getValidAccessToken(session, request);
       const events = await listGoogleCalendarEvents(accessToken, range ? {
-        maxResults: 250,
+        pageSize: 250,
         paginate: true,
         // Google filters all-day events in the calendar's own timezone.
         timeMin: getVietnamTodayRange(new Date(Date.parse(range.timeMin) - VIETNAM_DAY_MS)).timeMin,
         timeMax: getVietnamTodayRange(new Date(Date.parse(range.timeMax) + VIETNAM_DAY_MS)).timeMin,
-      } : { maxResults });
+      } : { maxResults, paginate: true });
       return NextResponse.json({
         success: true,
         mode: 'google',
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         success: true,
         mode: 'mock',
-        events: withinWeek(mockEvents),
+        events: range ? withinWeek(mockEvents) : mockEvents.slice(0, maxResults),
       });
     }
 
