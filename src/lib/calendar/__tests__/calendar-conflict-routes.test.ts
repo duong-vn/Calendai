@@ -110,9 +110,74 @@ describe('Calendar conflict HTTP contracts', () => {
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
   });
 
+  it('ignores valid zero-duration Google events in conflicts lookup and allows confirm', async () => {
+    const zeroEvent = {
+      id: 'zero-1', etag: '"z1"', summary: 'Mốc nhắc việc', status: 'confirmed',
+      endTimeUnspecified: true,
+      start: { dateTime: '2026-10-12T09:30:00+07:00' },
+      end: { dateTime: '2026-10-12T09:30:00+07:00' },
+    };
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(page([zeroEvent])));
+    const conflictsRes = await conflicts(request(proposal));
+    expect(conflictsRes.status).toBe(200);
+    expect(await conflictsRes.json()).toEqual({ success: true, conflicts: [] });
+
+    const confirmFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return Response.json({ ...JSON.parse(String(init.body)), id: 'created' });
+      if (url.includes('?')) return page([zeroEvent]);
+      return Response.json({}, { status: 404 });
+    });
+    vi.stubGlobal('fetch', confirmFetch);
+    const confirmRes = await confirm(request(proposal));
+    expect(confirmRes.status).toBe(200);
+    expect(confirmFetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+  });
+
+  it('reports only real overlapping conflicts alongside zero-duration events on confirm', async () => {
+    const zeroEvent = {
+      id: 'zero-1', etag: '"z1"', summary: 'Mốc nhắc việc', status: 'confirmed',
+      endTimeUnspecified: true,
+      start: { dateTime: '2026-10-12T09:30:00+07:00' },
+      end: { dateTime: '2026-10-12T09:30:00+07:00' },
+    };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(Response.json({}, { status: 404 }))
+      .mockResolvedValueOnce(page([zeroEvent, busy])));
+    const mixedRes = await confirm(request(proposal));
+    expect(mixedRes.status).toBe(409);
+    expect(await mixedRes.json()).toMatchObject({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [{ id: busy.id }] });
+  });
+
+  it('allows rescheduling across a zero-duration event via resolve', async () => {
+    const rescheduled = {
+      ...busy, etag: '"v2"',
+      start: { dateTime: '2026-10-12T11:00:00+07:00' },
+      end: { dateTime: '2026-10-12T12:00:00+07:00' },
+    };
+    const zeroInNewSlot = {
+      id: 'zero-2', etag: '"z2"', summary: 'Deadline', status: 'confirmed',
+      endTimeUnspecified: true,
+      start: { dateTime: '2026-10-12T11:30:00+07:00' },
+      end: { dateTime: '2026-10-12T11:30:00+07:00' },
+    };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(Response.json(busy))
+      .mockResolvedValueOnce(page([zeroInNewSlot]))
+      .mockResolvedValueOnce(Response.json(rescheduled)));
+    const resolveRes = await resolve(request({
+      ...mutation, action: 'reschedule',
+      startDateTime: '2026-10-12T11:00:00+07:00', endDateTime: '2026-10-12T12:00:00+07:00',
+    }));
+    expect(resolveRes.status).toBe(200);
+    expect(await resolveRes.json()).toEqual({ success: true });
+  });
+
   it.each([
     {},
     { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...busy, etag: undefined }] },
+    { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...busy, start: { dateTime: '2026-10-12T09:30:00+07:00' }, end: { dateTime: '2026-10-12T09:00:00+07:00' } }] },
+    { timeZone: 'Asia/Ho_Chi_Minh', items: [{ ...busy, start: { date: '2026-10-12' }, end: { date: '2026-10-12' } }] },
     { timeZone: 'Asia/Ho_Chi_Minh', items: [], error: { message: 'private diagnostic' } },
   ])('fails closed without insertion on malformed conflict lookup %j', async (data) => {
     const fetchMock = vi.fn().mockResolvedValueOnce(Response.json({}, { status: 404 })).mockResolvedValueOnce(Response.json(data));
