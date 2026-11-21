@@ -204,7 +204,11 @@ export function setActiveSessionId(id: string, scope?: string | null): void {
   }
 }
 
-export function saveCurrentSession(session: ChatSession, scope?: string | null): void {
+export function saveCurrentSession(
+  session: ChatSession,
+  scope?: string | null,
+  options?: { activate?: boolean },
+): void {
   if (typeof window === 'undefined') return;
 
   const keys = getStorageKeys(scope);
@@ -218,14 +222,16 @@ export function saveCurrentSession(session: ChatSession, scope?: string | null):
   }
 
   saveSessionsList(sessions, scope);
-  setActiveSessionId(session.id, scope);
+  if (options?.activate !== false) {
+    setActiveSessionId(session.id, scope);
 
-  // Maintain backward-compatibility with single-session legacy keys
-  try {
-    localStorage.setItem(keys.LEGACY_MESSAGES, JSON.stringify(session.messages));
-    localStorage.setItem(keys.LEGACY_EVENTS, JSON.stringify(session.confirmedEvents));
-  } catch {
-    // Ignore
+    // Maintain backward-compatibility with single-session legacy keys
+    try {
+      localStorage.setItem(keys.LEGACY_MESSAGES, JSON.stringify(session.messages));
+      localStorage.setItem(keys.LEGACY_EVENTS, JSON.stringify(session.confirmedEvents));
+    } catch {
+      // Ignore
+    }
   }
 }
 

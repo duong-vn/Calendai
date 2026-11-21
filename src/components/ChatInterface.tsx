@@ -434,6 +434,14 @@ export function ChatInterface({
   currentSessionIdRef.current = currentSessionId;
   const prevPropActiveSessionIdRef = useRef(propActiveSessionId);
   const hydratedSessionKeyRef = useRef<string | null>(null);
+  const pendingHydrateSyncRef = useRef<{
+    sessionId: string;
+    historyScope: string;
+    messageCount: number;
+    confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
+    model: string;
+  } | null>(null);
+  const wasPersistedRef = useRef(false);
 
   const [internalSelectedModel, setInternalSelectedModel] = useState<string>('');
 
@@ -468,6 +476,15 @@ export function ChatInterface({
       model: activeModel,
     },
   });
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+  const prevHistoryScopeRef = useRef(historyScope);
+
+  useEffect(() => {
+    return () => {
+      stopRef.current?.();
+    };
+  }, []);
 
   const [confirmedEvents, setConfirmedEvents] = useState<
     Record<string, { event: CalendarEventResult; isMock?: boolean }>
@@ -560,7 +577,15 @@ export function ChatInterface({
     // Adopting this instance's own newly persisted session ID is not a session switch.
     if (!prevPropActiveSessionId && propActiveSessionId === currentSessionIdRef.current) return;
     cancelVoiceRecognition();
+    stopRef.current?.();
   }, [propActiveSessionId, cancelVoiceRecognition]);
+
+  useEffect(() => {
+    if (prevHistoryScopeRef.current === historyScope) return;
+    prevHistoryScopeRef.current = historyScope;
+    cancelVoiceRecognition();
+    stopRef.current?.();
+  }, [historyScope, cancelVoiceRecognition]);
 
   useEffect(() => {
     if (isLoading) cancelVoiceRecognition();
@@ -670,12 +695,25 @@ export function ChatInterface({
 
     hydratedSessionKeyRef.current = targetKey;
     currentSessionIdRef.current = target.id;
+    wasPersistedRef.current = true;
+    const restoredMessages = target.messages || [];
+    const restoredConfirmed = target.confirmedEvents || {};
+    pendingHydrateSyncRef.current =
+      restoredMessages.length > 0 || Object.keys(restoredConfirmed).length > 0
+        ? {
+            sessionId: target.id,
+            historyScope,
+            messageCount: restoredMessages.length,
+            confirmedEvents: restoredConfirmed,
+            model: target.model || '',
+          }
+        : null;
     setCurrentSessionId(target.id);
     setActiveSessionId(target.id, historyScope);
     if (typeof setMessages === 'function') {
-      setMessages(target.messages || []);
+      setMessages(restoredMessages);
     }
-    setConfirmedEvents(target.confirmedEvents || {});
+    setConfirmedEvents(restoredConfirmed);
     setConfirmationPayloads(target.confirmationPayloads || {});
   }, [propActiveSessionId, setMessages, historyScope]);
 
@@ -706,8 +744,36 @@ export function ChatInterface({
   // Persist messages & confirmedEvents to current session in localStorage
   useEffect(() => {
     if (messages.length > 0 || Object.keys(confirmedEvents).length > 0) {
+      const pendingHydration = pendingHydrateSyncRef.current;
+      if (
+        pendingHydration &&
+        pendingHydration.sessionId === currentSessionId &&
+        pendingHydration.historyScope === historyScope
+      ) {
+        pendingHydrateSyncRef.current = null;
+        if (
+          messages.length === pendingHydration.messageCount &&
+          areRecordsEqual(confirmedEvents, pendingHydration.confirmedEvents) &&
+          (activeModel || '') === (pendingHydration.model || '')
+        ) {
+          return;
+        }
+      }
+
       const all = loadAllSessions(historyScope);
       const existing = all.find((s) => s.id === currentSessionId);
+      const persistedActiveId = getActiveSessionId(historyScope);
+      const wasKnownSession =
+        wasPersistedRef.current ||
+        propActiveSessionId === currentSessionId ||
+        hydratedSessionKeyRef.current === `${historyScope}:${currentSessionId}`;
+
+      // Do not resurrect a session that was already deleted from storage.
+      if (!existing && wasKnownSession) {
+        return;
+      }
+
+      const isActiveInStorage = !persistedActiveId || persistedActiveId === currentSessionId;
       const sessionToSave: ChatSession = {
         id: currentSessionId,
         title:
@@ -724,10 +790,11 @@ export function ChatInterface({
       };
 
       hydratedSessionKeyRef.current = `${historyScope}:${currentSessionId}`;
-      saveCurrentSession(sessionToSave, historyScope);
+      wasPersistedRef.current = true;
+      saveCurrentSession(sessionToSave, historyScope, { activate: isActiveInStorage });
       onSessionsChange?.();
     }
-  }, [messages, confirmedEvents, currentSessionId, activeModel, onSessionsChange, historyScope]);
+  }, [messages, confirmedEvents, currentSessionId, activeModel, onSessionsChange, historyScope, propActiveSessionId]);
 
   // Auto scroll to latest message
   useEffect(() => {
@@ -746,7 +813,7 @@ export function ChatInterface({
 
   const handleClearChat = () => {
     cancelVoiceRecognition();
-    stop();
+    stop?.();
     if (onClearSession) {
       onClearSession();
       return;
@@ -758,6 +825,8 @@ export function ChatInterface({
     setConfirmationPayloads({});
     const newId = generateSessionId();
     hydratedSessionKeyRef.current = null;
+    pendingHydrateSyncRef.current = null;
+    wasPersistedRef.current = false;
     currentSessionIdRef.current = newId;
     setCurrentSessionId(newId);
     setActiveSessionId(newId, historyScope);
