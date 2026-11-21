@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireSameOrigin } from '@/lib/auth/request-guards';
 import { authErrorResponse, clearServerSession, getServerSession } from '@/lib/auth/server-session';
 
 export async function POST(request: Request) {
   try {
+    const originError = requireSameOrigin(request, 'Nguồn yêu cầu đăng xuất không hợp lệ.', {
+      'Cache-Control': 'no-store',
+    });
+    if (originError) return originError;
+
     if (request?.headers.has('authorization')) {
       // Stateless mobile logout is local deletion, not revocation of every issued JWE.
       await getServerSession(request);

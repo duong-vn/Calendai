@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireJsonContentType, requireSameOrigin } from '@/lib/auth/request-guards';
 import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
 import { CalendarProposalConflictError, createGoogleCalendarEvent } from '@/lib/calendar/google-calendar-service';
 import { createMockCalendarEvent } from '@/lib/calendar/mock-calendar-service';
@@ -9,6 +10,11 @@ import { CalendarOverlapError, findCalendarConflicts } from '@/lib/calendar/conf
 
 export async function POST(request: Request) {
   try {
+    const contentTypeError = requireJsonContentType(request);
+    if (contentTypeError) return contentTypeError;
+    const originError = requireSameOrigin(request, 'Nguồn yêu cầu thay đổi lịch không hợp lệ.');
+    if (originError) return originError;
+
     const json = await request.json().catch(() => null);
     if (!json) {
       return NextResponse.json(

@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
+import { requireJsonContentType, requireSameOrigin } from '@/lib/auth/request-guards';
 import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
 import { ResolveConflictSchema } from '@/lib/calendar/conflict-schema';
 import { CalendarOverlapError, CalendarResolveError, CalendarStaleEventError, resolveCalendarConflict } from '@/lib/calendar/conflict-service';
 
 export async function POST(request: Request) {
   try {
-    if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) {
-      return NextResponse.json({ success: false, error: 'Yêu cầu phải sử dụng dữ liệu JSON.' }, { status: 415 });
-    }
-    const origin = request.headers.get('origin');
-    if (request.headers.get('sec-fetch-site') === 'cross-site' || (origin && origin !== new URL(request.url).origin)) {
-      return NextResponse.json({ success: false, error: 'Nguồn yêu cầu thay đổi lịch không hợp lệ.' }, { status: 403 });
-    }
+    const contentTypeError = requireJsonContentType(request);
+    if (contentTypeError) return contentTypeError;
+    const originError = requireSameOrigin(request, 'Nguồn yêu cầu thay đổi lịch không hợp lệ.');
+    if (originError) return originError;
     const input = ResolveConflictSchema.safeParse(await request.json().catch(() => null));
     if (!input.success) {
       return NextResponse.json({ success: false, error: 'Thông tin thay đổi lịch không hợp lệ. Vui lòng kiểm tra sự kiện và ngày giờ có múi giờ.' }, { status: 400 });
