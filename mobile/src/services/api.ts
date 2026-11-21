@@ -63,7 +63,10 @@ export class MobileApi {
     });
     if (response.status === 409) {
       const body: unknown = await response.json();
-      if (isRecord(body) && body.code === 'CALENDAR_CONFLICT') throw new CalendarConflictError(parseConflicts(body));
+      if (isRecord(body) && body.code === 'CALENDAR_CONFLICT') {
+        const conflicts = parseConflicts(body);
+        if (conflicts.length > 0) throw new CalendarConflictError(conflicts);
+      }
       throw new Error('Bản thảo đã thay đổi hoặc lịch đã được cập nhật. Vui lòng kiểm tra lại.');
     }
     const data = await readJson(response);

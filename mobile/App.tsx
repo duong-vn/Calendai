@@ -124,12 +124,13 @@ function Workspace({ user, error: authError, clearError, login, logout, loggingI
   const commit = useCallback(async (next: ChatSession) => {
     if (!historyWritable.current) throw new Error('Chưa đọc được lịch sử. Dữ liệu cũ được giữ nguyên.');
     if (deletedIds.current.has(next.id) || !next.messages.length) return;
+    try { await saveConversation(user?.id || null, next); }
+    catch (failure) { if (alive.current) setError('Chưa lưu được lịch sử trên thiết bị. Vui lòng thử lại trước khi rời ứng dụng.'); throw failure; }
+    if (deletedIds.current.has(next.id)) return;
     const entry: HistoryEntry = { id: next.id, title: next.title, updatedAt: next.updatedAt };
     const all = [entry, ...sessionsRef.current.filter(item => item.id !== next.id && !deletedIds.current.has(item.id))].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 50);
     sessionsRef.current = all;
     if (alive.current) setSessions(all);
-    try { await saveConversation(user?.id || null, next); }
-    catch (failure) { if (alive.current) setError('Chưa lưu được lịch sử trên thiết bị. Vui lòng thử lại trước khi rời ứng dụng.'); throw failure; }
   }, [user?.id]);
   const loadModels = useCallback(async () => {
     modelAbort.current?.abort();
@@ -278,6 +279,14 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
   const messagesRef = useRef(initial.messages);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const persistQueue = useRef(Promise.resolve());
+  const submitAttemptSeq = useRef(0);
+  const submitAttemptsRef = useRef<Record<string, number>>({});
+  const enqueueMutation = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
+    const run = persistQueue.current.then(task, task);
+    persistQueue.current = run.then(() => undefined, () => undefined);
+    return run;
+  }, []);
   const sendGuard = useRef(false);
   const { messages, input, setInput, append, reload, stop, isLoading, error } = useChat({
     api: `${API_ORIGIN}/api/chat`, id: `${user?.id || 'guest'}:${initial.id}`,
@@ -289,9 +298,7 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
     const first = messagesRef.current.find(message => message.role === 'user');
     return { ...initial, messages: messagesRef.current, confirmed: confirmedRef.current, submitted: submittedRef.current, title: first?.content.slice(0, 70) || initial.title, updatedAt: Date.now() };
   }, [initial]);
-  const persist = useCallback(async () => {
-    await onChangeRef.current(snapshot());
-  }, [snapshot]);
+  const persist = useCallback(() => enqueueMutation(() => onChangeRef.current(snapshot())), [enqueueMutation, snapshot]);
   useEffect(() => {
     if (!messages.length) return;
     const timeout = setTimeout(() => { void persist().catch(() => { if (mounted.current) setLocalError('Chưa lưu được lịch sử trên thiết bị. Vui lòng thử lại trước khi chuyển chat.'); }); }, 600);
@@ -303,10 +310,9 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
       mounted.current = false;
       stop();
       subscription.remove();
-      // Synchronously emit the latest in-memory snapshot before unmounting.
-      void onChangeRef.current(snapshot()).catch(() => undefined);
+      void persist().catch(() => undefined);
     };
-  }, [stop, persist, snapshot]);
+  }, [stop, persist]);
   useEffect(() => { if (blocked) stop(); }, [blocked, stop]);
   const send = async (text = input) => {
     const content = text.trim();
@@ -318,16 +324,43 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
     }
     finally { sendGuard.current = false; }
   };
-  const onSubmit = useCallback(async (proposal: MeetingProposal) => {
-    submittedRef.current = { ...submittedRef.current, [proposal.proposalId]: proposal };
-    setSubmitted(submittedRef.current);
-    await persist();
-  }, [persist]);
-  const onCreated = useCallback(async (id: string, event: CalendarEvent) => {
+  const onSubmit = useCallback((proposal: MeetingProposal) => enqueueMutation(async () => {
+    const firstAttempt = !submittedRef.current[proposal.proposalId];
+    const attemptId = ++submitAttemptSeq.current;
+    const nextSubmitted = { ...submittedRef.current, [proposal.proposalId]: proposal };
+    const nextAttempts = { ...submitAttemptsRef.current, [proposal.proposalId]: attemptId };
+    try {
+      await onChangeRef.current({ ...snapshot(), submitted: nextSubmitted });
+    } catch {
+      throw new Error('Chưa lưu được bản thảo trên thiết bị. Vui lòng thử lại.');
+    }
+    submittedRef.current = nextSubmitted;
+    submitAttemptsRef.current = nextAttempts;
+    if (mounted.current) setSubmitted(nextSubmitted);
+    return () => enqueueMutation(async () => {
+      if (!firstAttempt || submitAttemptsRef.current[proposal.proposalId] !== attemptId || !submittedRef.current[proposal.proposalId]) {
+        return false;
+      }
+      const restored = { ...submittedRef.current };
+      delete restored[proposal.proposalId];
+      const nextAttemptMap = { ...submitAttemptsRef.current };
+      delete nextAttemptMap[proposal.proposalId];
+      try {
+        await onChangeRef.current({ ...snapshot(), submitted: restored });
+      } catch {
+        throw new Error('Chưa mở khóa được bản thảo trên thiết bị. Vui lòng thử lại.');
+      }
+      submittedRef.current = restored;
+      submitAttemptsRef.current = nextAttemptMap;
+      if (mounted.current) setSubmitted(restored);
+      return true;
+    });
+  }), [enqueueMutation, snapshot]);
+  const onCreated = useCallback((id: string, event: CalendarEvent) => enqueueMutation(async () => {
     confirmedRef.current = { ...confirmedRef.current, [id]: event };
-    setConfirmed(confirmedRef.current);
-    await persist();
-  }, [persist]);
+    if (mounted.current) setConfirmed(confirmedRef.current);
+    await onChangeRef.current(snapshot());
+  }), [enqueueMutation, snapshot]);
   const onEdit = useCallback((proposal: MeetingProposal) => {
     setInput(`Hãy tạo bản thảo mới cho “${proposal.summary}”, tôi muốn chỉnh: `);
     nearBottom.current = true;

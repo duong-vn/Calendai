@@ -20,7 +20,7 @@ export const ChatMessage = memo(function ChatMessage({ message, confirmed, submi
   reminderMinutes?: number[];
   meetChoices?: Record<string, boolean>;
   onMeetChange?: (id: string, value: boolean) => void;
-  onSubmit: (proposal: MeetingProposal) => Promise<void>;
+  onSubmit: (proposal: MeetingProposal) => Promise<(() => Promise<boolean>) | void>;
   onCreated: (id: string, event: CalendarEvent) => Promise<void>;
   onEdit: (proposal: MeetingProposal) => void;
 }) {
