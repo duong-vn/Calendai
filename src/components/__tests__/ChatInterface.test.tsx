@@ -3,6 +3,13 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from 'ai';
 import type { Dispatch, SetStateAction } from 'react';
+import {
+  createNewSession,
+  deleteSessionById,
+  getActiveSessionId,
+  loadAllSessions,
+  saveCurrentSession,
+} from '@/lib/chat/session-storage';
 import { ChatInterface } from '../ChatInterface';
 
 interface SpeechResultEvent {
@@ -182,6 +189,120 @@ describe('ChatInterface Component UX & States', () => {
     fireEvent.click(clearBtns[0]);
     expect(mockSetMessages).not.toHaveBeenCalledWith([]);
     expect(mockClearSession).toHaveBeenCalled();
+  });
+
+  it('calls stop on unmount and on activeSessionId switch, without calling stop on unstable rerender or initial session adoption', () => {
+    const stop = vi.fn();
+    mockUseChat.mockImplementation(() => ({
+      messages: [{ id: '1', role: 'user', content: 'Xin chào' }],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: true,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: vi.fn(),
+      stop: (...args: unknown[]) => stop(...args),
+    }));
+
+    const { rerender, unmount } = render(
+      <ChatInterface isAuthenticated={true} activeSessionId={null} selectedModel="model-1" />
+    );
+
+    // Rerendering with a new stop identity or adopting the generated session ID must not stop the stream.
+    rerender(<ChatInterface isAuthenticated={true} activeSessionId={null} selectedModel="model-2" />);
+    const adoptedId = loadAllSessions('guest')[0]?.id ?? null;
+    expect(adoptedId).not.toBeNull();
+    rerender(<ChatInterface isAuthenticated={true} activeSessionId={adoptedId} selectedModel="model-2" />);
+    expect(stop).not.toHaveBeenCalled();
+
+    // Switching to another session via props stops the stream once.
+    rerender(<ChatInterface isAuthenticated={true} activeSessionId="other-session" selectedModel="model-2" />);
+    expect(stop).toHaveBeenCalledTimes(1);
+
+    // Unmounting stops the stream.
+    unmount();
+    expect(stop).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ChatInterface session hydration and persistence guards', () => {
+  beforeEach(() => localStorage.clear());
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('does not re-persist on unchanged hydration, overwrite a newer active session, or resurrect a deleted session', () => {
+    const s1 = createNewSession('model-1', 'user_A');
+    saveCurrentSession({
+      ...s1,
+      title: 'Phiên cũ',
+      messages: [{ id: 'm1', role: 'user', content: 'Tin nhắn cũ' }],
+    }, 'user_A');
+
+    mockUseChat.mockImplementation(() => {
+      const [messages, setMessages] = useState<Message[]>([]);
+      return {
+        messages,
+        setMessages,
+        input: '',
+        handleInputChange: vi.fn(),
+        handleSubmit: vi.fn(),
+        isLoading: false,
+        error: undefined,
+        reload: vi.fn(),
+        setInput: vi.fn(),
+        stop: vi.fn(),
+      };
+    });
+
+    const onSessionsChange = vi.fn();
+    const { rerender } = render(
+      <ChatInterface
+        isAuthenticated
+        historyScope="user_A"
+        activeSessionId={s1.id}
+        selectedModel="model-1"
+        onSessionsChange={onSessionsChange}
+      />
+    );
+
+    // Unchanged hydration must not trigger redundant session persistence.
+    expect(onSessionsChange).not.toHaveBeenCalled();
+
+    // Switching active session in storage before s1 updates must not revert activeSessionId.
+    const s2 = createNewSession('model-1', 'user_A');
+    expect(getActiveSessionId('user_A')).toBe(s2.id);
+
+    rerender(
+      <ChatInterface
+        isAuthenticated
+        historyScope="user_A"
+        activeSessionId={s1.id}
+        selectedModel="model-2"
+        onSessionsChange={onSessionsChange}
+      />
+    );
+    expect(getActiveSessionId('user_A')).toBe(s2.id);
+    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)?.model).toBe('model-2');
+
+    // Deleting s1 must prevent subsequent renders of s1 from resurrecting it.
+    deleteSessionById(s1.id, 'user_A');
+    rerender(
+      <ChatInterface
+        isAuthenticated
+        historyScope="user_A"
+        activeSessionId={s1.id}
+        selectedModel="model-3"
+        onSessionsChange={onSessionsChange}
+      />
+    );
+    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)).toBeUndefined();
+    expect(getActiveSessionId('user_A')).toBe(s2.id);
   });
 });
 

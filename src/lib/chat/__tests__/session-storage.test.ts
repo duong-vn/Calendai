@@ -86,4 +86,18 @@ describe('Chat Session Storage', () => {
     expect(localStorage.getItem('calendai_confirmed_events')).toBeNull();
     expect(loadAllSessions()).toEqual([]);
   });
+
+  it('can update a session in storage without overriding another active session when activate is false', () => {
+    const s1 = createNewSession();
+    const s2 = createNewSession();
+    expect(getActiveSessionId()).toBe(s2.id);
+
+    saveCurrentSession({
+      ...s1,
+      messages: [{ id: 'm1', role: 'user', content: 'Cập nhật nền phiên cũ' }],
+    }, undefined, { activate: false });
+
+    expect(getActiveSessionId()).toBe(s2.id);
+    expect(loadAllSessions().find((s) => s.id === s1.id)?.messages).toHaveLength(1);
+  });
 });
