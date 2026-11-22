@@ -1,4 +1,5 @@
 import { CalendarConflictError, MobileApi } from './api';
+import { ApiError } from './transport';
 import { parseEvent, parseProposal } from '../types';
 import { safeHttpsUrl } from './links';
 
@@ -55,4 +56,20 @@ it('validates proposals and external links', () => {
   expect(safeHttpsUrl('https://meet.google.com.evil.test/path', 'meet')).toBeNull();
   expect(safeHttpsUrl('https://user:pass@meet.google.com/path', 'meet')).toBeNull();
   expect(safeHttpsUrl('https://meet.google.com/abc-defg-hij', 'meet')).toBe('https://meet.google.com/abc-defg-hij');
+});
+it('classifies 400/401 rejections as ApiError and ignores empty conflict lists', async () => {
+  const fetcher = jest.fn()
+    .mockResolvedValueOnce(response({ success: false, error: 'Bad request' }, 400))
+    .mockResolvedValueOnce(response({ code: 'AUTH_REQUIRED', error: 'Unauthorized' }, 401))
+    .mockResolvedValueOnce(response({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [] }, 409))
+    .mockResolvedValueOnce(response({ success: false, code: 'PROPOSAL_CONFLICT', error: 'Conflict' }, 409));
+  const api = new MobileApi(fetcher);
+  const first = api.confirm(draft);
+  await expect(first).rejects.toBeInstanceOf(ApiError);
+  await expect(first).rejects.toMatchObject({ status: 400 });
+  const second = api.confirm(draft);
+  await expect(second).rejects.toBeInstanceOf(ApiError);
+  await expect(second).rejects.toMatchObject({ status: 401, code: 'AUTH_REQUIRED' });
+  await expect(api.confirm(draft)).rejects.not.toBeInstanceOf(CalendarConflictError);
+  await expect(api.confirm(draft)).rejects.not.toBeInstanceOf(ApiError);
 });

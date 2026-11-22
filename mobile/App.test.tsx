@@ -131,3 +131,76 @@ it('does not resurrect a deleted session when conversation cleanup saves during 
   act(() => tree.unmount());
   alert.mockRestore();
 });
+
+it('does not update submitted state or unmount snapshots when local persistence fails in onSubmit', async () => {
+  const existing: ChatSession = { ...newConversation(), id: 'chat-fail', messages: [{ id: 'm1', role: 'user', content: 'Họp' }] };
+  jest.mocked(loadHistory).mockResolvedValue([existing]);
+  jest.mocked(loadConversation).mockResolvedValue(existing);
+  jest.mocked(saveConversation).mockReset().mockRejectedValueOnce(new Error('Storage full')).mockResolvedValue([]);
+  let tree: ReactTestRenderer | undefined;
+  try {
+    await act(async () => { tree = create(<App />); });
+    await flush();
+
+    const proposal: MeetingProposal = { proposalId: 'p-fail', summary: 'Họp', startDateTime: '2026-11-19T09:00:00+07:00', endDateTime: '2026-11-19T10:00:00+07:00', timeZone: 'Asia/Ho_Chi_Minh', attendees: [], createMeet: true };
+    const list = tree!.root.findAllByType(FlatList)[0];
+    const rendered = list.props.renderItem({ item: existing.messages[0] });
+
+    await expect(act(async () => { await rendered.props.onSubmit(proposal); })).rejects.toThrow();
+
+    const refreshed = tree!.root.findAllByType(FlatList)[0].props.renderItem({ item: existing.messages[0] });
+    expect(refreshed.props.submitted).toEqual({});
+
+    act(() => tree?.unmount());
+    tree = undefined;
+    await flush();
+    expect(saveConversation).toHaveBeenLastCalledWith(null, expect.objectContaining({ submitted: {} }));
+  } finally {
+    if (tree) act(() => tree?.unmount());
+  }
+});
+
+it('unlocks first-attempt submitted drafts in state and storage on discard, but preserves previously persisted drafts', async () => {
+  const proposalA: MeetingProposal = { proposalId: 'p-a', summary: 'Họp A', startDateTime: '2026-11-19T09:00:00+07:00', endDateTime: '2026-11-19T10:00:00+07:00', timeZone: 'Asia/Ho_Chi_Minh', attendees: [], createMeet: true };
+  const proposalB: MeetingProposal = { proposalId: 'p-b', summary: 'Họp B', startDateTime: '2026-11-19T11:00:00+07:00', endDateTime: '2026-11-19T12:00:00+07:00', timeZone: 'Asia/Ho_Chi_Minh', attendees: [], createMeet: false };
+  const existing: ChatSession = {
+    ...newConversation(),
+    id: 'chat-unlock',
+    messages: [{ id: 'm1', role: 'user', content: 'Họp' }],
+    submitted: { [proposalB.proposalId]: proposalB },
+  };
+  jest.mocked(loadHistory).mockResolvedValue([existing]);
+  jest.mocked(loadConversation).mockResolvedValue(existing);
+  jest.mocked(saveConversation).mockReset().mockResolvedValue([]);
+  let tree: ReactTestRenderer | undefined;
+  try {
+    await act(async () => { tree = create(<App />); });
+    await flush();
+
+    const rendered = () => tree!.root.findAllByType(FlatList)[0].props.renderItem({ item: existing.messages[0] });
+
+    let discardA!: (() => Promise<boolean>) | undefined;
+    await act(async () => { discardA = await rendered().props.onSubmit(proposalA); });
+    expect(rendered().props.submitted).toEqual({ [proposalB.proposalId]: proposalB, [proposalA.proposalId]: proposalA });
+    expect(saveConversation).toHaveBeenLastCalledWith(null, expect.objectContaining({
+      submitted: { [proposalB.proposalId]: proposalB, [proposalA.proposalId]: proposalA },
+    }));
+
+    let unlocked = false;
+    await act(async () => { unlocked = (await discardA?.()) ?? false; });
+    expect(unlocked).toBe(true);
+    expect(rendered().props.submitted).toEqual({ [proposalB.proposalId]: proposalB });
+    expect(saveConversation).toHaveBeenLastCalledWith(null, expect.objectContaining({
+      submitted: { [proposalB.proposalId]: proposalB },
+    }));
+
+    let discardB!: (() => Promise<boolean>) | undefined;
+    await act(async () => { discardB = await rendered().props.onSubmit(proposalB); });
+    let unlockedB = true;
+    await act(async () => { unlockedB = (await discardB?.()) ?? true; });
+    expect(unlockedB).toBe(false);
+    expect(rendered().props.submitted).toEqual({ [proposalB.proposalId]: proposalB });
+  } finally {
+    if (tree) act(() => tree?.unmount());
+  }
+});
