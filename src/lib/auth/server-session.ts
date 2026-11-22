@@ -62,12 +62,13 @@ export async function clearServerSession(): Promise<void> {
 
 export async function getValidAccessToken(
   session: SessionData,
-  request?: Request
+  request?: Request,
+  options: { forceRefresh?: boolean } = {}
 ): Promise<{ accessToken: string; updatedSession?: SessionData }> {
   const now = Date.now();
   if (session.kind === 'mobile' || request?.headers.has('authorization')) {
     if (session.kind !== 'mobile' || !session.expiresAt || session.expiresAt <= now) throw new AuthError();
-    if (session.tokens.expiresAt <= now) {
+    if (options.forceRefresh || session.tokens.expiresAt <= now) {
       // The mobile refresh endpoint returns the replacement JWE to SecureStore.
       // Refreshing here would silently discard it and repeatedly use stale grants.
       throw new AuthError('Vui lòng làm mới phiên đăng nhập trước khi tiếp tục.', 'SESSION_REFRESH_REQUIRED');
@@ -75,16 +76,27 @@ export async function getValidAccessToken(
     return { accessToken: session.tokens.accessToken };
   }
 
-  if (session.tokens.expiresAt - now > 5 * 60 * 1000) {
+  if (!options.forceRefresh && session.tokens.expiresAt - now > 5 * 60 * 1000) {
     return { accessToken: session.tokens.accessToken };
   }
   if (!session.tokens.refreshToken) {
-    if (session.tokens.expiresAt > now) return { accessToken: session.tokens.accessToken };
-    throw new AuthError('Quyền truy cập Google đã hết hạn. Vui lòng kết nối lại tài khoản Google.');
+    if (!options.forceRefresh && session.tokens.expiresAt > now) return { accessToken: session.tokens.accessToken };
+    throw new AuthError(
+      options.forceRefresh
+        ? 'Quyền truy cập Google Calendar đã hết hạn hoặc bị thu hồi. Vui lòng kết nối lại tài khoản Google.'
+        : 'Quyền truy cập Google đã hết hạn. Vui lòng kết nối lại tài khoản Google.',
+      options.forceRefresh ? 'google_reauthorization_required' : 'UNAUTHORIZED'
+    );
   }
 
   const env = getServerEnv();
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+    if (options.forceRefresh) {
+      throw new AuthError(
+        'Quyền truy cập Google Calendar đã hết hạn hoặc bị thu hồi. Vui lòng kết nối lại tài khoản Google.',
+        'google_reauthorization_required'
+      );
+    }
     throw new Error('Chưa cấu hình Google trên server.');
   }
   const refreshedTokens = await refreshGoogleAccessToken(

@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireJsonContentType, requireSameOrigin } from '@/lib/auth/request-guards';
-import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
+import { authErrorResponse, getServerSession } from '@/lib/auth/server-session';
+import type { SessionData } from '@/lib/auth/types';
+import {
+  CalendarUnauthorizedError,
+  calendarUnauthorizedResponse,
+  executeWithCalendarAuth,
+} from '@/lib/calendar/calendar-auth';
 import { CalendarProposalConflictError, createGoogleCalendarEvent } from '@/lib/calendar/google-calendar-service';
 import { createMockCalendarEvent } from '@/lib/calendar/mock-calendar-service';
 import { MeetingProposalSchema } from '@/lib/calendar/proposal-schema';
@@ -9,6 +15,7 @@ import { ConflictOverrideSchema } from '@/lib/calendar/conflict-schema';
 import { CalendarOverlapError, findCalendarConflicts } from '@/lib/calendar/conflict-service';
 
 export async function POST(request: Request) {
+  let session: SessionData | null = null;
   try {
     const contentTypeError = requireJsonContentType(request);
     if (contentTypeError) return contentTypeError;
@@ -41,25 +48,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Lựa chọn cho phép trùng lịch không hợp lệ.' }, { status: 400 });
     }
     const input = parseResult.data;
-    const session = await getServerSession(request);
+    session = await getServerSession(request);
 
     // Nếu đã đăng nhập tài khoản Google thực tế
     if (session) {
-      const { accessToken } = await getValidAccessToken(session, request);
-      const event = await createGoogleCalendarEvent(accessToken, {
-        summary: input.summary,
-        description: input.description,
-        startDateTime: input.startDateTime,
-        endDateTime: input.endDateTime,
-        timeZone: input.timeZone,
-        attendees: input.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
-        createMeet: input.createMeet,
-        reminderMinutes: input.reminderMinutes,
-      }, input.proposalId ? { accountId: session.user.id, proposalId: input.proposalId } : undefined, async (eventId) => {
-        if (override.data.allowConflict) return;
-        const conflicts = await findCalendarConflicts(accessToken, input, eventId ? [eventId] : []);
-        if (conflicts.length) throw new CalendarOverlapError(conflicts);
-      });
+      const accountId = session.user.id;
+      const event = await executeWithCalendarAuth(session, request, (accessToken) =>
+        createGoogleCalendarEvent(accessToken, {
+          summary: input.summary,
+          description: input.description,
+          startDateTime: input.startDateTime,
+          endDateTime: input.endDateTime,
+          timeZone: input.timeZone,
+          attendees: input.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
+          createMeet: input.createMeet,
+          reminderMinutes: input.reminderMinutes,
+        }, input.proposalId ? { accountId, proposalId: input.proposalId } : undefined, async (eventId) => {
+          if (override.data.allowConflict) return;
+          const conflicts = await findCalendarConflicts(accessToken, input, eventId ? [eventId] : []);
+          if (conflicts.length) throw new CalendarOverlapError(conflicts);
+        })
+      );
 
       return NextResponse.json({
         success: true,
@@ -102,6 +111,9 @@ export async function POST(request: Request) {
   } catch (error) {
     const authResponse = authErrorResponse(error);
     if (authResponse) return authResponse;
+    if (error instanceof CalendarUnauthorizedError) {
+      return calendarUnauthorizedResponse(session, request);
+    }
     if (error instanceof CalendarOverlapError) {
       return NextResponse.json({ success: false, code: 'CALENDAR_CONFLICT', conflicts: error.conflicts, error: error.message }, { status: 409 });
     }

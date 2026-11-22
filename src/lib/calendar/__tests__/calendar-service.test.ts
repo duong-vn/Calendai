@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CalendarUnauthorizedError,
   createGoogleCalendarEvent,
   listGoogleCalendarEvents,
 } from '../google-calendar-service';
@@ -128,13 +129,13 @@ describe('Google Calendar Service Layer', () => {
     expect(result.hangoutLink).toBe('https://meet.google.com/fallback-meet-uri');
   });
 
-  it('throws descriptive error when Google API fails', async () => {
+  it('throws descriptive error when Google API fails with non-401 status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
-      status: 401,
-      statusText: 'Unauthorized',
+      status: 403,
+      statusText: 'Forbidden',
       json: async () => ({
-        error: { message: 'Invalid Credentials', code: 401 },
+        error: { message: 'Insufficient Permission', code: 403 },
       }),
     }));
 
@@ -144,7 +145,77 @@ describe('Google Calendar Service Layer', () => {
         startDateTime: '2026-10-12T09:00:00+07:00',
         endDateTime: '2026-10-12T10:00:00+07:00',
       })
-    ).rejects.toThrow('Google Calendar API Error (401): Invalid Credentials');
+    ).rejects.toThrow('Google Calendar API Error (403): Insufficient Permission');
+  });
+
+  it('throws CalendarUnauthorizedError without leaking Google details on HTTP 401 pre-checks, inserts, and listings', async () => {
+    const unauthorized = () => Response.json({ error: { message: 'Invalid Credentials', code: 401 } }, { status: 401 });
+
+    // 1. Pre-insert idempotency check 401 must abort before beforeInsert or POST
+    const precheckFetch = vi.fn().mockResolvedValueOnce(unauthorized());
+    const beforeInsert = vi.fn();
+    vi.stubGlobal('fetch', precheckFetch);
+    await expect(
+      createGoogleCalendarEvent(
+        'expired-token',
+        {
+          summary: 'Test',
+          startDateTime: '2026-10-12T09:00:00+07:00',
+          endDateTime: '2026-10-12T10:00:00+07:00',
+        },
+        { accountId: 'acc-1', proposalId: 'prop-1' },
+        beforeInsert
+      )
+    ).rejects.toBeInstanceOf(CalendarUnauthorizedError);
+    expect(beforeInsert).not.toHaveBeenCalled();
+    expect(precheckFetch).toHaveBeenCalledTimes(1);
+
+    // 2. Direct POST 401 must throw CalendarUnauthorizedError (even with non-JSON 401 body) without reconcile or leaking text
+    const postFetch = vi.fn().mockResolvedValueOnce(new Response('Invalid Credentials secret', { status: 401, statusText: 'Unauthorized' }));
+    vi.stubGlobal('fetch', postFetch);
+    const postErr = await createGoogleCalendarEvent(
+      'expired-token',
+      {
+        summary: 'Test',
+        startDateTime: '2026-10-12T09:00:00+07:00',
+        endDateTime: '2026-10-12T10:00:00+07:00',
+      },
+      { accountId: 'acc-1', proposalId: 'prop-1' }
+    ).catch((e: unknown) => e);
+    expect(postErr).toBeInstanceOf(CalendarUnauthorizedError);
+    expect((postErr as Error).message).not.toContain('Invalid Credentials');
+    expect(postFetch).toHaveBeenCalledTimes(1);
+
+    // 3. Uncertain POST 500 followed by 401 during reconcile keeps the uncertain error (never emits CalendarUnauthorizedError)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce(Response.json({ error: { message: 'Backend down' } }, { status: 500 }))
+        .mockResolvedValueOnce(unauthorized())
+    );
+    const uncertainErr = await createGoogleCalendarEvent(
+      'expired-token',
+      {
+        summary: 'Test',
+        startDateTime: '2026-10-12T09:00:00+07:00',
+        endDateTime: '2026-10-12T10:00:00+07:00',
+      },
+      { accountId: 'acc-1', proposalId: 'prop-1' }
+    ).catch((e: unknown) => e);
+    expect(uncertainErr).not.toBeInstanceOf(CalendarUnauthorizedError);
+    expect((uncertainErr as Error).message).toContain('500');
+
+    // 4. listGoogleCalendarEvents 401 on page 1 and page 2
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+    await expect(listGoogleCalendarEvents('expired-token')).rejects.toBeInstanceOf(CalendarUnauthorizedError);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'page-2' }))
+        .mockResolvedValueOnce(unauthorized())
+    );
+    await expect(listGoogleCalendarEvents('expired-token')).rejects.toBeInstanceOf(CalendarUnauthorizedError);
   });
 
   it('lists upcoming events accurately', async () => {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CalendarUnauthorizedError } from './calendar-auth';
 import { EventEtagSchema, EventIdSchema, type CalendarConflict, type ResolveConflictInput } from './conflict-schema';
 import { OffsetDateTimeSchema } from './proposal-schema';
 
@@ -51,6 +52,7 @@ export function rangesOverlap(left: TimeRange, right: TimeRange): boolean {
 }
 
 async function googleJson(response: Response): Promise<unknown> {
+  if (response.status === 401) throw new CalendarUnauthorizedError();
   if (!response.ok) throw new CalendarLookupError();
   const data: unknown = await response.json();
   if (!data || typeof data !== 'object' || 'error' in data) throw new CalendarLookupError();
@@ -173,6 +175,7 @@ export async function resolveCalendarConflict(accessToken: string, input: Resolv
     headers: { ...headers, 'If-Match': input.etag, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body, signal: AbortSignal.timeout(15000),
   });
+  if (mutation.status === 401) throw new CalendarUnauthorizedError();
   if ([404, 410, 412].includes(mutation.status)) throw new CalendarStaleEventError();
   if (!mutation.ok || (input.action === 'cancel' && mutation.status !== 204)) throw new CalendarLookupError();
   if (input.action === 'reschedule') {

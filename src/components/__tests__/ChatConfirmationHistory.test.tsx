@@ -74,7 +74,8 @@ describe('Confirmation payload recovery', () => {
   it.each([
     { status: 400, body: { success: false, error: 'Dữ liệu không hợp lệ.' } },
     { status: 401, body: authRequired },
-  ])('unlocks after a first-attempt HTTP $status rejection before the write', async ({ status, body }) => {
+    { status: 401, body: { success: false, code: 'google_reauthorization_required', error: 'Quyền truy cập Google Calendar đã hết hạn hoặc bị thu hồi. Vui lòng kết nối lại tài khoản Google.' } },
+  ])('unlocks after a first-attempt HTTP $status rejection ($body.code) before the write', async ({ status, body }) => {
     const original = seedProposal();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(body, { status })));
     render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);

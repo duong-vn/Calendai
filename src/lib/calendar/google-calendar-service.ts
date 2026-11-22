@@ -1,10 +1,13 @@
 import { createHash } from 'node:crypto';
+import { CalendarUnauthorizedError } from './calendar-auth';
 import { DEFAULT_REMINDER_MINUTES } from './reminders';
 import type {
   CalendarEventResult,
   CreateCalendarEventInput,
   UpcomingEventItem,
 } from './types';
+
+export { CalendarUnauthorizedError };
 
 const GOOGLE_CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3';
 
@@ -176,6 +179,7 @@ export async function createGoogleCalendarEvent(
           signal: AbortSignal.timeout(15000),
           cache: 'no-store',
         });
+        if (existing.status === 401) throw new CalendarUnauthorizedError();
         if (existing.status === 410) throw new CalendarProposalConflictError();
         if (existing.status !== 404) return reconcile(new Error('Không thể kiểm tra mã đề xuất.'), true, existing);
       }
@@ -193,8 +197,10 @@ export async function createGoogleCalendarEvent(
         body: JSON.stringify(requestBody),
         signal: AbortSignal.timeout(15000),
       });
+      if (response.status === 401) throw new CalendarUnauthorizedError();
       inserted = await response.json() as GoogleApiEventResponse;
     } catch (error) {
+      if (error instanceof CalendarUnauthorizedError) throw error;
       if (eventId) return reconcile(error);
       throw error;
     }
@@ -314,6 +320,9 @@ export async function listGoogleCalendarEvents(
       headers: { Authorization: `Bearer ${accessToken}` },
       ...(signal ? { signal, cache: 'no-store' } : {}),
     });
+    if (response.status === 401) {
+      throw new CalendarUnauthorizedError();
+    }
     let data: GoogleApiEventsListResponse | null = null;
     try {
       data = (await response.json()) as GoogleApiEventsListResponse;

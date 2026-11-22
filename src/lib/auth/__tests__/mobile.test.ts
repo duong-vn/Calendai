@@ -4,7 +4,12 @@ import { POST as exchange } from '@/app/api/auth/mobile/exchange/route';
 import { POST as refresh } from '@/app/api/auth/mobile/refresh/route';
 import { GET as status } from '@/app/api/auth/google/status/route';
 import { POST as logout } from '@/app/api/auth/google/logout/route';
+import { POST as calendarConfirm } from '@/app/api/calendar/confirm/route';
+import { POST as calendarConflicts } from '@/app/api/calendar/conflicts/route';
+import { POST as calendarResolve } from '@/app/api/calendar/resolve/route';
+import { GET as calendarUpcoming } from '@/app/api/calendar/upcoming/route';
 import { AuthError, authErrorResponse, getServerSession, getValidAccessToken } from '../server-session';
+import { GoogleOAuthError } from '../google-oauth';
 import { decryptMobileSession, encryptMobileSession, encryptSession, SESSION_EXPIRATION_SECONDS } from '../session';
 import { EnvSchema } from '../../env';
 import type { MobileSessionData, SessionData } from '../types';
@@ -226,5 +231,140 @@ describe('Native refresh and profile endpoints', () => {
     vi.stubEnv('NODE_ENV', 'production');
     expect(EnvSchema.safeParse({ AI_API_KEY: 'key', AI_MODEL: 'model' }).success).toBe(false);
     expect(EnvSchema.safeParse({ AI_API_KEY: 'key', AI_MODEL: 'model', SESSION_SECRET: key }).success).toBe(true);
+  });
+
+  it('force-refreshes web sessions on demand and enforces auth recovery across Calendar routes', async () => {
+    const mobile = sampleSession();
+    const web: SessionData = { user: mobile.user, tokens: { ...mobile.tokens }, createdAt: mobile.createdAt };
+
+    // forceRefresh on mobile never calls Google OAuth and signals SESSION_REFRESH_REQUIRED
+    const noFetch = vi.fn();
+    vi.stubGlobal('fetch', noFetch);
+    await expect(getValidAccessToken(mobile, undefined, { forceRefresh: true }))
+      .rejects.toMatchObject({ code: 'SESSION_REFRESH_REQUIRED' });
+    expect(noFetch).not.toHaveBeenCalled();
+
+    // forceRefresh on web without refreshToken throws AuthError with google_reauthorization_required
+    await expect(
+      getValidAccessToken({ ...web, tokens: { ...web.tokens, refreshToken: undefined } }, undefined, { forceRefresh: true })
+    ).rejects.toMatchObject({ code: 'google_reauthorization_required' });
+
+    // forceRefresh on web with revoked refresh grant throws GoogleOAuthError 401 google_reauthorization_required
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      Response.json({ error: 'invalid_grant', error_description: 'revoked-secret' }, { status: 400 })
+    ));
+    await expect(getValidAccessToken(web, undefined, { forceRefresh: true }))
+      .rejects.toSatisfy((err: unknown) => err instanceof GoogleOAuthError && err.status === 401 && err.code === 'google_reauthorization_required');
+
+    // End-to-end route tests with real JWE sessions:
+    const proposalBody = {
+      proposalId: 'prop-e2e-401',
+      summary: 'Họp đồng bộ',
+      startDateTime: '2026-10-12T09:00:00+07:00',
+      endDateTime: '2026-10-12T10:00:00+07:00',
+      createMeet: false,
+    };
+    const conflictEvent = {
+      id: 'busy-1',
+      etag: '"v1"',
+      summary: 'Lịch bận',
+      status: 'confirmed',
+      start: { dateTime: proposalBody.startDateTime },
+      end: { dateTime: proposalBody.endDateTime },
+    };
+    const unauthorizedGoogle = () => Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 });
+
+    // 1. Mobile Bearer gets 401 SESSION_REFRESH_REQUIRED on all 4 Calendar routes
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => unauthorizedGoogle()));
+    for (const [label, res] of [
+      ['confirm', await calendarConfirm(new Request('https://app.example.com/api/calendar/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await encryptMobileSession(mobile, key)}` },
+        body: JSON.stringify(proposalBody),
+      }))],
+      ['upcoming', await calendarUpcoming(await bearerRequest('/api/calendar/upcoming', mobile, 'GET'))],
+      ['conflicts', await calendarConflicts(new Request('https://app.example.com/api/calendar/conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await encryptMobileSession(mobile, key)}` },
+        body: JSON.stringify(proposalBody),
+      }))],
+      ['resolve', await calendarResolve(new Request('https://app.example.com/api/calendar/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await encryptMobileSession(mobile, key)}` },
+        body: JSON.stringify({ proposal: proposalBody, eventId: conflictEvent.id, etag: conflictEvent.etag, action: 'cancel' }),
+      }))],
+    ] as const) {
+      expect(res.status, label).toBe(401);
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+      expect(res.headers.get('WWW-Authenticate')).toBe('Bearer');
+      const json = await res.json();
+      expect(json.code, label).toBe('SESSION_REFRESH_REQUIRED');
+      expect(JSON.stringify(json)).not.toContain('Invalid Credentials');
+    }
+
+    // 2. Web cookie with early-invalidated access token refreshes cookie once and succeeds
+    cookieMocks.get.mockReturnValue({ value: await encryptSession(web, key) });
+    cookieMocks.set.mockClear();
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('oauth2.googleapis.com/token')) {
+        return Response.json(googleGrant('refreshed-web-token'));
+      }
+      const auth = new Headers(init?.headers).get('Authorization');
+      if (auth !== 'Bearer refreshed-web-token') {
+        return unauthorizedGoogle();
+      }
+      if (init?.method === 'POST') {
+        return Response.json({ ...JSON.parse(String(init.body)), id: 'created-after-401-refresh' });
+      }
+      if (!url.includes('?')) {
+        return Response.json({}, { status: 404 });
+      }
+      return Response.json({ timeZone: 'Asia/Ho_Chi_Minh', items: [] });
+    }));
+    const confirmRecovered = await calendarConfirm(new Request('https://app.example.com/api/calendar/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...proposalBody, allowConflict: true }),
+    }));
+    expect(confirmRecovered.status).toBe(200);
+    expect((await confirmRecovered.json()).event.id).toBe('created-after-401-refresh');
+    expect(cookieMocks.set).toHaveBeenCalledOnce();
+
+    // Subsequent upcoming request with the stale cookie also refreshes once and returns 200
+    expect((await calendarUpcoming(new Request('https://app.example.com/api/calendar/upcoming'))).status).toBe(200);
+
+    // 3. Web cookie with revoked Google grant returns 401 google_reauthorization_required across all 4 routes
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('oauth2.googleapis.com/token')) {
+        return Response.json({ error: 'invalid_grant', error_description: 'revoked-secret' }, { status: 400 });
+      }
+      return unauthorizedGoogle();
+    }));
+    for (const [label, res] of [
+      ['confirm', await calendarConfirm(new Request('https://app.example.com/api/calendar/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(proposalBody),
+      }))],
+      ['upcoming', await calendarUpcoming(new Request('https://app.example.com/api/calendar/upcoming'))],
+      ['conflicts', await calendarConflicts(new Request('https://app.example.com/api/calendar/conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(proposalBody),
+      }))],
+      ['resolve', await calendarResolve(new Request('https://app.example.com/api/calendar/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposal: proposalBody, eventId: conflictEvent.id, etag: conflictEvent.etag, action: 'cancel' }),
+      }))],
+    ] as const) {
+      expect(res.status, label).toBe(401);
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+      expect(res.headers.get('WWW-Authenticate')).toBe('Bearer');
+      const json = await res.json();
+      expect(json.code, label).toBe('google_reauthorization_required');
+      expect(JSON.stringify(json)).not.toContain('Invalid Credentials');
+      expect(JSON.stringify(json)).not.toContain('revoked-secret');
+    }
   });
 });
