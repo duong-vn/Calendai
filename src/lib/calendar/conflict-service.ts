@@ -23,6 +23,7 @@ const GoogleEventSchema = z.object({
   transparency: z.enum(['opaque', 'transparent']).optional(),
   start: EventTimeSchema.optional(),
   end: EventTimeSchema.optional(),
+  endTimeUnspecified: z.boolean().optional(),
   attendees: z.array(z.object({ self: z.boolean().optional(), responseStatus: z.string().optional() })).optional(),
   recurrence: z.array(z.string()).optional(),
   recurringEventId: EventIdSchema.optional(),
@@ -46,8 +47,11 @@ export class CalendarResolveError extends Error {
 }
 
 export function rangesOverlap(left: TimeRange, right: TimeRange): boolean {
-  return Date.parse(left.startDateTime) < Date.parse(right.endDateTime) &&
-    Date.parse(right.startDateTime) < Date.parse(left.endDateTime);
+  const leftStart = Date.parse(left.startDateTime);
+  const leftEnd = Date.parse(left.endDateTime);
+  const rightStart = Date.parse(right.startDateTime);
+  const rightEnd = Date.parse(right.endDateTime);
+  return leftStart < leftEnd && rightStart < rightEnd && leftStart < rightEnd && rightStart < leftEnd;
 }
 
 async function googleJson(response: Response): Promise<unknown> {
@@ -85,14 +89,17 @@ function dayBoundary(date: string, timeZone: string, cache: Map<string, number>)
 }
 
 function conflictFromEvent(event: GoogleEvent, calendarTimeZone?: string, cache = new Map<string, number>()): CalendarConflict {
-  if (!event.start || !event.end || !event.etag) throw new CalendarLookupError();
+  const effectiveEnd = event.end ?? (event.endTimeUnspecified && event.start?.dateTime ? event.start : undefined);
+  if (!event.start || !effectiveEnd || !event.etag) throw new CalendarLookupError();
   const isAllDay = Boolean(event.start.date);
-  if (isAllDay !== Boolean(event.end.date)) throw new CalendarLookupError();
+  if (isAllDay !== Boolean(effectiveEnd.date)) throw new CalendarLookupError();
   const timeZone = event.start.timeZone ?? calendarTimeZone;
-  if (isAllDay && (!timeZone || event.end.date! <= event.start.date!)) throw new CalendarLookupError();
+  if (isAllDay && (!timeZone || effectiveEnd.date! <= event.start.date!)) throw new CalendarLookupError();
   const start = isAllDay ? new Date(dayBoundary(event.start.date!, timeZone!, cache)).toISOString() : event.start.dateTime!;
-  const end = isAllDay ? new Date(dayBoundary(event.end.date!, timeZone!, cache)).toISOString() : event.end.dateTime!;
-  if (!(Date.parse(end) > Date.parse(start))) throw new CalendarLookupError();
+  const end = isAllDay ? new Date(dayBoundary(effectiveEnd.date!, timeZone!, cache)).toISOString() : effectiveEnd.dateTime!;
+  const startMs = Date.parse(start);
+  const endMs = Date.parse(end);
+  if (isAllDay ? !(endMs > startMs) : !(endMs >= startMs)) throw new CalendarLookupError();
   return {
     id: event.id, summary: event.summary || '(Không có tiêu đề)', start, end,
     etag: event.etag, timeZone: timeZone ?? 'Asia/Ho_Chi_Minh', isAllDay,
