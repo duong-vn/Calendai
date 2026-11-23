@@ -366,4 +366,113 @@ describe('Calendar route boundaries', () => {
     });
     expect((await POST(mobileReq)).status).toBe(200);
   });
+
+  it('returns 401 SESSION_REFRESH_REQUIRED without leaking Google diagnostics when Google Calendar returns 401 for Bearer mobile', async () => {
+    const mobileSession = {
+      ...session,
+      kind: 'mobile' as const,
+      expiresAt: Date.now() + 86_400_000,
+      tokens: { ...session.tokens, refreshToken: 'refresh' },
+    };
+    vi.mocked(getServerSession).mockResolvedValue(mobileSession);
+
+    const unauthorized = () => Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 });
+
+    // 1. Pre-insert idempotency check returns 401 on confirm
+    const confirmPrecheckFetch = vi.fn().mockResolvedValueOnce(unauthorized());
+    vi.stubGlobal('fetch', confirmPrecheckFetch);
+    const precheckRes = await POST(confirm(proposal, 'Bearer mobile-jwe'));
+    expect(precheckRes.status).toBe(401);
+    expect(precheckRes.headers.get('Cache-Control')).toBe('no-store');
+    expect(precheckRes.headers.get('WWW-Authenticate')).toBe('Bearer');
+    const precheckBody = await precheckRes.json();
+    expect(precheckBody).toMatchObject({ success: false, code: 'SESSION_REFRESH_REQUIRED' });
+    expect(JSON.stringify(precheckBody)).not.toContain('Invalid Credentials');
+    expect(confirmPrecheckFetch).toHaveBeenCalledTimes(1);
+
+    // 2. Conflict check returns 401 before insert on confirm
+    const confirmConflictFetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({}, { status: 404 }))
+      .mockResolvedValueOnce(unauthorized());
+    vi.stubGlobal('fetch', confirmConflictFetch);
+    const conflictRes = await POST(confirm(proposal, 'Bearer mobile-jwe'));
+    expect(conflictRes.status).toBe(401);
+    expect(await conflictRes.json()).toMatchObject({ success: false, code: 'SESSION_REFRESH_REQUIRED' });
+    expect(confirmConflictFetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+
+    // 3. POST insert returns 401 on confirm (allowConflict skips conflict check)
+    const confirmPostFetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({}, { status: 404 }))
+      .mockResolvedValueOnce(unauthorized());
+    vi.stubGlobal('fetch', confirmPostFetch);
+    const postRes = await POST(confirm({ ...proposal, allowConflict: true }, 'Bearer mobile-jwe'));
+    expect(postRes.status).toBe(401);
+    expect(await postRes.json()).toMatchObject({ success: false, code: 'SESSION_REFRESH_REQUIRED' });
+    expect(confirmPostFetch).toHaveBeenCalledTimes(2);
+
+    // 4. Upcoming events returns 401 (including on subsequent pages)
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'p2' }))
+      .mockResolvedValueOnce(unauthorized()));
+    const upcomingRes = await GET(new Request('http://localhost/api/calendar/upcoming', {
+      headers: { Authorization: 'Bearer mobile-jwe' },
+    }));
+    expect(upcomingRes.status).toBe(401);
+    expect(upcomingRes.headers.get('Cache-Control')).toBe('no-store');
+    expect(upcomingRes.headers.get('WWW-Authenticate')).toBe('Bearer');
+    const upcomingBody = await upcomingRes.json();
+    expect(upcomingBody).toMatchObject({ success: false, code: 'SESSION_REFRESH_REQUIRED' });
+    expect(JSON.stringify(upcomingBody)).not.toContain('Invalid Credentials');
+  });
+
+  it('returns 401 google_reauthorization_required or refreshes once for web cookie sessions when Google Calendar returns 401', async () => {
+    const unauthorized = () => Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 });
+
+    // When token cannot be refreshed to a new token, return 401 google_reauthorization_required
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+    const confirmRes = await POST(confirm());
+    expect(confirmRes.status).toBe(401);
+    expect(confirmRes.headers.get('Cache-Control')).toBe('no-store');
+    expect(confirmRes.headers.get('WWW-Authenticate')).toBe('Bearer');
+    const confirmBody = await confirmRes.json();
+    expect(confirmBody).toMatchObject({ success: false, code: 'google_reauthorization_required' });
+    expect(typeof confirmBody.error).toBe('string');
+    expect(JSON.stringify(confirmBody)).not.toContain('Invalid Credentials');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+    const upcomingRes = await GET(new Request('http://localhost/api/calendar/upcoming'));
+    expect(upcomingRes.status).toBe(401);
+    expect(upcomingRes.headers.get('Cache-Control')).toBe('no-store');
+    expect(upcomingRes.headers.get('WWW-Authenticate')).toBe('Bearer');
+    const upcomingBody = await upcomingRes.json();
+    expect(upcomingBody).toMatchObject({ success: false, code: 'google_reauthorization_required' });
+    expect(JSON.stringify(upcomingBody)).not.toContain('Invalid Credentials');
+
+    // When web refresh succeeds with a new token, retry once and succeed
+    vi.mocked(getValidAccessToken)
+      .mockResolvedValueOnce({ accessToken: 'stale-access' })
+      .mockResolvedValueOnce({ accessToken: 'fresh-access' });
+    const retryFetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const authHeader = new Headers(init?.headers).get('Authorization');
+      if (authHeader === 'Bearer stale-access') return unauthorized();
+      if (init?.method === 'POST') return Response.json({ ...JSON.parse(String(init.body)), id: 'created-after-refresh' });
+      return Response.json({}, { status: 404 });
+    });
+    vi.stubGlobal('fetch', retryFetch);
+    const req = confirm({ ...proposal, allowConflict: true });
+    const refreshedRes = await POST(req);
+    expect(refreshedRes.status).toBe(200);
+    expect(getValidAccessToken).toHaveBeenNthCalledWith(1, session, req);
+    expect(getValidAccessToken).toHaveBeenNthCalledWith(2, session, req, { forceRefresh: true });
+    expect((await refreshedRes.json()).event.id).toBe('created-after-refresh');
+
+    // If the refreshed token STILL gets 401, fail cleanly with 401 without looping
+    vi.mocked(getValidAccessToken)
+      .mockResolvedValueOnce({ accessToken: 'stale-access' })
+      .mockResolvedValueOnce({ accessToken: 'still-bad-access' });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(unauthorized()));
+    const doubleFailRes = await GET(new Request('http://localhost/api/calendar/upcoming'));
+    expect(doubleFailRes.status).toBe(401);
+    expect(await doubleFailRes.json()).toMatchObject({ success: false, code: 'google_reauthorization_required' });
+  });
 });

@@ -306,6 +306,85 @@ describe('ChatInterface session hydration and persistence guards', () => {
   });
 });
 
+describe('ChatInterface session hydration and persistence guards', () => {
+  beforeEach(() => localStorage.clear());
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('does not re-persist on unchanged hydration, overwrite a newer active session, or resurrect a deleted session', () => {
+    const s1 = createNewSession('model-1', 'user_A');
+    saveCurrentSession({
+      ...s1,
+      title: 'Phiên cũ',
+      messages: [{ id: 'm1', role: 'user', content: 'Tin nhắn cũ' }],
+    }, 'user_A');
+
+    mockUseChat.mockImplementation(() => {
+      const [messages, setMessages] = useState<Message[]>([]);
+      return {
+        messages,
+        setMessages,
+        input: '',
+        handleInputChange: vi.fn(),
+        handleSubmit: vi.fn(),
+        isLoading: false,
+        error: undefined,
+        reload: vi.fn(),
+        setInput: vi.fn(),
+        stop: vi.fn(),
+      };
+    });
+
+    const onSessionsChange = vi.fn();
+    const { rerender } = render(
+      <ChatInterface
+        isAuthenticated
+        historyScope="user_A"
+        activeSessionId={s1.id}
+        selectedModel="model-1"
+        onSessionsChange={onSessionsChange}
+      />
+    );
+
+    // Unchanged hydration must not trigger redundant session persistence.
+    expect(onSessionsChange).not.toHaveBeenCalled();
+
+    // Switching active session in storage before s1 updates must not revert activeSessionId.
+    const s2 = createNewSession('model-1', 'user_A');
+    expect(getActiveSessionId('user_A')).toBe(s2.id);
+
+    rerender(
+      <ChatInterface
+        isAuthenticated
+        historyScope="user_A"
+        activeSessionId={s1.id}
+        selectedModel="model-2"
+        onSessionsChange={onSessionsChange}
+      />
+    );
+    expect(getActiveSessionId('user_A')).toBe(s2.id);
+    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)?.model).toBe('model-2');
+
+    // Deleting s1 must prevent subsequent renders of s1 from resurrecting it.
+    deleteSessionById(s1.id, 'user_A');
+    rerender(
+      <ChatInterface
+        isAuthenticated
+        historyScope="user_A"
+        activeSessionId={s1.id}
+        selectedModel="model-3"
+        onSessionsChange={onSessionsChange}
+      />
+    );
+    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)).toBeUndefined();
+    expect(getActiveSessionId('user_A')).toBe(s2.id);
+  });
+});
+
 describe('ChatInterface meeting confirmations', () => {
   beforeEach(() => localStorage.clear());
 

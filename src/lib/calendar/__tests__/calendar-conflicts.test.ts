@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CalendarUnauthorizedError } from '../calendar-auth';
 import { CalendarLookupError, CalendarOverlapError, CalendarResolveError, CalendarStaleEventError, findCalendarConflicts, rangesOverlap, resolveCalendarConflict } from '../conflict-service';
 import { ResolveConflictSchema } from '../conflict-schema';
 import { MeetingProposalSchema } from '../proposal-schema';
@@ -127,6 +128,15 @@ describe('Blocking calendar overlap lookup', () => {
     await expect(findCalendarConflicts('access', proposal)).rejects.toBeInstanceOf(CalendarLookupError);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('throws CalendarUnauthorizedError when Google returns HTTP 401 on first or subsequent pages', async () => {
+    const unauthorized = () => Response.json({ error: { message: 'Invalid Credentials' } }, { status: 401 });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+    await expect(findCalendarConflicts('access', proposal)).rejects.toBeInstanceOf(CalendarUnauthorizedError);
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(page([], { nextPageToken: 'p2' })).mockResolvedValueOnce(unauthorized()));
+    await expect(findCalendarConflicts('access', proposal)).rejects.toBeInstanceOf(CalendarUnauthorizedError);
+  });
 });
 
 describe('Conditional conflict resolution', () => {
@@ -247,5 +257,18 @@ describe('Conditional conflict resolution', () => {
     { endDateTime: reschedule.startDateTime }, { etag: '*' }, { eventId: '../other' },
   ])('validates mutation inputs %j', (change) => {
     expect(ResolveConflictSchema.safeParse({ ...reschedule, ...change }).success).toBe(false);
+  });
+
+  it('throws CalendarUnauthorizedError on HTTP 401 before or at DELETE/PATCH mutation', async () => {
+    const unauthorized = () => Response.json({ error: { message: 'Invalid Credentials' } }, { status: 401 });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+    await expect(resolveCalendarConflict('access', cancel)).rejects.toBeInstanceOf(CalendarUnauthorizedError);
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(existing)).mockResolvedValueOnce(unauthorized()));
+    await expect(resolveCalendarConflict('access', reschedule)).rejects.toBeInstanceOf(CalendarUnauthorizedError);
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(existing)).mockResolvedValueOnce(unauthorized()));
+    await expect(resolveCalendarConflict('access', cancel)).rejects.toBeInstanceOf(CalendarUnauthorizedError);
   });
 });

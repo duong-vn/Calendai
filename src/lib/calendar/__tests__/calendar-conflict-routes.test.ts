@@ -269,4 +269,75 @@ describe('Calendar conflict HTTP contracts', () => {
     vi.stubEnv('NODE_ENV', 'production');
     expect((await conflicts(request(proposal))).status).toBe(401);
   });
+
+  it('returns 401 SESSION_REFRESH_REQUIRED for Bearer mobile when Google Calendar returns 401 on conflicts or resolve', async () => {
+    const mobileSession = {
+      ...session,
+      kind: 'mobile' as const,
+      expiresAt: Date.now() + 86_400_000,
+      tokens: { ...session.tokens, refreshToken: 'refresh' },
+    };
+    vi.mocked(getServerSession).mockResolvedValue(mobileSession);
+    const unauthorized = () => Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 });
+
+    // 1. /api/calendar/conflicts 401
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+    const conflictsRes = await conflicts(request(proposal, { Authorization: 'Bearer mobile-jwe' }));
+    expect(conflictsRes.status).toBe(401);
+    expect(conflictsRes.headers.get('Cache-Control')).toBe('no-store');
+    expect(conflictsRes.headers.get('WWW-Authenticate')).toBe('Bearer');
+    const conflictsBody = await conflictsRes.json();
+    expect(conflictsBody).toMatchObject({ success: false, code: 'SESSION_REFRESH_REQUIRED' });
+    expect(JSON.stringify(conflictsBody)).not.toContain('Invalid Credentials');
+
+    // 2. /api/calendar/resolve 401 on initial GET
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+    const resolveGetRes = await resolve(request(mutation, { Authorization: 'Bearer mobile-jwe' }));
+    expect(resolveGetRes.status).toBe(401);
+    expect(resolveGetRes.headers.get('Cache-Control')).toBe('no-store');
+    expect(resolveGetRes.headers.get('WWW-Authenticate')).toBe('Bearer');
+    const resolveGetBody = await resolveGetRes.json();
+    expect(resolveGetBody).toMatchObject({ success: false, code: 'SESSION_REFRESH_REQUIRED' });
+    expect(JSON.stringify(resolveGetBody)).not.toContain('Invalid Credentials');
+
+    // 3. /api/calendar/resolve 401 on DELETE/PATCH mutation
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(busy)).mockResolvedValueOnce(unauthorized()));
+    const resolveMutationRes = await resolve(request(mutation, { Authorization: 'Bearer mobile-jwe' }));
+    expect(resolveMutationRes.status).toBe(401);
+    expect(await resolveMutationRes.json()).toMatchObject({ success: false, code: 'SESSION_REFRESH_REQUIRED' });
+  });
+
+  it('returns 401 google_reauthorization_required or refreshes once for web cookies when Google Calendar returns 401', async () => {
+    const unauthorized = () => Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 });
+
+    for (const route of [conflicts, resolve]) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(unauthorized()));
+      const res = await route(request(route === conflicts ? proposal : mutation));
+      expect(res.status).toBe(401);
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+      expect(res.headers.get('WWW-Authenticate')).toBe('Bearer');
+      const body = await res.json();
+      expect(body).toMatchObject({ success: false, code: 'google_reauthorization_required' });
+      expect(typeof body.error).toBe('string');
+      expect(JSON.stringify(body)).not.toContain('Invalid Credentials');
+    }
+
+    // Web refresh succeeds and retries resolve once
+    vi.mocked(getValidAccessToken)
+      .mockResolvedValueOnce({ accessToken: 'stale-access' })
+      .mockResolvedValueOnce({ accessToken: 'fresh-access' });
+    const retryFetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const authHeader = new Headers(init?.headers).get('Authorization');
+      if (authHeader === 'Bearer stale-access') return unauthorized();
+      if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+      return Response.json(busy);
+    });
+    vi.stubGlobal('fetch', retryFetch);
+    const req = request(mutation);
+    const refreshedRes = await resolve(req);
+    expect(refreshedRes.status).toBe(200);
+    expect(getValidAccessToken).toHaveBeenNthCalledWith(1, session, req);
+    expect(getValidAccessToken).toHaveBeenNthCalledWith(2, session, req, { forceRefresh: true });
+    expect(await refreshedRes.json()).toEqual({ success: true });
+  });
 });

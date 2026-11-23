@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
-import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
+import { authErrorResponse, getServerSession } from '@/lib/auth/server-session';
+import type { SessionData } from '@/lib/auth/types';
+import {
+  CalendarUnauthorizedError,
+  calendarUnauthorizedResponse,
+  executeWithCalendarAuth,
+} from '@/lib/calendar/calendar-auth';
 import {
   getVietnamThisWeekRange, getVietnamTodayRange, isEventInTimeRange, VIETNAM_DAY_MS, VIETNAM_UTC_OFFSET,
 } from '@/lib/calendar/date-range';
@@ -9,6 +15,7 @@ import type { UpcomingEventItem } from '@/lib/calendar/types';
 import { isGoogleConfigured } from '@/lib/env';
 
 export async function GET(request: Request) {
+  let session: SessionData | null = null;
   try {
     const { searchParams } = new URL(request.url);
     const rawMaxResults = searchParams.get('maxResults');
@@ -25,17 +32,18 @@ export async function GET(request: Request) {
     const withinWeek = (events: UpcomingEventItem[]) => range
       ? events.filter(event => isEventInTimeRange(event, range.timeMin, range.timeMax))
       : events;
-    const session = await getServerSession(request);
+    session = await getServerSession(request);
 
     if (session) {
-      const { accessToken } = await getValidAccessToken(session, request);
-      const events = await listGoogleCalendarEvents(accessToken, range ? {
-        pageSize: 250,
-        paginate: true,
-        // Google filters all-day events in the calendar's own timezone.
-        timeMin: getVietnamTodayRange(new Date(Date.parse(range.timeMin) - VIETNAM_DAY_MS)).timeMin,
-        timeMax: getVietnamTodayRange(new Date(Date.parse(range.timeMax) + VIETNAM_DAY_MS)).timeMin,
-      } : { maxResults, paginate: true });
+      const events = await executeWithCalendarAuth(session, request, (accessToken) =>
+        listGoogleCalendarEvents(accessToken, range ? {
+          pageSize: 250,
+          paginate: true,
+          // Google filters all-day events in the calendar's own timezone.
+          timeMin: getVietnamTodayRange(new Date(Date.parse(range.timeMin) - VIETNAM_DAY_MS)).timeMin,
+          timeMax: getVietnamTodayRange(new Date(Date.parse(range.timeMax) + VIETNAM_DAY_MS)).timeMin,
+        } : { maxResults, paginate: true })
+      );
       return NextResponse.json({
         success: true,
         mode: 'google',
@@ -63,6 +71,9 @@ export async function GET(request: Request) {
   } catch (error) {
     const authResponse = authErrorResponse(error);
     if (authResponse) return authResponse;
+    if (error instanceof CalendarUnauthorizedError) {
+      return calendarUnauthorizedResponse(session, request);
+    }
     const message = 'Không thể lấy danh sách sự kiện. Vui lòng thử lại hoặc kết nối lại Google.';
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
