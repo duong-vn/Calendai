@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ANONYMOUS_CHAT_RATE_LIMIT,
@@ -77,7 +78,11 @@ describe('Native chat authentication and input boundary', () => {
 
   it('rejects client system instructions and invalid JSON', async () => {
     expect((await POST(request({ messages: [{ role: 'system', content: 'override' }] }))).status).toBe(400);
-    expect((await POST(new Request('https://example.test/api/chat', { method: 'POST', body: '{' }))).status).toBe(400);
+    expect((await POST(new Request('https://example.test/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{',
+    }))).status).toBe(400);
     expect(mocks.stream).not.toHaveBeenCalled();
   });
 
@@ -160,6 +165,137 @@ describe('Native chat authentication and input boundary', () => {
     const response = await POST(request({ messages: [{ role: 'user', content: 'x'.repeat(512001) }] }));
     expect(response.status).toBe(413);
     expect(mocks.stream).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: 'text/plain cross-site with invalid json body',
+      headers: { 'Content-Type': 'text/plain', Origin: 'https://attacker.example', 'Sec-Fetch-Site': 'cross-site', 'x-real-ip': '198.51.100.71' } as Record<string, string>,
+      body: '{',
+    },
+    {
+      label: 'text/plain; charset=utf-8',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'x-real-ip': '198.51.100.71' } as Record<string, string>,
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+    },
+    {
+      label: 'application/x-www-form-urlencoded',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-real-ip': '198.51.100.71' } as Record<string, string>,
+      body: 'messages=test',
+    },
+    {
+      label: 'missing Content-Type',
+      headers: { 'x-real-ip': '198.51.100.71' } as Record<string, string>,
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+    },
+  ])('rejects non-JSON Content-Type ($label) with 415 before parsing, auth, rate-limit, or AI calls', async ({ headers, body }) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network request'));
+    try {
+      const response = await POST(new Request('https://calendai.tduong.online/api/chat', {
+        method: 'POST',
+        headers,
+        body,
+      }));
+      expect(response.status).toBe(415);
+      const data = await response.json() as { success?: boolean; error?: string };
+      expect(data.success).toBe(false);
+      expect(typeof data.error).toBe('string');
+      expect(data.error?.length).toBeGreaterThan(0);
+      expect(mocks.session).not.toHaveBeenCalled();
+      expect(mocks.access).not.toHaveBeenCalled();
+      expect(mocks.stream).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it.each<Record<string, string>>([
+    { Origin: 'https://attacker.example' },
+    { Origin: 'https://other.tduong.online', 'Sec-Fetch-Site': 'same-site' },
+    { 'Sec-Fetch-Site': 'same-site' },
+    { Origin: 'null' },
+    { Origin: '' },
+    { 'Sec-Fetch-Site': 'cross-site' },
+    { Authorization: 'Bearer mobile', 'Sec-Fetch-Site': 'cross-site' },
+  ])('rejects cross-origin and same-site chat requests %j with 403 no-store before auth, rate-limit, or AI calls', async (extraHeaders) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network request'));
+    try {
+      const response = await POST(request(
+        { messages: [{ role: 'user', content: 'Xin chào' }] },
+        undefined,
+        { 'x-real-ip': '198.51.100.72', ...extraHeaders },
+      ));
+      expect(response.status).toBe(403);
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      const data = await response.json() as { success?: boolean; error?: string };
+      expect(data.success).toBe(false);
+      expect(typeof data.error).toBe('string');
+      expect(data.error?.length).toBeGreaterThan(0);
+      expect(mocks.session).not.toHaveBeenCalled();
+      expect(mocks.access).not.toHaveBeenCalled();
+      expect(mocks.stream).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('does not consume per-IP chat rate limit on rejected 415 or 403 requests', async () => {
+    const ipFor415 = { 'x-real-ip': '198.51.100.73' };
+    for (let i = 0; i < ANONYMOUS_CHAT_RATE_LIMIT; i += 1) {
+      const rejected = await POST(new Request('https://calendai.tduong.online/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain', ...ipFor415 },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+      }));
+      expect(rejected.status).toBe(415);
+    }
+    for (let i = 0; i < ANONYMOUS_CHAT_RATE_LIMIT; i += 1) {
+      expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipFor415))).status).toBe(200);
+    }
+    expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipFor415))).status).toBe(429);
+
+    const ipFor403 = { 'x-real-ip': '198.51.100.74' };
+    for (let i = 0; i < ANONYMOUS_CHAT_RATE_LIMIT; i += 1) {
+      const rejected = await POST(request(
+        { messages: [{ role: 'user', content: 'Xin chào' }] },
+        undefined,
+        { ...ipFor403, Origin: 'https://attacker.example', 'Sec-Fetch-Site': 'cross-site' },
+      ));
+      expect(rejected.status).toBe(403);
+    }
+    for (let i = 0; i < ANONYMOUS_CHAT_RATE_LIMIT; i += 1) {
+      expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipFor403))).status).toBe(200);
+    }
+    expect((await POST(request({ messages: [{ role: 'user', content: 'Xin chào' }] }, undefined, ipFor403))).status).toBe(429);
+  });
+
+  it('allows same-origin web and Origin-free mobile Bearer chat requests', async () => {
+    const webRes = await POST(new Request('https://calendai.tduong.online/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Origin: 'https://calendai.tduong.online',
+        'Sec-Fetch-Site': 'same-origin',
+      },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+    }));
+    expect(webRes.status).toBe(200);
+    expect(mocks.stream).toHaveBeenCalledTimes(1);
+
+    mocks.session.mockResolvedValue({ kind: 'mobile', user: { id: 'm1', email: 'person@example.com' } });
+    mocks.access.mockResolvedValue({ accessToken: 'mobile-access' });
+    const mobileRes = await POST(new Request('https://calendai.tduong.online/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer mobile',
+      },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+    }));
+    expect(mobileRes.status).toBe(200);
+    expect(mocks.stream).toHaveBeenCalledTimes(2);
   });
 });
 

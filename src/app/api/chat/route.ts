@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getChatModel } from '@/lib/ai/provider';
 import { buildSystemPrompt } from '@/lib/ai/system-prompt';
 import { createCalendarTools } from '@/lib/ai/tools';
+import { requireJsonContentType, requireSameOrigin } from '@/lib/auth/request-guards';
 import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
 import { checkChatRateLimit } from '@/lib/chat/rate-limit';
 import { getServerEnv } from '@/lib/env';
@@ -50,6 +51,13 @@ const ChatRequestSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const contentTypeError = requireJsonContentType(req);
+    if (contentTypeError) return contentTypeError;
+    const originError = requireSameOrigin(req, 'Nguồn yêu cầu hội thoại không hợp lệ.', {
+      'Cache-Control': 'no-store',
+    });
+    if (originError) return originError;
+
     const body = await req.text();
     if (new TextEncoder().encode(body).length > 512000) {
       return Response.json({ error: 'Hội thoại quá dài. Vui lòng bắt đầu hội thoại mới.' }, { status: 413 });
