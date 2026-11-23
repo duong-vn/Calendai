@@ -340,4 +340,85 @@ describe('Calendar conflict HTTP contracts', () => {
     expect(getValidAccessToken).toHaveBeenNthCalledWith(2, session, req, { forceRefresh: true });
     expect(await refreshedRes.json()).toEqual({ success: true });
   });
+
+  it.each([
+    { 'Content-Type': 'text/plain', Origin: 'https://other.tduong.online', 'Sec-Fetch-Site': 'same-site' },
+    { 'Content-Type': 'text/plain; charset=utf-8' },
+    { 'Content-Type': 'application/x-www-form-urlencoded' },
+    {},
+  ] as Record<string, string>[])('requires application/json Content-Type on conflicts before reading session %j', async (headers) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const req = new Request('https://calendai.tduong.online/api/calendar/conflicts', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(proposal),
+    });
+    const response = await conflicts(req);
+    expect(response.status).toBe(415);
+    const body = await response.json() as { success?: boolean; error?: string };
+    expect(body.success).toBe(false);
+    expect(typeof body.error).toBe('string');
+    expect(body.error?.length).toBeGreaterThan(0);
+    expect(getServerSession).not.toHaveBeenCalled();
+    expect(getValidAccessToken).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each<Record<string, string>>([
+    { Origin: 'https://attacker.example' },
+    { Origin: 'https://other.tduong.online', 'Sec-Fetch-Site': 'same-site' },
+    { 'Sec-Fetch-Site': 'same-site' },
+    { Origin: 'null' },
+    { Origin: '' },
+    { 'Sec-Fetch-Site': 'cross-site' },
+    { Authorization: 'Bearer mobile-jwe', 'Sec-Fetch-Site': 'cross-site' },
+  ])('rejects cross-origin and same-site conflicts requests %j with 403 no-store before reading session', async (extraHeaders) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const req = new Request('https://calendai.tduong.online/api/calendar/conflicts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify(proposal),
+    });
+    const response = await conflicts(req);
+    expect(response.status).toBe(403);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    const body = await response.json() as { success?: boolean; error?: string };
+    expect(body.success).toBe(false);
+    expect(typeof body.error).toBe('string');
+    expect(body.error?.length).toBeGreaterThan(0);
+    expect(getServerSession).not.toHaveBeenCalled();
+    expect(getValidAccessToken).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('allows same-origin web and Origin-free Bearer conflicts requests', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => page([busy])));
+
+    const webReq = new Request('https://calendai.tduong.online/api/calendar/conflicts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Origin: 'https://calendai.tduong.online',
+        'Sec-Fetch-Site': 'same-origin',
+      },
+      body: JSON.stringify(proposal),
+    });
+    const webRes = await conflicts(webReq);
+    expect(webRes.status).toBe(200);
+    expect(await webRes.json()).toMatchObject({ success: true, conflicts: [{ id: busy.id }] });
+
+    const mobileReq = new Request('https://calendai.tduong.online/api/calendar/conflicts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer mobile-jwe',
+      },
+      body: JSON.stringify(proposal),
+    });
+    const mobileRes = await conflicts(mobileReq);
+    expect(mobileRes.status).toBe(200);
+    expect(await mobileRes.json()).toMatchObject({ success: true, conflicts: [{ id: busy.id }] });
+  });
 });
