@@ -8,6 +8,7 @@ import {
 
 describe('MeetingPreviewCard Component', () => {
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -176,5 +177,141 @@ describe('MeetingPreviewCard Component', () => {
         screen.getByText('Token đã hết hạn, vui lòng đăng nhập lại.')
       ).toBeInTheDocument();
     });
+  });
+
+  it('displays the DST offset at the meeting start time for a July America/New_York proposal viewed in January and preserves confirmation payload', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-15T12:00:00Z'));
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        event: { id: 'created-ny-summer' },
+        isMock: false,
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    render(
+      <MeetingPreviewCard
+        proposal={{
+          ...mockProposal,
+          proposalId: 'prop-ny-summer',
+          startDateTime: '2026-07-15T13:00:00Z',
+          endDateTime: '2026-07-15T14:00:00Z',
+          timeZone: 'America/New_York',
+        }}
+        onConfirmSuccess={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/09:00 – 10:00 \(60 phút\)/)).toBeInTheDocument();
+    expect(screen.getByText('Múi giờ: America/New_York (GMT-4)')).toBeInTheDocument();
+    expect(screen.queryByText(/GMT-5/)).toBeNull();
+
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({
+      startDateTime: '2026-07-15T13:00:00Z',
+      endDateTime: '2026-07-15T14:00:00Z',
+      timeZone: 'America/New_York',
+    });
+  });
+
+  it('displays the standard offset at the meeting start time for a January America/New_York proposal viewed in July and preserves confirmation payload', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-15T12:00:00Z'));
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        event: { id: 'created-ny-winter' },
+        isMock: false,
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    render(
+      <MeetingPreviewCard
+        proposal={{
+          ...mockProposal,
+          proposalId: 'prop-ny-winter',
+          startDateTime: '2026-01-15T14:00:00Z',
+          endDateTime: '2026-01-15T15:00:00Z',
+          timeZone: 'America/New_York',
+        }}
+        onConfirmSuccess={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/09:00 – 10:00 \(60 phút\)/)).toBeInTheDocument();
+    expect(screen.getByText('Múi giờ: America/New_York (GMT-5)')).toBeInTheDocument();
+    expect(screen.queryByText(/GMT-4/)).toBeNull();
+
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({
+      startDateTime: '2026-01-15T14:00:00Z',
+      endDateTime: '2026-01-15T15:00:00Z',
+      timeZone: 'America/New_York',
+    });
+  });
+
+  it('keeps Asia/Ho_Chi_Minh at GMT+7 and preserves confirmation payload', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-15T12:00:00Z'));
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        event: { id: 'created-vn' },
+        isMock: false,
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    render(
+      <MeetingPreviewCard
+        proposal={mockProposal}
+        onConfirmSuccess={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/09:00 – 10:00 \(60 phút\)/)).toBeInTheDocument();
+    expect(screen.getByText('Múi giờ: Asia/Ho_Chi_Minh (GMT+7)')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({
+      startDateTime: '2026-10-14T09:00:00+07:00',
+      endDateTime: '2026-10-14T10:00:00+07:00',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    });
+  });
+
+  it('omits the GMT offset instead of falling back to today when startDateTime is invalid', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-15T12:00:00Z'));
+
+    render(
+      <MeetingPreviewCard
+        proposal={{
+          ...mockProposal,
+          proposalId: 'prop-invalid-date',
+          startDateTime: 'invalid-date',
+          timeZone: 'America/New_York',
+        }}
+        onConfirmSuccess={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Múi giờ: America/New_York')).toBeInTheDocument();
+    expect(screen.queryByText(/GMT/)).toBeNull();
   });
 });

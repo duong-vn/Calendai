@@ -76,12 +76,14 @@ function formatVietnameseTimeRange(startIso: string, endIso: string, timeZone = 
   }
 }
 
-function getTimeZoneOffsetLabel(timeZone: string): string {
+function getTimeZoneOffsetLabel(timeZone: string, referenceIso: string): string {
   try {
+    const referenceDate = new Date(referenceIso);
+    if (isNaN(referenceDate.getTime())) return '';
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone,
       timeZoneName: 'shortOffset',
-    }).formatToParts(new Date());
+    }).formatToParts(referenceDate);
     const tzPart = parts.find((p) => p.type === 'timeZoneName');
     return tzPart ? ` (${tzPart.value})` : '';
   } catch {
@@ -209,7 +211,7 @@ export function MeetingPreviewCard({
     proposal.endDateTime,
     timeZone
   );
-  const tzOffsetLabel = getTimeZoneOffsetLabel(timeZone);
+  const tzOffsetLabel = getTimeZoneOffsetLabel(timeZone, proposal.startDateTime);
 
   return (
     <div className={compact ? 'min-w-0 [overflow-wrap:anywhere]' : 'my-3 overflow-hidden rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] shadow-[4px_4px_0px_#2d2015] transition-all dark:border-[#453427] dark:bg-[#1f1813] dark:shadow-[4px_4px_0px_#453427]'}>
