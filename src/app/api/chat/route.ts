@@ -49,6 +49,66 @@ const ChatRequestSchema = z.object({
   model: z.string().trim().max(200).optional(),
 });
 
+type ChatMessageInput = z.infer<typeof ChatRequestSchema>['messages'][number];
+
+function hasRenderableAssistantPart(parts: NonNullable<ChatMessageInput['parts']>): boolean {
+  return parts.some(
+    (part) =>
+      (part.type === 'text' && part.text.length > 0) ||
+      (part.type === 'reasoning' && part.details.length > 0) ||
+      part.type === 'tool-invocation'
+  );
+}
+
+function sanitizeMessagesForStream(messages: ChatMessageInput[]): ChatMessageInput[] {
+  const sanitized: ChatMessageInput[] = [];
+
+  for (const message of messages) {
+    if (message.role !== 'assistant') {
+      sanitized.push(message);
+      continue;
+    }
+
+    const hasIncompleteTool =
+      message.toolInvocations?.some((tool) => tool.state !== 'result') ?? false;
+    const hasIncompletePart =
+      message.parts?.some(
+        (part) => part.type === 'tool-invocation' && part.toolInvocation.state !== 'result'
+      ) ?? false;
+
+    if (!hasIncompleteTool && !hasIncompletePart) {
+      sanitized.push(message);
+      continue;
+    }
+
+    const completedTools = message.toolInvocations?.filter((tool) => tool.state === 'result');
+    const filteredParts = message.parts?.filter(
+      (part) => part.type !== 'tool-invocation' || part.toolInvocation.state === 'result'
+    );
+    const nextToolInvocations =
+      completedTools && completedTools.length > 0 ? completedTools : undefined;
+    const nextParts =
+      filteredParts && hasRenderableAssistantPart(filteredParts) ? filteredParts : undefined;
+
+    if (!message.content && !nextToolInvocations && !nextParts) {
+      continue;
+    }
+
+    sanitized.push({
+      role: message.role,
+      content: message.content,
+      ...(nextToolInvocations ? { toolInvocations: nextToolInvocations } : {}),
+      ...(nextParts ? { parts: nextParts } : {}),
+    });
+  }
+
+  if (sanitized.length === 0) {
+    return [{ role: 'assistant', content: '' }];
+  }
+
+  return sanitized;
+}
+
 export async function POST(req: Request) {
   try {
     const contentTypeError = requireJsonContentType(req);
@@ -76,7 +136,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, model: requestModel } = parsed.data;
+    const { messages: rawMessages, model: requestModel } = parsed.data;
+    const messages = sanitizeMessagesForStream(rawMessages);
 
     // Kiểm tra cấu hình API Key
     try {
