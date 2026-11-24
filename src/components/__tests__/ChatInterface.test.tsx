@@ -225,6 +225,114 @@ describe('ChatInterface Component UX & States', () => {
     unmount();
     expect(stop).toHaveBeenCalledTimes(2);
   });
+
+  it('shows tool loading spinners only while the last message is actively streaming, and shows incomplete Vietnamese notice once stopped or reloaded from localStorage', () => {
+    localStorage.clear();
+    const savedSession = createNewSession(undefined, 'guest');
+    saveCurrentSession(
+      {
+        ...savedSession,
+        title: 'Hội thoại bị ngắt',
+        messages: [
+          { id: 'u1', role: 'user', content: 'Đặt lịch và xem lịch hôm nay' },
+          {
+            id: 'a1',
+            role: 'assistant',
+            content: '',
+            toolInvocations: [
+              {
+                state: 'call',
+                toolCallId: 'call-propose',
+                toolName: 'proposeMeeting',
+                args: { summary: 'Họp dự án' },
+              },
+              {
+                state: 'partial-call',
+                toolCallId: 'call-upcoming',
+                toolName: 'listUpcomingEvents',
+                args: { range: 'today' },
+              },
+            ],
+          },
+        ],
+      },
+      'guest'
+    );
+
+    let loading = false;
+    let setHookMessages!: Dispatch<SetStateAction<Message[]>>;
+    mockUseChat.mockImplementation(() => {
+      const [messages, setMessages] = useState<Message[]>([]);
+      setHookMessages = setMessages;
+      return {
+        messages,
+        setMessages,
+        input: '',
+        handleInputChange: vi.fn(),
+        handleSubmit: vi.fn(),
+        isLoading: loading,
+        error: undefined,
+        reload: vi.fn(),
+        setInput: vi.fn(),
+        stop: vi.fn(),
+      };
+    });
+
+    // 1. Hydrated from localStorage with isLoading === false -> must NOT show infinite spinners
+    const { container, rerender } = render(
+      <ChatInterface isAuthenticated={true} activeSessionId={savedSession.id} />
+    );
+
+    expect(
+      screen.queryByText('Đang chuẩn bị thẻ xem trước Google Calendar...')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Đang tra cứu Google Calendar...')
+    ).not.toBeInTheDocument();
+    expect(container.querySelector('.animate-spin')).toBeNull();
+    expect(
+      screen.getByText('Chưa hoàn tất tạo bản thảo cuộc họp.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Chưa hoàn tất tải dữ liệu lịch.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Hãy nhắn yêu cầu lại để trợ lý tiếp tục.')
+    ).toHaveLength(2);
+
+    // 2. While actively streaming on the last message (isLoading && isLast) -> shows loading spinners
+    loading = true;
+    rerender(<ChatInterface isAuthenticated={true} activeSessionId={savedSession.id} />);
+    expect(
+      screen.getByText('Đang chuẩn bị thẻ xem trước Google Calendar...')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Đang tra cứu Google Calendar...')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Chưa hoàn tất tạo bản thảo cuộc họp.')
+    ).not.toBeInTheDocument();
+
+    // 3. When a newer user message is appended and isLoading is true, the older interrupted message (isLast === false) stays incomplete rather than spinning again
+    act(() => {
+      setHookMessages((prev) => [
+        ...prev,
+        { id: 'u2', role: 'user', content: 'Đặt lại giúp tôi lúc 10h' },
+      ]);
+    });
+    expect(
+      screen.queryByText('Đang chuẩn bị thẻ xem trước Google Calendar...')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Đang tra cứu Google Calendar...')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Chưa hoàn tất tạo bản thảo cuộc họp.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Chưa hoàn tất tải dữ liệu lịch.')
+    ).toBeInTheDocument();
+  });
 });
 
 describe('ChatInterface session hydration and persistence guards', () => {

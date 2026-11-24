@@ -124,6 +124,56 @@ describe('Native chat authentication and input boundary', () => {
     expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({ messages: [{ role: 'assistant', content: '', toolInvocations: [toolInvocation], parts }] }));
   });
 
+  it('strips incomplete call and partial-call tool invocations before streamText while keeping completed results and text', async () => {
+    const completed = { toolCallId: 'done', toolName: 'proposeMeeting', state: 'result' as const, step: 0, args: { summary: 'Họp' }, result: { proposalId: 'p1' } };
+    const incompleteCall = { toolCallId: 'call-1', toolName: 'proposeMeeting', state: 'call' as const, step: 0, args: { summary: 'Dở dang' } };
+    const incompletePartial = { toolCallId: 'partial-1', toolName: 'listUpcomingEvents', state: 'partial-call' as const, step: 1, args: {} };
+
+    const response = await POST(request({
+      messages: [
+        { role: 'user', content: 'Đặt lịch' },
+        {
+          role: 'assistant',
+          content: '',
+          toolInvocations: [incompleteCall],
+          parts: [{ type: 'step-start' }, { type: 'tool-invocation', toolInvocation: incompleteCall }],
+        },
+        {
+          role: 'assistant',
+          content: 'Đã kiểm tra xong bước đầu.',
+          toolInvocations: [completed, incompletePartial],
+          parts: [
+            { type: 'step-start' },
+            { type: 'tool-invocation', toolInvocation: completed },
+            { type: 'step-start' },
+            { type: 'text', text: 'Đã kiểm tra xong bước đầu.' },
+            { type: 'tool-invocation', toolInvocation: incompletePartial },
+          ],
+        },
+        { role: 'user', content: 'Tiếp tục nhé' },
+      ],
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({
+      messages: [
+        { role: 'user', content: 'Đặt lịch' },
+        {
+          role: 'assistant',
+          content: 'Đã kiểm tra xong bước đầu.',
+          toolInvocations: [completed],
+          parts: [
+            { type: 'step-start' },
+            { type: 'tool-invocation', toolInvocation: completed },
+            { type: 'step-start' },
+            { type: 'text', text: 'Đã kiểm tra xong bước đầu.' },
+          ],
+        },
+        { role: 'user', content: 'Tiếp tục nhé' },
+      ],
+    }));
+  });
+
   it.each([
     { toolInvocations: [{ state: 'result', toolCallId: 42, toolName: 'proposeMeeting', args: {}, result: {} }] },
     { parts: [{ type: 'tool-invocation', toolInvocation: { state: 'unknown' } }] },

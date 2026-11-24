@@ -233,13 +233,30 @@ const ChatMessageItem = memo(function ChatMessageItem({
               </ol>;
             }
 
+            if (isLoading && isLast) {
+              return (
+                <div
+                  key={toolCallId}
+                  className="flex items-center gap-2 rounded-xl border-2 border-[#2d2015] bg-[#ede4d5]/60 p-3 text-xs text-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#e07a3f]"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
+                  <span>Đang chuẩn bị thẻ xem trước Google Calendar...</span>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={toolCallId}
-                className="flex items-center gap-2 rounded-xl border-2 border-[#2d2015] bg-[#ede4d5]/60 p-3 text-xs text-[#c25e2e] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#e07a3f]"
+                className="space-y-1 rounded-xl border-2 border-[#2d2015] bg-[#fdf2f0] p-3 text-xs shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#2b1614] dark:shadow-[2px_2px_0px_#453427]"
               >
-                <Loader2 className="h-4 w-4 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
-                <span>Đang chuẩn bị thẻ xem trước Google Calendar...</span>
+                <div className="flex items-center gap-1.5 font-semibold text-[#a63024] dark:text-[#f87171]">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Chưa hoàn tất tạo bản thảo cuộc họp.</span>
+                </div>
+                <p className="text-[#786455] dark:text-[#ba9f88]">
+                  Hãy nhắn yêu cầu lại để trợ lý tiếp tục.
+                </p>
               </div>
             );
           }
@@ -319,13 +336,30 @@ const ChatMessageItem = memo(function ChatMessageItem({
               );
             }
 
+            if (isLoading && isLast) {
+              return (
+                <div
+                  key={toolCallId}
+                  className="flex items-center gap-2 rounded-xl border-2 border-[#2d2015] bg-[#ede4d5]/50 p-3 text-xs text-[#786455] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#ba9f88]"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
+                  <span>Đang tra cứu Google Calendar...</span>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={toolCallId}
-                className="flex items-center gap-2 rounded-xl border-2 border-[#2d2015] bg-[#ede4d5]/50 p-3 text-xs text-[#786455] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#ba9f88]"
+                className="space-y-1 rounded-xl border-2 border-[#2d2015] bg-[#fdf2f0] p-3 text-xs shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#2b1614] dark:shadow-[2px_2px_0px_#453427]"
               >
-                <Loader2 className="h-4 w-4 animate-spin text-[#c25e2e] dark:text-[#e07a3f]" />
-                <span>Đang tra cứu Google Calendar...</span>
+                <div className="flex items-center gap-1.5 font-semibold text-[#a63024] dark:text-[#f87171]">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Chưa hoàn tất tải dữ liệu lịch.</span>
+                </div>
+                <p className="text-[#786455] dark:text-[#ba9f88]">
+                  Hãy nhắn yêu cầu lại để trợ lý tiếp tục.
+                </p>
               </div>
             );
           }
