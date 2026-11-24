@@ -11,6 +11,7 @@ import {
   Video,
 } from 'lucide-react';
 import type { CalendarEventResult } from '@/lib/calendar/types';
+import { safeHttpsUrl } from '@/lib/links';
 
 interface EventCreatedCardProps {
   event: CalendarEventResult;
@@ -19,11 +20,13 @@ interface EventCreatedCardProps {
 
 export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
   const [copied, setCopied] = useState(false);
+  const safeMeetLink = safeHttpsUrl(event.hangoutLink, 'meet');
+  const safeCalendarLink = safeHttpsUrl(event.htmlLink, 'calendar');
 
   const handleCopyLink = async () => {
-    if (!event.hangoutLink) return;
+    if (!safeMeetLink) return;
     try {
-      await navigator.clipboard.writeText(event.hangoutLink);
+      await navigator.clipboard.writeText(safeMeetLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -82,7 +85,7 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
         </div>
 
         {/* Google Meet Card */}
-        {event.hangoutLink && (
+        {safeMeetLink && (
           <div className="mt-4 rounded-xl border-2 border-[#2d2015]/30 bg-[#f5eee1] p-3.5 dark:border-[#453427] dark:bg-[#16120f]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -114,16 +117,16 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
 
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <a
-                href={event.hangoutLink}
+                href={safeMeetLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="truncate text-xs font-mono font-medium text-[#c25e2e] hover:underline sm:text-sm dark:text-[#e07a3f]"
               >
-                {event.hangoutLink}
+                {safeMeetLink}
               </a>
 
               <a
-                href={event.hangoutLink}
+                href={safeMeetLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-[38px] touch-manipulation items-center justify-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#1f7560] px-4 py-1.5 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] hover:bg-[#165a4a] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#2dd4bf] dark:text-[#14110f] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#5eead4]"
@@ -135,12 +138,12 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
           </div>
         )}
 
-        {!event.hangoutLink && event.conferenceStatus === 'pending' && (
+        {!safeMeetLink && event.conferenceStatus === 'pending' && (
           <p role="status" className="mt-3 text-xs text-[#786455] dark:text-[#ba9f88]">
             Sự kiện đã được lưu. Google Meet đang được tạo; bạn có thể kiểm tra lại trong Google Calendar.
           </p>
         )}
-        {!event.hangoutLink && event.conferenceStatus === 'failure' && (
+        {!safeMeetLink && event.conferenceStatus === 'failure' && (
           <p role="alert" className="mt-3 text-xs text-[#a63024] dark:text-[#f87171]">
             Sự kiện đã được lưu nhưng chưa tạo được Google Meet. Vui lòng thêm liên kết trong Google Calendar.
           </p>
@@ -158,16 +161,18 @@ export function EventCreatedCard({ event, isMock }: EventCreatedCardProps) {
             </span>
           )}
 
-          <a
-            href={event.htmlLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c25e2e] hover:underline dark:text-[#e07a3f]"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Mở Google Calendar</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          {safeCalendarLink && (
+            <a
+              href={safeCalendarLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c25e2e] hover:underline dark:text-[#e07a3f]"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Mở Google Calendar</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
       </div>
     </div>

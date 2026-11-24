@@ -1,6 +1,7 @@
 import { Clock, ExternalLink, Video } from 'lucide-react';
 import { VIETNAM_TIME_ZONE } from '@/lib/calendar/date-range';
 import type { UpcomingEventItem } from '@/lib/calendar/types';
+import { safeHttpsUrl } from '@/lib/links';
 
 function formatEventTime(isoString: string, isAllDay: boolean) {
   try {
@@ -20,6 +21,9 @@ function formatEventTime(isoString: string, isAllDay: boolean) {
 }
 
 export function UpcomingEventCard({ event: evt, showDetails }: { event: UpcomingEventItem; showDetails?: boolean }) {
+  const safeCalendarLink = safeHttpsUrl(evt.htmlLink, 'calendar');
+  const safeMeetLink = safeHttpsUrl(evt.hangoutLink, 'meet');
+
   return (
     <div
       className="rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-4 shadow-[2px_2px_0px_#2d2015] transition-all hover:border-[#c25e2e] dark:border-[#453427] dark:bg-[#16120f] dark:hover:border-[#e07a3f]"
@@ -28,8 +32,8 @@ export function UpcomingEventCard({ event: evt, showDetails }: { event: Upcoming
         <h4 className="min-w-0 [overflow-wrap:anywhere] text-sm font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
           {evt.summary}
         </h4>
-        {evt.htmlLink.startsWith('https://') && <a
-          href={evt.htmlLink}
+        {safeCalendarLink && <a
+          href={safeCalendarLink}
           target="_blank"
           rel="noopener noreferrer"
           className="text-[#786455] hover:text-[#c25e2e] transition-colors dark:text-[#ba9f88] dark:hover:text-[#e07a3f]"
@@ -51,14 +55,14 @@ export function UpcomingEventCard({ event: evt, showDetails }: { event: Upcoming
         </>
       )}
 
-      {evt.hangoutLink?.startsWith('https://') && (
+      {safeMeetLink && (
         <div className="mt-3 flex flex-wrap gap-3 items-center justify-between border-t-2 border-[#2d2015]/10 pt-2.5 dark:border-[#453427]">
           <div className="flex items-center gap-1.5 text-xs text-[#1f7560] dark:text-[#2dd4bf]">
             <Video className="h-3.5 w-3.5" />
             <span className="font-bold">Google Meet</span>
           </div>
           <a
-            href={evt.hangoutLink}
+            href={safeMeetLink}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full border-2 border-[#2d2015] bg-[#1f7560] px-3.5 py-1 text-xs font-bold text-white shadow-[2px_2px_0px_#2d2015] hover:bg-[#165a4a] transition-all active:translate-x-[1px] active:translate-y-[1px] dark:border-[#453427] dark:bg-[#2dd4bf] dark:text-[#14110f]"

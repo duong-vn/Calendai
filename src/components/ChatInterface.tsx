@@ -22,6 +22,7 @@ import {
   Video,
 } from 'lucide-react';
 import type { CalendarEventResult } from '@/lib/calendar/types';
+import { safeHttpsUrl, safeMarkdownUrl } from '@/lib/links';
 import {
   type ChatSession,
   deriveSessionTitle,
@@ -84,16 +85,23 @@ const MARKDOWN_COMPONENTS = {
   li: ({ children }: { children?: React.ReactNode }) => (
     <li className="leading-relaxed">{children}</li>
   ),
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-[#c25e2e] font-semibold underline decoration-[#c25e2e]/60 hover:text-[#a6491e] dark:text-[#e07a3f] dark:decoration-[#e07a3f]/60 dark:hover:text-[#f39c6b]"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+    const safeHref = safeMarkdownUrl(href);
+    if (!safeHref) {
+      return <span>{children}</span>;
+    }
+    return (
+      <a
+        href={safeHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[#c25e2e] font-semibold underline decoration-[#c25e2e]/60 hover:text-[#a6491e] dark:text-[#e07a3f] dark:decoration-[#e07a3f]/60 dark:hover:text-[#f39c6b]"
+      >
+        {children}
+      </a>
+    );
+  },
+  img: () => null,
   code: ({ children }: { children?: React.ReactNode }) => (
     <code className="rounded-md border border-[#2d2015]/30 bg-[#ede4d5] px-1.5 py-0.5 text-xs text-[#c25e2e] font-mono dark:border-[#453427] dark:bg-[#2a221b] dark:text-[#e07a3f]">
       {children}
@@ -298,29 +306,32 @@ const ChatMessageItem = memo(function ChatMessageItem({
                   </div>
                   {res.events && res.events.length > 0 ? (
                     <div className="space-y-1.5 pt-1">
-                      {res.events.map((evt) => (
-                        <div
-                          key={evt.id}
-                          className="flex items-center justify-between rounded-xl bg-[#ede4d5]/50 p-2.5 text-xs border border-[#2d2015]/30 dark:bg-[#2a221b] dark:border-[#453427]"
-                        >
-                          <div className="truncate pr-2">
-                            <span className="font-medium text-[#2b1f17] dark:text-[#f5ebd9]">
-                              {evt.summary}
-                            </span>
+                      {res.events.map((evt) => {
+                        const safeMeetLink = safeHttpsUrl(evt.hangoutLink, 'meet');
+                        return (
+                          <div
+                            key={evt.id}
+                            className="flex items-center justify-between rounded-xl bg-[#ede4d5]/50 p-2.5 text-xs border border-[#2d2015]/30 dark:bg-[#2a221b] dark:border-[#453427]"
+                          >
+                            <div className="truncate pr-2">
+                              <span className="font-medium text-[#2b1f17] dark:text-[#f5ebd9]">
+                                {evt.summary}
+                              </span>
+                            </div>
+                            {safeMeetLink && (
+                              <a
+                                href={safeMeetLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 flex items-center gap-1 rounded-full border border-[#2d2015] bg-[#ede4d5] px-2.5 py-0.5 text-[11px] font-bold text-[#1f7560] hover:bg-[#fffaf2] transition-colors dark:border-[#453427] dark:bg-[#211a14] dark:text-[#2dd4bf] dark:hover:bg-[#2a221b]"
+                              >
+                                <Video className="h-3 w-3" />
+                                <span>Meet</span>
+                              </a>
+                            )}
                           </div>
-                          {evt.hangoutLink && (
-                            <a
-                              href={evt.hangoutLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="shrink-0 flex items-center gap-1 rounded-full border border-[#2d2015] bg-[#ede4d5] px-2.5 py-0.5 text-[11px] font-bold text-[#1f7560] hover:bg-[#fffaf2] transition-colors dark:border-[#453427] dark:bg-[#211a14] dark:text-[#2dd4bf] dark:hover:bg-[#2a221b]"
-                            >
-                              <Video className="h-3 w-3" />
-                              <span>Meet</span>
-                            </a>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-xs text-[#786455] italic dark:text-[#ba9f88]">

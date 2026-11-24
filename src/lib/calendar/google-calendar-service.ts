@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { safeHttpsUrl } from '../links';
 import { CalendarUnauthorizedError } from './calendar-auth';
 import { DEFAULT_REMINDER_MINUTES } from './reminders';
 import type {
@@ -216,17 +217,7 @@ export async function createGoogleCalendarEvent(
     return inserted;
   })();
 
-  // Trích xuất Meet link
-  let hangoutLink = data.hangoutLink;
-  if (!hangoutLink && data.conferenceData?.entryPoints) {
-    const videoEntryPoint = data.conferenceData.entryPoints.find(
-      (ep) => ep.entryPointType === 'video'
-    );
-    if (videoEntryPoint?.uri) {
-      hangoutLink = videoEntryPoint.uri;
-    }
-  }
-
+  const hangoutLink = extractSafeMeetLink(data);
   const conferenceStatus = data.conferenceData?.createRequest?.status?.statusCode ?? (hangoutLink ? 'success' : undefined);
 
   return {
@@ -236,7 +227,7 @@ export async function createGoogleCalendarEvent(
     start: data.start?.dateTime || input.startDateTime,
     end: data.end?.dateTime || input.endDateTime,
     timeZone: data.start?.timeZone || timeZone,
-    htmlLink: data.htmlLink || `https://www.google.com/calendar/event?eid=${data.id}`,
+    htmlLink: resolveSafeCalendarHtmlLink(data.htmlLink, data.id),
     hangoutLink,
     conferenceStatus,
     attendees: data.attendees?.map((a) => a.email),
@@ -258,15 +249,26 @@ export interface ListGoogleCalendarEventsOptions {
   filter?: (event: UpcomingEventItem) => boolean;
 }
 
-function mapGoogleCalendarEvent(event: GoogleApiEventResponse): UpcomingEventItem {
-  let hangoutLink = event.hangoutLink;
-  if (!hangoutLink && event.conferenceData?.entryPoints) {
-    const videoEp = event.conferenceData.entryPoints.find((ep) => ep.entryPointType === 'video');
-    if (videoEp?.uri) {
-      hangoutLink = videoEp.uri;
+function extractSafeMeetLink(event: GoogleApiEventResponse): string | undefined {
+  const direct = safeHttpsUrl(event.hangoutLink, 'meet');
+  if (direct) return direct;
+  for (const ep of event.conferenceData?.entryPoints ?? []) {
+    if (ep.entryPointType === 'video') {
+      const fallback = safeHttpsUrl(ep.uri, 'meet');
+      if (fallback) return fallback;
     }
   }
+  return undefined;
+}
 
+function resolveSafeCalendarHtmlLink(rawHtmlLink: string | undefined, eventId: string): string {
+  const direct = safeHttpsUrl(rawHtmlLink, 'calendar');
+  if (direct) return direct;
+  return eventId ? `https://www.google.com/calendar/event?eid=${encodeURIComponent(eventId)}` : '';
+}
+
+function mapGoogleCalendarEvent(event: GoogleApiEventResponse): UpcomingEventItem {
+  const hangoutLink = extractSafeMeetLink(event);
   const isAllDay = Boolean(event.start?.date && !event.start?.dateTime);
 
   return {
@@ -276,7 +278,7 @@ function mapGoogleCalendarEvent(event: GoogleApiEventResponse): UpcomingEventIte
     start: event.start?.dateTime || event.start?.date || '',
     end: event.end?.dateTime || event.end?.date || '',
     hangoutLink,
-    htmlLink: event.htmlLink || `https://www.google.com/calendar/event?eid=${event.id}`,
+    htmlLink: resolveSafeCalendarHtmlLink(event.htmlLink, event.id),
     isAllDay,
   };
 }

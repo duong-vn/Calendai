@@ -1,9 +1,58 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { UpcomingEventCard } from '@/components/UpcomingEventCard';
 import { UpcomingEventsModal } from '@/components/UpcomingEventsModal';
 import type { UpcomingEventItem } from '@/lib/calendar/types';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+describe('UpcomingEventCard external link validation', () => {
+  const baseEvent: UpcomingEventItem = {
+    id: 'evt-card',
+    summary: 'Họp đối tác bên ngoài',
+    start: '2026-11-24T09:00:00+07:00',
+    end: '2026-11-24T10:00:00+07:00',
+    isAllDay: false,
+    htmlLink: 'https://calendar.google.com/calendar/event?eid=valid',
+  };
+
+  it.each([
+    ['https://meet.google.com.evil.test/phish', 'https://calendar.google.com.evil.test/event'],
+    ['https://user:pass@meet.google.com/abc-defg-hij', 'https://user:pass@calendar.google.com/calendar/event?eid=1'],
+    ['http://meet.google.com/abc-defg-hij', 'http://calendar.google.com/calendar/event?eid=1'],
+    ['javascript:alert(1)', 'javascript:alert(1)'],
+  ])('does not render Meet or Calendar links for untrusted URLs (%s, %s)', (hangoutLink, htmlLink) => {
+    render(<UpcomingEventCard event={{ ...baseEvent, hangoutLink, htmlLink }} />);
+
+    expect(screen.getByText('Họp đối tác bên ngoài')).toBeInTheDocument();
+    expect(screen.queryByText('Google Meet')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Tham gia' })).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Mở trên Google Calendar')).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  });
+
+  it('renders Meet and Calendar links for verified Google domains', () => {
+    render(
+      <UpcomingEventCard
+        event={{
+          ...baseEvent,
+          hangoutLink: 'https://meet.google.com/abc-defg-hij',
+          htmlLink: 'https://www.google.com/calendar/event?eid=valid-www',
+        }}
+      />
+    );
+
+    expect(screen.getByText('Google Meet')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tham gia' })).toHaveAttribute(
+      'href',
+      'https://meet.google.com/abc-defg-hij'
+    );
+    expect(screen.getByTitle('Mở trên Google Calendar')).toHaveAttribute(
+      'href',
+      'https://www.google.com/calendar/event?eid=valid-www'
+    );
+  });
+});
 
 describe('UpcomingEventsModal event dates', () => {
   it.each([

