@@ -63,7 +63,7 @@ export async function clearServerSession(): Promise<void> {
 export async function getValidAccessToken(
   session: SessionData,
   request?: Request,
-  options: { forceRefresh?: boolean } = {}
+  options: { forceRefresh?: boolean; bestEffortCookiePersistence?: boolean } = {}
 ): Promise<{ accessToken: string; updatedSession?: SessionData }> {
   const now = Date.now();
   if (session.kind === 'mobile' || request?.headers.has('authorization')) {
@@ -89,8 +89,9 @@ export async function getValidAccessToken(
     );
   }
 
-  const env = getServerEnv();
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
     if (options.forceRefresh) {
       throw new AuthError(
         'Quyền truy cập Google Calendar đã hết hạn hoặc bị thu hồi. Vui lòng kết nối lại tài khoản Google.',
@@ -101,11 +102,20 @@ export async function getValidAccessToken(
   }
   const refreshedTokens = await refreshGoogleAccessToken(
     session.tokens.refreshToken,
-    env.GOOGLE_CLIENT_ID,
-    env.GOOGLE_CLIENT_SECRET,
+    clientId,
+    clientSecret,
     session.tokens.scope
   );
   const updatedSession: SessionData = { ...session, tokens: refreshedTokens };
-  await setServerSession(updatedSession);
+  if (options.bestEffortCookiePersistence) {
+    try {
+      await setServerSession(updatedSession);
+    } catch {
+      // Streaming tool callbacks execute after HTTP response headers are flushed,
+      // where Next.js cookies().set() throws; keep the refreshed access token in memory.
+    }
+  } else {
+    await setServerSession(updatedSession);
+  }
   return { accessToken: refreshedTokens.accessToken, updatedSession };
 }

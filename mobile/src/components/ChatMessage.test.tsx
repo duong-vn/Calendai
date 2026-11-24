@@ -60,3 +60,25 @@ it('shows an interrupted tool as incomplete after streaming stops, including whe
   expect(tree.root.findAllByType(Copy).some(node => JSON.stringify(node.props.children).includes('Đang chuẩn bị'))).toBe(false);
   act(() => tree.unmount());
 });
+
+it('shows session refresh guidance when listUpcomingEvents signals SESSION_REFRESH_REQUIRED', () => {
+  const props = { confirmed: {}, submitted: {}, disabled: false, onSubmit: jest.fn(), onCreated: jest.fn(), onEdit: jest.fn() };
+  const refreshMsg: Message = {
+    id: 'upcoming-401',
+    role: 'assistant',
+    content: '',
+    toolInvocations: [{
+      state: 'result',
+      toolCallId: 'call-upcoming-401',
+      toolName: 'listUpcomingEvents',
+      args: { range: 'today' },
+      result: { success: false, code: 'SESSION_REFRESH_REQUIRED', error: 'Vui lòng làm mới phiên.' },
+    }],
+  };
+  let tree!: ReactTestRenderer;
+  act(() => { tree = create(<ChatMessage {...props} message={refreshMsg} />); });
+  const text = tree.root.findAllByType(Copy).map(node => JSON.stringify(node.props.children)).join(' ');
+  expect(text).toContain('Lịch sắp tới');
+  expect(text).toContain('đăng nhập lại');
+  act(() => tree.unmount());
+});

@@ -1,6 +1,12 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import { GoogleOAuthError } from '@/lib/auth/google-oauth';
+import { getValidAccessToken } from '@/lib/auth/server-session';
 import type { SessionData } from '@/lib/auth/types';
+import {
+  CalendarUnauthorizedError,
+  isBearerSessionRequest,
+} from '@/lib/calendar/calendar-auth';
 import {
   VIETNAM_TIME_ZONE,
   getVietnamThisWeekRange,
@@ -139,10 +145,69 @@ export function resolveCalendarLookupWindow(
   };
 }
 
+const WEB_REAUTHORIZATION_ERROR_MESSAGE =
+  'Quyền truy cập Google Calendar đã hết hạn hoặc bị thu hồi. Vui lòng đăng xuất và kết nối lại tài khoản Google.';
+const MOBILE_REFRESH_REQUIRED_ERROR_MESSAGE =
+  'Phiên truy cập Google Calendar cần được làm mới. Vui lòng mở Lịch sắp tới hoặc đăng nhập lại Google rồi thử lại.';
+
+function isReauthorizationFailure(error: unknown): boolean {
+  if (error instanceof CalendarUnauthorizedError) return true;
+  if (error instanceof GoogleOAuthError) return error.status === 401;
+  if (error && typeof error === 'object' && 'code' in error) {
+    return (
+      error.code === 'google_reauthorization_required' ||
+      error.code === 'google_calendar_permission_required' ||
+      error.code === 'UNAUTHORIZED'
+    );
+  }
+  return false;
+}
+
 export function createCalendarTools(
   session?: SessionData | null,
-  accessToken?: string | null
+  accessToken?: string | null,
+  options?: { request?: Request }
 ) {
+  let activeSession = session ?? null;
+  let currentAccessToken = accessToken ?? null;
+  let refreshInFlight: Promise<string> | null = null;
+
+  const refreshWebAccessTokenOnce = async (failedToken: string): Promise<string> => {
+    if (!activeSession) {
+      throw new CalendarUnauthorizedError();
+    }
+    if (currentAccessToken && currentAccessToken !== failedToken) {
+      return currentAccessToken;
+    }
+    if (!refreshInFlight) {
+      const targetSession = activeSession;
+      const flight = (async () => {
+        const refreshed = await getValidAccessToken(targetSession, options?.request, {
+          forceRefresh: true,
+          bestEffortCookiePersistence: true,
+        });
+        if (!refreshed?.accessToken || refreshed.accessToken === failedToken) {
+          throw new CalendarUnauthorizedError();
+        }
+        activeSession = refreshed.updatedSession ?? {
+          ...targetSession,
+          tokens: { ...targetSession.tokens, accessToken: refreshed.accessToken },
+        };
+        currentAccessToken = refreshed.accessToken;
+        return refreshed.accessToken;
+      })();
+      refreshInFlight = flight;
+      try {
+        return await flight;
+      } finally {
+        if (refreshInFlight === flight) {
+          refreshInFlight = null;
+        }
+      }
+    }
+    return refreshInFlight;
+  };
+
   return {
     proposeMeeting: tool({
       description:
@@ -176,16 +241,66 @@ export function createCalendarTools(
         }
 
         const { timeMin, timeMax, maxResults, timeZone } = resolveCalendarLookupWindow(parsed.data);
+        const isBearer = isBearerSessionRequest(activeSession, options?.request);
 
         try {
-          if (session && accessToken) {
-            const events = await listGoogleCalendarEvents(accessToken, {
-              maxResults,
-              timeMin,
-              timeMax,
-              paginate: true,
-              filter: (event) => isEventInTimeRange(event, timeMin, timeMax),
-            });
+          if (activeSession) {
+            if (isBearer) {
+              if (!currentAccessToken) {
+                return {
+                  success: false,
+                  code: 'SESSION_REFRESH_REQUIRED',
+                  error: MOBILE_REFRESH_REQUIRED_ERROR_MESSAGE,
+                };
+              }
+              const events = await listGoogleCalendarEvents(currentAccessToken, {
+                maxResults,
+                timeMin,
+                timeMax,
+                paginate: true,
+                filter: (event) => isEventInTimeRange(event, timeMin, timeMax),
+              });
+              return {
+                success: true,
+                mode: 'google',
+                timeZone,
+                timeMin,
+                timeMax,
+                events,
+              };
+            }
+
+            if (!currentAccessToken) {
+              return {
+                success: false,
+                code: 'google_reauthorization_required',
+                error: WEB_REAUTHORIZATION_ERROR_MESSAGE,
+              };
+            }
+
+            const tokenBeforeCall = currentAccessToken;
+            let events;
+            try {
+              events = await listGoogleCalendarEvents(tokenBeforeCall, {
+                maxResults,
+                timeMin,
+                timeMax,
+                paginate: true,
+                filter: (event) => isEventInTimeRange(event, timeMin, timeMax),
+              });
+            } catch (error) {
+              if (!(error instanceof CalendarUnauthorizedError)) {
+                throw error;
+              }
+              const refreshedToken = await refreshWebAccessTokenOnce(tokenBeforeCall);
+              events = await listGoogleCalendarEvents(refreshedToken, {
+                maxResults,
+                timeMin,
+                timeMax,
+                paginate: true,
+                filter: (event) => isEventInTimeRange(event, timeMin, timeMax),
+              });
+            }
 
             return {
               success: true,
@@ -197,7 +312,7 @@ export function createCalendarTools(
             };
           }
 
-          if (process.env.NODE_ENV !== 'production' && !isGoogleConfigured()) {
+          if (!isBearer && process.env.NODE_ENV !== 'production' && !isGoogleConfigured()) {
             const rawMockEvents = await listMockCalendarEvents();
             const mockEvents = rawMockEvents
               .filter((event) => isEventInTimeRange(event, timeMin, timeMax))
@@ -214,11 +329,33 @@ export function createCalendarTools(
             };
           }
 
+          if (isBearer) {
+            return {
+              success: false,
+              code: 'AUTH_REQUIRED',
+              error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
+            };
+          }
+
           return {
             success: false,
             error: 'Chưa kết nối tài khoản Google. Vui lòng kết nối tài khoản ở góc trên trang web.',
           };
-        } catch {
+        } catch (error) {
+          if (isBearer && error instanceof CalendarUnauthorizedError) {
+            return {
+              success: false,
+              code: 'SESSION_REFRESH_REQUIRED',
+              error: MOBILE_REFRESH_REQUIRED_ERROR_MESSAGE,
+            };
+          }
+          if (!isBearer && activeSession && isReauthorizationFailure(error)) {
+            return {
+              success: false,
+              code: 'google_reauthorization_required',
+              error: WEB_REAUTHORIZATION_ERROR_MESSAGE,
+            };
+          }
           return {
             success: false,
             error: 'Không thể lấy dữ liệu lịch. Vui lòng thử lại hoặc kết nối lại tài khoản Google.',
