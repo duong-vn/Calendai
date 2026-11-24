@@ -204,3 +204,156 @@ it('unlocks first-attempt submitted drafts in state and storage on discard, but 
     if (tree) act(() => tree?.unmount());
   }
 });
+
+it('keeps the conversation row, delete retry button, and original content when deletion fails, then deletes cleanly on retry', async () => {
+  const actualHistory = jest.requireActual<typeof import('./src/services/history')>('./src/services/history');
+  await AsyncStorage.clear();
+  const makeSession = (id: string, content: string): ChatSession => ({
+    ...newConversation(),
+    id,
+    title: content,
+    updatedAt: id === 'A' ? 2000 : 1000,
+    messages: [{ id: `m-${id}`, role: 'user', content }],
+  });
+  const sessionA = makeSession('A', 'Nội dung gốc A');
+  const sessionB = makeSession('B', 'Nội dung gốc B');
+  await actualHistory.saveConversation(null, sessionA);
+  await actualHistory.saveConversation(null, sessionB);
+
+  jest.mocked(loadHistory).mockImplementation(actualHistory.loadHistory);
+  jest.mocked(loadConversation).mockImplementation(actualHistory.loadConversation);
+  jest.mocked(saveConversation).mockImplementation(actualHistory.saveConversation);
+  jest.mocked(deleteConversation).mockImplementation(actualHistory.deleteConversation);
+
+  const write = jest.mocked(AsyncStorage.setItem).getMockImplementation();
+  if (!write) throw new Error('Missing AsyncStorage.setItem mock');
+  jest.mocked(AsyncStorage.setItem).mockImplementation(async (key, value, callback) => {
+    if (key.endsWith(':index')) throw new Error('Disk full');
+    return write.call(AsyncStorage, key, value, callback);
+  });
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+    buttons?.find(button => button.text === 'Xóa')?.onPress?.();
+  });
+
+  const drain = async () => {
+    for (let i = 0; i < 8; i++) await flush();
+  };
+
+  let tree: ReactTestRenderer | undefined;
+  try {
+    await act(async () => { tree = create(<App />); });
+    await drain();
+
+    // Open B, confirm content, then return to A before deleting B
+    act(() => tree!.root.findAllByType(TouchableOpacity).find(node => node.props.accessibilityLabel === 'Mở Nội dung gốc B')!.props.onPress());
+    await drain();
+    expect(tree!.root.findAllByType(FlatList)[0].props.data[0].content).toBe('Nội dung gốc B');
+    act(() => tree!.root.findAllByType(TouchableOpacity).find(node => node.props.accessibilityLabel === 'Mở Nội dung gốc A')!.props.onPress());
+    await drain();
+
+    // Attempt 1: index write fails -> error shown, row B and "Xóa Nội dung gốc B" stay accessible
+    await act(async () => {
+      tree!.root.findAllByType(IconButton).find(node => node.props.label === 'Xóa Nội dung gốc B')!.props.onPress();
+    });
+    await drain();
+
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Không xóa được lịch sử. Vui lòng thử lại.'))).toBe(true);
+    expect(tree!.root.findAllByType(TouchableOpacity).some(node => node.props.accessibilityLabel === 'Mở Nội dung gốc B')).toBe(true);
+    const retryDeleteButton = tree!.root.findAllByType(IconButton).find(node => node.props.label === 'Xóa Nội dung gốc B');
+    expect(retryDeleteButton).toBeDefined();
+    expect(retryDeleteButton!.props.disabled).toBeFalsy();
+
+    // Original content of B remains intact when opened
+    act(() => tree!.root.findAllByType(TouchableOpacity).find(node => node.props.accessibilityLabel === 'Mở Nội dung gốc B')!.props.onPress());
+    await drain();
+    expect(tree!.root.findAllByType(FlatList)[0].props.data[0].content).toBe('Nội dung gốc B');
+
+    // Remounting while deletion failed still restores B with its original content
+    act(() => tree!.unmount());
+    tree = undefined;
+    await drain();
+    await act(async () => { tree = create(<App />); });
+    await drain();
+    expect(tree!.root.findAllByType(TouchableOpacity).some(node => node.props.accessibilityLabel === 'Mở Nội dung gốc B')).toBe(true);
+
+    // Attempt 2: storage recovers -> retry deleting B succeeds and stays deleted on remount
+    jest.mocked(AsyncStorage.setItem).mockImplementation(write);
+    await act(async () => {
+      tree!.root.findAllByType(IconButton).find(node => node.props.label === 'Xóa Nội dung gốc B')!.props.onPress();
+    });
+    await drain();
+
+    expect(tree!.root.findAllByType(TouchableOpacity).some(node => node.props.accessibilityLabel === 'Mở Nội dung gốc B')).toBe(false);
+    expect(tree!.root.findAllByType(IconButton).some(node => node.props.label === 'Xóa Nội dung gốc B')).toBe(false);
+
+    act(() => tree!.unmount());
+    tree = undefined;
+    await drain();
+    await act(async () => { tree = create(<App />); });
+    await drain();
+    expect(tree!.root.findAllByType(TouchableOpacity).some(node => node.props.accessibilityLabel === 'Mở Nội dung gốc A')).toBe(true);
+    expect(tree!.root.findAllByType(TouchableOpacity).some(node => node.props.accessibilityLabel === 'Mở Nội dung gốc B')).toBe(false);
+  } finally {
+    jest.mocked(AsyncStorage.setItem).mockImplementation(write);
+    alert.mockRestore();
+    if (tree) act(() => tree?.unmount());
+    jest.mocked(loadHistory).mockReset();
+    jest.mocked(loadConversation).mockReset();
+    jest.mocked(saveConversation).mockReset().mockResolvedValue([]);
+    jest.mocked(deleteConversation).mockReset();
+    await AsyncStorage.clear();
+  }
+});
+
+it('keeps the active conversation open when its deletion fails and prevents unmount autosave from resurrecting it during pending deletion', async () => {
+  const session = (id: string): ChatSession => ({
+    ...newConversation(),
+    id,
+    title: id,
+    messages: [{ id: `m-${id}`, role: 'user', content: `Nội dung ${id}` }],
+  });
+  const sessionA = session('A');
+  const sessionB = session('B');
+  jest.mocked(loadHistory).mockResolvedValue([sessionA, sessionB]);
+  jest.mocked(loadConversation).mockResolvedValue(sessionA);
+  jest.mocked(saveConversation).mockReset().mockResolvedValue([]);
+
+  let resolveDelete!: (value: typeof sessionA[]) => void;
+  jest.mocked(deleteConversation)
+    .mockRejectedValueOnce(new Error('Write failed'))
+    .mockImplementationOnce(() => new Promise(resolve => { resolveDelete = resolve; }));
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+    buttons?.find(button => button.text === 'Xóa')?.onPress?.();
+  });
+
+  let tree: ReactTestRenderer | undefined;
+  try {
+    await act(async () => { tree = create(<App />); });
+    await flush();
+
+    // Deleting active conversation A fails -> A stays open with original message and retryable Xóa A button
+    await act(async () => {
+      tree!.root.findAllByType(IconButton).find(node => node.props.label === 'Xóa A')!.props.onPress();
+    });
+    await flush();
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Không xóa được lịch sử. Vui lòng thử lại.'))).toBe(true);
+    expect(tree!.root.findAllByType(FlatList)[0].props.data[0].content).toBe('Nội dung A');
+    expect(tree!.root.findAllByType(IconButton).find(node => node.props.label === 'Xóa A')!.props.disabled).toBeFalsy();
+
+    // Retry deleting A -> while pending, button is disabled and unmounting A via "Cuộc trò chuyện mới" does not save/resurrect A
+    act(() => tree!.root.findAllByType(IconButton).find(node => node.props.label === 'Xóa A')!.props.onPress());
+    expect(tree!.root.findAllByType(IconButton).find(node => node.props.label === 'Xóa A')!.props.disabled).toBe(true);
+
+    act(() => tree!.root.findAllByType(Action).find(node => node.props.label === 'Cuộc trò chuyện mới')!.props.onPress());
+    await flush();
+    expect(jest.mocked(saveConversation).mock.calls.every(([, saved]) => saved.id !== 'A')).toBe(true);
+
+    await act(async () => { resolveDelete([]); });
+    await flush();
+    expect(tree!.root.findAllByType(IconButton).some(node => node.props.label === 'Xóa A')).toBe(false);
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Không xóa được lịch sử. Vui lòng thử lại.'))).toBe(false);
+  } finally {
+    alert.mockRestore();
+    if (tree) act(() => tree?.unmount());
+  }
+});
