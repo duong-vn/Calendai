@@ -129,6 +129,78 @@ describe('Google Calendar Service Layer', () => {
     expect(result.hangoutLink).toBe('https://meet.google.com/fallback-meet-uri');
   });
 
+  it('strips untrusted hangoutLink/video entryPoints and normalizes untrusted htmlLink across create and list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: 'evt-phish-create',
+            summary: 'Lời mời bên ngoài',
+            htmlLink: 'http://evil.example/cal',
+            hangoutLink: 'https://user:pass@meet.google.com/abc-defg-hij',
+            start: { dateTime: '2026-10-12T09:00:00+07:00' },
+            end: { dateTime: '2026-10-12T10:00:00+07:00' },
+            conferenceData: {
+              entryPoints: [
+                { entryPointType: 'video', uri: 'https://meet.google.com.evil.test/phish' },
+              ],
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                id: 'evt-phish-list',
+                summary: 'Cuộc họp giả mạo',
+                start: { dateTime: '2026-10-12T14:00:00+07:00' },
+                end: { dateTime: '2026-10-12T15:00:00+07:00' },
+                htmlLink: 'https://calendar.google.com.evil.test/event?id=1',
+                conferenceData: {
+                  entryPoints: [
+                    { entryPointType: 'video', uri: 'https://meet.google.com.evil.test/phish' },
+                  ],
+                },
+              },
+              {
+                id: 'evt-mixed-entrypoints',
+                summary: 'Cuộc họp có link phụ hợp lệ',
+                start: { dateTime: '2026-10-12T16:00:00+07:00' },
+                end: { dateTime: '2026-10-12T17:00:00+07:00' },
+                htmlLink: 'https://www.google.com/calendar/event?eid=valid-www',
+                hangoutLink: 'http://meet.google.com/insecure-room',
+                conferenceData: {
+                  entryPoints: [
+                    { entryPointType: 'video', uri: 'https://thirdparty.example/room' },
+                    { entryPointType: 'video', uri: 'https://meet.google.com/real-meet-room' },
+                  ],
+                },
+              },
+            ],
+          }),
+        })
+    );
+
+    const created = await createGoogleCalendarEvent('mock-token', {
+      summary: 'Lời mời bên ngoài',
+      startDateTime: '2026-10-12T09:00:00+07:00',
+      endDateTime: '2026-10-12T10:00:00+07:00',
+    });
+    expect(created.hangoutLink).toBeUndefined();
+    expect(created.conferenceStatus).toBeUndefined();
+    expect(created.htmlLink).toBe('https://www.google.com/calendar/event?eid=evt-phish-create');
+
+    const listed = await listGoogleCalendarEvents('mock-token', { maxResults: 5 });
+    expect(listed).toHaveLength(2);
+    expect(listed[0].hangoutLink).toBeUndefined();
+    expect(listed[0].htmlLink).toBe('https://www.google.com/calendar/event?eid=evt-phish-list');
+    expect(listed[1].hangoutLink).toBe('https://meet.google.com/real-meet-room');
+    expect(listed[1].htmlLink).toBe('https://www.google.com/calendar/event?eid=valid-www');
+  });
+
   it('throws descriptive error when Google API fails with non-401 status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
