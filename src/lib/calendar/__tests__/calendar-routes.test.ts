@@ -475,4 +475,51 @@ describe('Calendar route boundaries', () => {
     expect(doubleFailRes.status).toBe(401);
     expect(await doubleFailRes.json()).toMatchObject({ success: false, code: 'google_reauthorization_required' });
   });
+
+  it('maps Google Calendar 403 insufficientPermissions/authError to 403 google_calendar_permission_required, and keeps 403 rateLimitExceeded as 500', async () => {
+    const permission403 = (reason: string) => Response.json({
+      error: {
+        code: 403,
+        message: 'Insufficient Permission internal',
+        errors: [{ domain: 'global', reason, message: 'Insufficient Permission' }],
+      },
+    }, { status: 403 });
+    const rateLimit403 = (reason: string) => Response.json({
+      error: {
+        code: 403,
+        message: 'Rate Limit Exceeded internal',
+        errors: [{ domain: 'usageLimits', reason, message: 'Rate Limit Exceeded' }],
+      },
+    }, { status: 403 });
+
+    for (const reason of ['insufficientPermissions', 'authError']) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403(reason)));
+      const confirmRes = await POST(confirm());
+      expect(confirmRes.status).toBe(403);
+      expect(confirmRes.headers.get('Cache-Control')).toBe('no-store');
+      const confirmBody = await confirmRes.json();
+      expect(confirmBody).toMatchObject({ success: false, code: 'google_calendar_permission_required' });
+      expect(JSON.stringify(confirmBody)).not.toContain('internal');
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403(reason)));
+      const upcomingRes = await GET(new Request('http://localhost/api/calendar/upcoming'));
+      expect(upcomingRes.status).toBe(403);
+      expect(upcomingRes.headers.get('Cache-Control')).toBe('no-store');
+      const upcomingBody = await upcomingRes.json();
+      expect(upcomingBody).toMatchObject({ success: false, code: 'google_calendar_permission_required' });
+      expect(JSON.stringify(upcomingBody)).not.toContain('internal');
+    }
+
+    for (const reason of ['rateLimitExceeded', 'userRateLimitExceeded']) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(rateLimit403(reason)));
+      const confirmRateRes = await POST(confirm({ ...proposal, allowConflict: true }));
+      expect(confirmRateRes.status).toBe(500);
+      expect((await confirmRateRes.json()).code).toBeUndefined();
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(rateLimit403(reason)));
+      const upcomingRateRes = await GET(new Request('http://localhost/api/calendar/upcoming'));
+      expect(upcomingRateRes.status).toBe(500);
+      expect((await upcomingRateRes.json()).code).toBeUndefined();
+    }
+  });
 });

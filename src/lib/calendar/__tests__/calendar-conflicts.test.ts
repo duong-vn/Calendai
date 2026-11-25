@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CalendarUnauthorizedError } from '../calendar-auth';
+import { CalendarPermissionError, CalendarUnauthorizedError } from '../calendar-auth';
 import { CalendarLookupError, CalendarOverlapError, CalendarResolveError, CalendarStaleEventError, findCalendarConflicts, rangesOverlap, resolveCalendarConflict } from '../conflict-service';
 import { ResolveConflictSchema } from '../conflict-schema';
 import { MeetingProposalSchema } from '../proposal-schema';
@@ -137,6 +137,36 @@ describe('Blocking calendar overlap lookup', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(page([], { nextPageToken: 'p2' })).mockResolvedValueOnce(unauthorized()));
     await expect(findCalendarConflicts('access', proposal)).rejects.toBeInstanceOf(CalendarUnauthorizedError);
   });
+
+  it('throws CalendarPermissionError on HTTP 403 insufficientPermissions/authError and CalendarLookupError on 403 rateLimitExceeded', async () => {
+    const permission403 = (reason: string) => Response.json({
+      error: { code: 403, errors: [{ domain: 'global', reason, message: 'Forbidden' }] },
+    }, { status: 403 });
+    const rate403 = (reason: string) => Response.json({
+      error: { code: 403, errors: [{ domain: 'usageLimits', reason, message: 'Rate Limit' }] },
+    }, { status: 403 });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403('insufficientPermissions')));
+    const firstPageErr = await findCalendarConflicts('access', proposal).catch((e: unknown) => e);
+    expect(firstPageErr).toBeInstanceOf(CalendarPermissionError);
+    expect(firstPageErr).toMatchObject({
+      name: 'CalendarPermissionError',
+      code: 'google_calendar_permission_required',
+      status: 403,
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(page([], { nextPageToken: 'p2' })).mockResolvedValueOnce(permission403('authError')));
+    await expect(findCalendarConflicts('access', proposal)).rejects.toMatchObject({
+      name: 'CalendarPermissionError',
+      code: 'google_calendar_permission_required',
+      status: 403,
+    });
+
+    for (const reason of ['rateLimitExceeded', 'userRateLimitExceeded']) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(rate403(reason)));
+      await expect(findCalendarConflicts('access', proposal)).rejects.toBeInstanceOf(CalendarLookupError);
+    }
+  });
 });
 
 describe('Conditional conflict resolution', () => {
@@ -270,5 +300,38 @@ describe('Conditional conflict resolution', () => {
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(existing)).mockResolvedValueOnce(unauthorized()));
     await expect(resolveCalendarConflict('access', cancel)).rejects.toBeInstanceOf(CalendarUnauthorizedError);
+  });
+
+  it('throws CalendarPermissionError on HTTP 403 insufficientPermissions at GET, collision lookup, or DELETE/PATCH, but CalendarLookupError on rateLimitExceeded', async () => {
+    const permission403 = () => Response.json({
+      error: { code: 403, errors: [{ domain: 'global', reason: 'insufficientPermissions', message: 'Forbidden' }] },
+    }, { status: 403 });
+    const rate403 = () => Response.json({
+      error: { code: 403, errors: [{ domain: 'usageLimits', reason: 'rateLimitExceeded', message: 'Rate Limit' }] },
+    }, { status: 403 });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403()));
+    await expect(resolveCalendarConflict('access', cancel)).rejects.toMatchObject({
+      name: 'CalendarPermissionError',
+      code: 'google_calendar_permission_required',
+      status: 403,
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(existing)).mockResolvedValueOnce(permission403()));
+    await expect(resolveCalendarConflict('access', reschedule)).rejects.toMatchObject({
+      name: 'CalendarPermissionError',
+      code: 'google_calendar_permission_required',
+      status: 403,
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(existing)).mockResolvedValueOnce(permission403()));
+    await expect(resolveCalendarConflict('access', cancel)).rejects.toMatchObject({
+      name: 'CalendarPermissionError',
+      code: 'google_calendar_permission_required',
+      status: 403,
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(existing)).mockResolvedValueOnce(rate403()));
+    await expect(resolveCalendarConflict('access', cancel)).rejects.toBeInstanceOf(CalendarLookupError);
   });
 });

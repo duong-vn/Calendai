@@ -166,4 +166,21 @@ describe('native session lifecycle', () => {
     expect(fetcher).toHaveBeenCalledTimes(3);
     expect(fetcher.mock.calls[1][0]).toContain('/api/auth/mobile/refresh');
   });
+  it('clears session when refresh fails with 401 google_calendar_permission_required, but preserves session on Calendar 403/500/502 responses', async () => {
+    const { client, fetcher, store } = setup(session());
+    await client.restore();
+    fetcher.mockResolvedValueOnce(response({ success: false, error: 'Rate limited' }, 502))
+      .mockResolvedValueOnce(response({ success: false, code: 'google_calendar_permission_required' }, 403));
+    expect((await client.fetch(`${API_ORIGIN}/api/calendar/conflicts`, { method: 'POST', body: '{}' })).status).toBe(502);
+    expect((await client.fetch(`${API_ORIGIN}/api/calendar/confirm`, { method: 'POST', body: '{}' })).status).toBe(403);
+    expect(client.getSnapshot()).not.toBeNull();
+    expect(store.deleteItemAsync).not.toHaveBeenCalled();
+
+    const expiring = setup(session({ accessTokenExpiresAt: NOW + 10 }));
+    await expiring.client.restore();
+    expiring.fetcher.mockResolvedValueOnce(response({ code: 'google_calendar_permission_required', error: 'Missing scope' }, 401));
+    await expect(expiring.client.authorization()).rejects.toMatchObject({ status: 401, code: 'google_calendar_permission_required' });
+    expect(expiring.client.getSnapshot()).toBeNull();
+    expect(expiring.store.deleteItemAsync).toHaveBeenCalledTimes(1);
+  });
 });

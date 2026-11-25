@@ -75,6 +75,8 @@ describe('Confirmation payload recovery', () => {
     { status: 400, body: { success: false, error: 'Dữ liệu không hợp lệ.' } },
     { status: 401, body: authRequired },
     { status: 401, body: { success: false, code: 'google_reauthorization_required', error: 'Quyền truy cập Google Calendar đã hết hạn hoặc bị thu hồi. Vui lòng kết nối lại tài khoản Google.' } },
+    { status: 401, body: { success: false, code: 'google_calendar_permission_required', error: 'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.' } },
+    { status: 403, body: { success: false, code: 'google_calendar_permission_required', error: 'Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.' } },
   ])('unlocks after a first-attempt HTTP $status rejection ($body.code) before the write', async ({ status, body }) => {
     const original = seedProposal();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(body, { status })));
@@ -177,7 +179,11 @@ describe('Confirmation payload recovery', () => {
       return status
         ? Promise.resolve(Response.json({ success: false, error: 'Chưa xác định kết quả', code }, { status }))
         : Promise.reject(new Error('Chưa xác định kết quả'));
-    }).mockResolvedValueOnce(Response.json(authRequired, { status: 401 }))
+    }).mockResolvedValueOnce(Response.json({
+      success: false,
+      code: 'google_calendar_permission_required',
+      error: 'Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.',
+    }, { status: 403 }))
       .mockResolvedValueOnce(Response.json({ success: true, event }));
     vi.stubGlobal('fetch', fetchMock);
     const view = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
@@ -202,7 +208,7 @@ describe('Confirmation payload recovery', () => {
     expect(screen.getByText('Nhắc qua Google Calendar: trước 30 và 5 phút (0 = lúc bắt đầu)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Google Meet \(Đang bật\)/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: /Xác nhận tạo lịch/ }));
-    await screen.findByText(authRequired.error);
+    await screen.findByText('Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.');
     expect(fetchMock.mock.calls[1][1].body).toBe(firstBody);
     expect(screen.getByRole('button', { name: /Google Meet/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: /Xác nhận tạo lịch/ }));

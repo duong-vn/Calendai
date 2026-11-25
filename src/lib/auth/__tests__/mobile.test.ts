@@ -179,6 +179,52 @@ describe('Native refresh and profile endpoints', () => {
     expect(cookieMocks.set).not.toHaveBeenCalled();
   });
 
+  it('rejects mobile and web token refresh when Calendar events scope is missing or narrowed', async () => {
+    // 1. Mobile refresh with narrowed scope from Google returns 401 google_calendar_permission_required
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({
+      ...googleGrant('narrowed-mobile-access'),
+      scope: 'openid email profile',
+    })));
+    const narrowedRes = await refresh(await bearerRequest('/api/auth/mobile/refresh'));
+    expect(narrowedRes.status).toBe(401);
+    expect(narrowedRes.headers.get('Cache-Control')).toBe('no-store');
+    const narrowedBody = await narrowedRes.json();
+    expect(narrowedBody).toMatchObject({
+      code: 'google_calendar_permission_required',
+      error: 'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.',
+    });
+    expect(JSON.stringify(narrowedBody)).not.toContain('narrowed-mobile-access');
+
+    // 2. Mobile refresh with omitted Google scope when stored session lacked calendar.events also fails
+    const legacyMobile = sampleSession();
+    legacyMobile.tokens.scope = 'openid email';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({
+      access_token: 'omitted-scope-access',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    })));
+    const omittedScopeRes = await refresh(await bearerRequest('/api/auth/mobile/refresh', legacyMobile));
+    expect(omittedScopeRes.status).toBe(401);
+    expect(await omittedScopeRes.json()).toMatchObject({ code: 'google_calendar_permission_required' });
+
+    // 3. Web getValidAccessToken refuses to overwrite session cookie when refreshed scope lacks calendar.events
+    cookieMocks.set.mockClear();
+    const web: SessionData = {
+      user: sampleSession().user,
+      tokens: { ...sampleSession().tokens, expiresAt: Date.now() - 1000 },
+      createdAt: Date.now(),
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({
+      ...googleGrant('narrowed-web-access'),
+      scope: 'openid email profile',
+    })));
+    await expect(getValidAccessToken(web)).rejects.toMatchObject({
+      status: 401,
+      code: 'google_calendar_permission_required',
+    });
+    expect(cookieMocks.set).not.toHaveBeenCalled();
+  });
+
   it('returns sanitized mobile status and rejects invalid Bearer rather than anonymous status', async () => {
     const response = await status(await bearerRequest('/api/auth/google/status', sampleSession(), 'GET'));
     expect(response.status).toBe(200);
@@ -365,6 +411,108 @@ describe('Native refresh and profile endpoints', () => {
       expect(json.code, label).toBe('google_reauthorization_required');
       expect(JSON.stringify(json)).not.toContain('Invalid Credentials');
       expect(JSON.stringify(json)).not.toContain('revoked-secret');
+    }
+
+    // 4. Google Calendar 403 insufficientPermissions / authError maps to 403 google_calendar_permission_required,
+    //    while 403 rateLimitExceeded / userRateLimitExceeded stays 500/502 across all 4 Calendar routes.
+    cookieMocks.get.mockReturnValue({ value: await encryptSession(web, key) });
+    for (const reason of ['insufficientPermissions', 'authError'] as const) {
+      vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+        error: {
+          code: 403,
+          message: `Secret diagnostic for ${reason}`,
+          errors: [{ domain: 'global', reason, message: 'Insufficient Permission' }],
+        },
+      }, { status: 403 })));
+
+      for (const [label, res] of [
+        ['web-confirm', await calendarConfirm(new Request('https://app.example.com/api/calendar/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(proposalBody),
+        }))],
+        ['web-upcoming', await calendarUpcoming(new Request('https://app.example.com/api/calendar/upcoming'))],
+        ['web-conflicts', await calendarConflicts(new Request('https://app.example.com/api/calendar/conflicts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(proposalBody),
+        }))],
+        ['web-resolve', await calendarResolve(new Request('https://app.example.com/api/calendar/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ proposal: proposalBody, eventId: conflictEvent.id, etag: conflictEvent.etag, action: 'cancel' }),
+        }))],
+        ['mobile-confirm', await calendarConfirm(new Request('https://app.example.com/api/calendar/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await encryptMobileSession(mobile, key)}` },
+          body: JSON.stringify({ ...proposalBody, allowConflict: true }),
+        }))],
+        ['mobile-resolve-mutation', await (async () => {
+          vi.stubGlobal('fetch', vi.fn()
+            .mockResolvedValueOnce(Response.json(conflictEvent))
+            .mockResolvedValueOnce(Response.json({
+              error: {
+                code: 403,
+                message: `Mutation diagnostic ${reason}`,
+                errors: [{ domain: 'global', reason, message: 'Insufficient Permission' }],
+              },
+            }, { status: 403 })));
+          return calendarResolve(new Request('https://app.example.com/api/calendar/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await encryptMobileSession(mobile, key)}` },
+            body: JSON.stringify({ proposal: proposalBody, eventId: conflictEvent.id, etag: conflictEvent.etag, action: 'cancel' }),
+          }));
+        })()],
+      ] as const) {
+        expect(res.status, `${label}:${reason}`).toBe(403);
+        expect(res.headers.get('Cache-Control'), `${label}:${reason}`).toBe('no-store');
+        const json = await res.json();
+        expect(json, `${label}:${reason}`).toMatchObject({
+          success: false,
+          code: 'google_calendar_permission_required',
+        });
+        expect(typeof json.error).toBe('string');
+        expect(JSON.stringify(json)).not.toContain('diagnostic');
+      }
+    }
+
+    for (const reason of ['rateLimitExceeded', 'userRateLimitExceeded'] as const) {
+      vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+        error: {
+          code: 403,
+          status: 'PERMISSION_DENIED',
+          message: `Quota diagnostic ${reason}`,
+          errors: [{ domain: 'usageLimits', reason, message: 'Rate Limit Exceeded' }],
+        },
+      }, { status: 403 })));
+
+      const confirmRateRes = await calendarConfirm(new Request('https://app.example.com/api/calendar/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(proposalBody),
+      }));
+      expect(confirmRateRes.status, `confirm:${reason}`).toBe(500);
+      expect((await confirmRateRes.json()).code).toBeUndefined();
+
+      const upcomingRateRes = await calendarUpcoming(new Request('https://app.example.com/api/calendar/upcoming'));
+      expect(upcomingRateRes.status, `upcoming:${reason}`).toBe(500);
+      expect((await upcomingRateRes.json()).code).toBeUndefined();
+
+      const conflictsRateRes = await calendarConflicts(new Request('https://app.example.com/api/calendar/conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(proposalBody),
+      }));
+      expect(conflictsRateRes.status, `conflicts:${reason}`).toBe(502);
+      expect((await conflictsRateRes.json()).code).toBeUndefined();
+
+      const resolveRateRes = await calendarResolve(new Request('https://app.example.com/api/calendar/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposal: proposalBody, eventId: conflictEvent.id, etag: conflictEvent.etag, action: 'cancel' }),
+      }));
+      expect(resolveRateRes.status, `resolve:${reason}`).toBe(502);
+      expect((await resolveRateRes.json()).code).toBeUndefined();
     }
   });
 });

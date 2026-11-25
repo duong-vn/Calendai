@@ -164,6 +164,7 @@ it('unlocks Meet and reminders after a first-attempt 409 CALENDAR_CONFLICT and p
 it.each([
   { label: 'HTTP 400', error: new ApiError('Không thể hoàn thành yêu cầu.', 400) },
   { label: 'HTTP 401', error: new ApiError('Phiên đăng nhập đã hết hạn.', 401, 'AUTH_REQUIRED') },
+  { label: 'HTTP 403 google_calendar_permission_required', error: new ApiError('Chưa đủ quyền Google Calendar. Vui lòng đăng nhập lại và cấp quyền.', 403, 'google_calendar_permission_required') },
 ])('unlocks Meet and reminders on first-attempt pre-write $label rejection', async ({ error }) => {
   jest.mocked(mobileApi.confirm).mockReset().mockRejectedValueOnce(error).mockResolvedValueOnce(event);
   const discard = jest.fn().mockResolvedValue(true);
@@ -179,6 +180,7 @@ it.each([
     expect(discard).toHaveBeenCalledTimes(1);
     expect(tree!.root.findAllByType(Switch)[0].props.disabled).toBe(false);
     expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes('Bản thảo đã gửi được giữ nguyên'))).toBe(false);
+    expect(tree!.root.findAllByType(Copy).some(node => String(node.props.children).includes(error.message))).toBe(true);
     expect(tree!.root.findAllByType(Action)[0].props.label).toBe('Xác nhận tạo lịch');
 
     act(() => tree!.root.findAllByType(Switch)[0].props.onValueChange(false));
@@ -224,13 +226,14 @@ it('keeps the draft unlocked and skips network calls when local persistence fail
 it.each([
   { label: 'network failure', initialError: new Error('Mất mạng') },
   { label: 'HTTP 500', initialError: new ApiError('Lỗi máy chủ', 500) },
+  { label: 'uncategorized HTTP 403', initialError: new ApiError('Bị chặn bởi proxy', 403) },
   { label: '409 PROPOSAL_CONFLICT', initialError: new Error('Bản thảo đã thay đổi hoặc lịch đã được cập nhật.') },
-])('keeps frozen payload locked across later 409/400/401 rejections after $label', async ({ initialError }) => {
+])('keeps frozen payload locked across later 409/400/401/403 rejections after $label', async ({ initialError }) => {
   const conflict = { id: 'old', summary: 'Lịch cũ', start: draft.startDateTime, end: draft.endDateTime, etag: 'v1', timeZone: draft.timeZone, isAllDay: false };
   jest.mocked(mobileApi.confirm).mockReset()
     .mockRejectedValueOnce(initialError)
     .mockRejectedValueOnce(new CalendarConflictError([conflict]))
-    .mockRejectedValueOnce(new ApiError('Unauthorized', 401))
+    .mockRejectedValueOnce(new ApiError('Chưa đủ quyền Google Calendar. Vui lòng đăng nhập lại và cấp quyền.', 403, 'google_calendar_permission_required'))
     .mockResolvedValueOnce(event);
   const discard = jest.fn().mockResolvedValue(true);
   const onSubmit = jest.fn().mockResolvedValue(discard);

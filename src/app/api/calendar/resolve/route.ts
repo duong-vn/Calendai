@@ -3,7 +3,9 @@ import { requireJsonContentType, requireSameOrigin } from '@/lib/auth/request-gu
 import { authErrorResponse, getServerSession } from '@/lib/auth/server-session';
 import type { SessionData } from '@/lib/auth/types';
 import {
+  CalendarPermissionError,
   CalendarUnauthorizedError,
+  calendarPermissionResponse,
   calendarUnauthorizedResponse,
   executeWithCalendarAuth,
 } from '@/lib/calendar/calendar-auth';
@@ -34,6 +36,9 @@ export async function POST(request: Request) {
     if (authResponse) return authResponse;
     if (error instanceof CalendarUnauthorizedError) {
       return calendarUnauthorizedResponse(session, request);
+    }
+    if (error instanceof CalendarPermissionError) {
+      return calendarPermissionResponse();
     }
     if (error instanceof CalendarStaleEventError) {
       return NextResponse.json({ success: false, code: 'STALE_EVENT', error: error.message }, { status: 409 });

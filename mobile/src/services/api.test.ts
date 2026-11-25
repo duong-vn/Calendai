@@ -57,10 +57,11 @@ it('validates proposals and external links', () => {
   expect(safeHttpsUrl('https://user:pass@meet.google.com/path', 'meet')).toBeNull();
   expect(safeHttpsUrl('https://meet.google.com/abc-defg-hij', 'meet')).toBe('https://meet.google.com/abc-defg-hij');
 });
-it('classifies 400/401 rejections as ApiError and ignores empty conflict lists', async () => {
+it('classifies 400/401/403 rejections as ApiError and ignores empty conflict lists', async () => {
   const fetcher = jest.fn()
     .mockResolvedValueOnce(response({ success: false, error: 'Bad request' }, 400))
     .mockResolvedValueOnce(response({ code: 'AUTH_REQUIRED', error: 'Unauthorized' }, 401))
+    .mockResolvedValueOnce(response({ success: false, code: 'google_calendar_permission_required', error: 'Insufficient Permission' }, 403))
     .mockResolvedValueOnce(response({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [] }, 409))
     .mockResolvedValueOnce(response({ success: false, code: 'PROPOSAL_CONFLICT', error: 'Conflict' }, 409));
   const api = new MobileApi(fetcher);
@@ -70,6 +71,13 @@ it('classifies 400/401 rejections as ApiError and ignores empty conflict lists',
   const second = api.confirm(draft);
   await expect(second).rejects.toBeInstanceOf(ApiError);
   await expect(second).rejects.toMatchObject({ status: 401, code: 'AUTH_REQUIRED' });
+  const third = api.confirm(draft);
+  await expect(third).rejects.toBeInstanceOf(ApiError);
+  await expect(third).rejects.toMatchObject({
+    status: 403,
+    code: 'google_calendar_permission_required',
+    message: 'Chưa đủ quyền Google Calendar. Vui lòng đăng nhập lại và cấp quyền.',
+  });
   await expect(api.confirm(draft)).rejects.not.toBeInstanceOf(CalendarConflictError);
   await expect(api.confirm(draft)).rejects.not.toBeInstanceOf(ApiError);
 });

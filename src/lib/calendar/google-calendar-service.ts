@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { safeHttpsUrl } from '../links';
-import { CalendarUnauthorizedError } from './calendar-auth';
+import {
+  CalendarPermissionError,
+  CalendarUnauthorizedError,
+  isCalendarPermissionResponse,
+  isGoogleCalendarPermissionError,
+} from './calendar-auth';
 import { DEFAULT_REMINDER_MINUTES } from './reminders';
 import type {
   CalendarEventResult,
@@ -8,7 +13,7 @@ import type {
   UpcomingEventItem,
 } from './types';
 
-export { CalendarUnauthorizedError };
+export { CalendarPermissionError, CalendarUnauthorizedError };
 
 const GOOGLE_CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3';
 
@@ -181,6 +186,7 @@ export async function createGoogleCalendarEvent(
           cache: 'no-store',
         });
         if (existing.status === 401) throw new CalendarUnauthorizedError();
+        if (await isCalendarPermissionResponse(existing)) throw new CalendarPermissionError();
         if (existing.status === 410) throw new CalendarProposalConflictError();
         if (existing.status !== 404) return reconcile(new Error('Không thể kiểm tra mã đề xuất.'), true, existing);
       }
@@ -207,6 +213,9 @@ export async function createGoogleCalendarEvent(
     }
 
     if (!response.ok || inserted.error) {
+      if (response.status === 403 && isGoogleCalendarPermissionError(inserted)) {
+        throw new CalendarPermissionError();
+      }
       const errorMsg = inserted.error?.message || response.statusText;
       const error = new Error(`Google Calendar API Error (${response.status}): ${errorMsg}`);
       if (eventId && (response.status === 409 || response.status >= 500)) {
@@ -330,6 +339,9 @@ export async function listGoogleCalendarEvents(
       data = (await response.json()) as GoogleApiEventsListResponse;
     } catch (error) {
       if (response.ok) throw error;
+    }
+    if (response.status === 403 && isGoogleCalendarPermissionError(data)) {
+      throw new CalendarPermissionError();
     }
     if (!response.ok || !data || typeof data !== 'object' || Array.isArray(data) || data.error) {
       const errorMsg = data?.error?.message || response.statusText || 'Invalid response';
