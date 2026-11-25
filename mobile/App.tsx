@@ -9,7 +9,7 @@ import type { Message } from 'ai';
 import { CalendarDays, Check, ChevronRight, Clock3, HelpCircle, LogIn, LogOut, Menu, Moon, Plus, Settings2, Sparkles, Sun, Trash2, X } from 'lucide-react-native';
 import { Action, Copy, IconButton, mono, palettes, Panel, ThemeContext, useTheme } from './src/theme';
 import { authClient, signInGoogle, signOutGoogle } from './src/services/auth';
-import { API_ORIGIN } from './src/services/transport';
+import { API_ORIGIN, nativeFetch } from './src/services/transport';
 import { fetchModels, mobileApi } from './src/services/api';
 import { historyKey, loadHistory, loadConversation, newConversation, saveConversation, deleteConversation as deleteHistoryConversation, type HistoryEntry } from './src/services/history';
 import { openLink } from './src/services/links';
@@ -319,7 +319,7 @@ function Conversation({ initial, user, model, modelLabel, onModel, onChange, log
   const sendGuard = useRef(false);
   const { messages, input, setInput, append, reload, stop, isLoading, error } = useChat({
     api: `${API_ORIGIN}/api/chat`, id: `${user?.id || 'guest'}:${initial.id}`,
-    initialMessages: initial.messages, fetch: authClient.fetch, credentials: 'omit',
+    initialMessages: initial.messages, fetch: user ? authClient.fetch : nativeFetch, credentials: 'omit',
     body: model ? { model } : {}, experimental_throttle: 60, maxSteps: 5, streamProtocol: 'data', keepLastMessageOnError: true,
   });
   messagesRef.current = messages;
