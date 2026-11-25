@@ -2,8 +2,32 @@ import React, { useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import type { MeetingProposal } from '../types';
 import { Action, Copy, useTheme } from '../theme';
-import { mobileApi, type CalendarConflict } from '../services/api';
+import { CalendarConflictError, mobileApi, type CalendarConflict } from '../services/api';
+import { ApiError } from '../services/transport';
 import { formatDateTime } from './AgendaCard';
+
+export function isValidLocalDateTime(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) {
+    return false;
+  }
+  const utcDate = new Date(0);
+  utcDate.setUTCFullYear(year, month - 1, day);
+  utcDate.setUTCHours(hour, minute, 0, 0);
+  return (
+    utcDate.getUTCFullYear() === year &&
+    utcDate.getUTCMonth() === month - 1 &&
+    utcDate.getUTCDate() === day &&
+    utcDate.getUTCHours() === hour &&
+    utcDate.getUTCMinutes() === minute
+  );
+}
 
 export function CalendarConflictChoices({ proposal, conflicts, disabled, onResolved, onContinue }: {
   proposal: MeetingProposal;
@@ -22,22 +46,47 @@ export function CalendarConflictChoices({ proposal, conflicts, disabled, onResol
   const busy = useRef(false);
   const resolve = async (conflict: CalendarConflict) => {
     if (!selection || busy.current || disabled || refreshRequired) return;
-    const valid = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
-    if (selection.action === 'reschedule' && (!valid.test(start) || !valid.test(end) || end <= start)) {
-      setError('Nhập dạng 2026-11-02T14:00; giờ kết thúc phải sau giờ bắt đầu.');
-      return;
+    const trimmedStart = start.trim();
+    const trimmedEnd = end.trim();
+    if (selection.action === 'reschedule') {
+      if (!isValidLocalDateTime(trimmedStart) || !isValidLocalDateTime(trimmedEnd)) {
+        setError('Ngày giờ không hợp lệ. Nhập ngày có thật theo dạng 2026-11-02T14:00 (00:00–23:59).');
+        return;
+      }
+      if (trimmedEnd <= trimmedStart) {
+        setError('Nhập dạng 2026-11-02T14:00; giờ kết thúc phải sau giờ bắt đầu.');
+        return;
+      }
     }
     busy.current = true;
     setLoading(true);
     setError('');
     try {
       await mobileApi.resolveConflict(proposal, conflict, selection.action,
-        selection.action === 'reschedule' ? { startDateTime: `${start}:00+07:00`, endDateTime: `${end}:00+07:00` } : undefined);
+        selection.action === 'reschedule' ? { startDateTime: `${trimmedStart}:00+07:00`, endDateTime: `${trimmedEnd}:00+07:00` } : undefined);
       setSelection(null);
       onResolved();
-    } catch {
-      setRefreshRequired(true);
-      setError('Chưa cập nhật được lịch cũ. Kiểm tra lại xung đột hoặc Google Calendar trước khi thử lại.');
+    } catch (failure) {
+      const isConflictError =
+        (typeof CalendarConflictError === 'function' && failure instanceof CalendarConflictError) ||
+        (failure instanceof ApiError && failure.status === 409 && failure.code === 'CALENDAR_CONFLICT');
+      const isPreWriteRejection =
+        isConflictError ||
+        (failure instanceof ApiError && (
+          failure.status === 400 ||
+          failure.status === 401 ||
+          (failure.status === 403 && failure.code === 'google_calendar_permission_required')
+        ));
+      if (isPreWriteRejection && failure instanceof Error) {
+        setError(failure.message);
+      } else {
+        setRefreshRequired(true);
+        setError(
+          failure instanceof ApiError && failure.status === 409
+            ? failure.message
+            : 'Chưa cập nhật được lịch cũ. Kiểm tra lại xung đột hoặc Google Calendar trước khi thử lại.',
+        );
+      }
     } finally { busy.current = false; setLoading(false); }
   };
   const blocked = disabled || loading || refreshRequired;
@@ -58,7 +107,7 @@ export function CalendarConflictChoices({ proposal, conflicts, disabled, onResol
           <TextInput accessibilityLabel="Kết thúc mới" placeholder="2026-11-02T15:00" placeholderTextColor={colors.muted} value={end} onChangeText={setEnd} editable={!blocked} autoCapitalize="none" style={{ color: colors.ink, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 12 }} />
         </>}
         <Action label={loading ? 'Đang cập nhật…' : selection.action === 'cancel' ? 'Xác nhận hủy lịch cũ' : 'Xác nhận đổi giờ lịch cũ'} primary disabled={blocked} onPress={() => { void resolve(conflict); }} />
-        <Action label="Quay lại" disabled={blocked} onPress={() => setSelection(null)} />
+        <Action label="Quay lại" disabled={blocked} onPress={() => { setError(''); setSelection(null); }} />
       </View>}
     </View>)}
     {!!error && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Copy>}

@@ -81,3 +81,54 @@ it('classifies 400/401/403 rejections as ApiError and ignores empty conflict lis
   await expect(api.confirm(draft)).rejects.not.toBeInstanceOf(CalendarConflictError);
   await expect(api.confirm(draft)).rejects.not.toBeInstanceOf(ApiError);
 });
+
+it('classifies resolveConflict 409 CALENDAR_CONFLICT vs 409 STALE_EVENT, 400 recurring/invalid, 401, and 502 safely', async () => {
+  const conflict = { id: 'old', summary: 'Họp cũ', start: event.start, end: event.end, etag: '"v1"', timeZone: 'Asia/Ho_Chi_Minh', isAllDay: false };
+  const thirdConflict = { ...conflict, id: 'third', summary: 'Họp khác' };
+  const times = { startDateTime: '2027-01-02T14:00:00+07:00', endDateTime: '2027-01-02T15:00:00+07:00' };
+
+  const fetcher = jest.fn()
+    .mockResolvedValueOnce(response({ success: true }, 200))
+    .mockResolvedValueOnce(response({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [conflict] }, 409))
+    .mockResolvedValueOnce(response({ success: false, code: 'CALENDAR_CONFLICT', conflicts: [thirdConflict], error: 'raw-google-overlap' }, 409))
+    .mockResolvedValueOnce(response({ success: false, code: 'STALE_EVENT', error: 'Sự kiện đã thay đổi.' }, 409))
+    .mockResolvedValueOnce(response({ success: false, error: 'Không thể thay đổi cả chuỗi sự kiện. Vui lòng chọn một lần diễn ra cụ thể.' }, 400))
+    .mockResolvedValueOnce(response({ success: false, error: 'private-schema-detail-secret' }, 400))
+    .mockResolvedValueOnce(response({ code: 'AUTH_REQUIRED', error: 'private-auth-detail' }, 401))
+    .mockResolvedValueOnce(response({ success: false, error: 'upstream-502-secret' }, 502));
+
+  const api = new MobileApi(fetcher);
+  await expect(api.resolveConflict(draft, conflict, 'reschedule', times)).resolves.toBeUndefined();
+
+  const draftOverlap = api.resolveConflict(draft, conflict, 'reschedule', times);
+  await expect(draftOverlap).rejects.toBeInstanceOf(CalendarConflictError);
+  await expect(draftOverlap).rejects.toThrow(/bản thảo/);
+
+  const otherOverlap = api.resolveConflict(draft, conflict, 'reschedule', times);
+  await expect(otherOverlap).rejects.toBeInstanceOf(CalendarConflictError);
+  await expect(otherOverlap).rejects.not.toThrow('raw-google-overlap');
+
+  const stale = api.resolveConflict(draft, conflict, 'cancel');
+  await expect(stale).rejects.toBeInstanceOf(ApiError);
+  await expect(stale).rejects.toMatchObject({ status: 409, code: 'STALE_EVENT' });
+
+  const recurring = api.resolveConflict(draft, conflict, 'cancel');
+  await expect(recurring).rejects.toBeInstanceOf(ApiError);
+  await expect(recurring).rejects.toMatchObject({ status: 400, code: 'RECURRING_EVENT' });
+  await expect(recurring).rejects.toThrow('Không thể thay đổi cả chuỗi sự kiện');
+
+  const invalid = api.resolveConflict(draft, conflict, 'reschedule', times);
+  await expect(invalid).rejects.toBeInstanceOf(ApiError);
+  await expect(invalid).rejects.toMatchObject({ status: 400, code: 'INVALID_INPUT' });
+  await expect(invalid).rejects.not.toThrow('private-schema-detail-secret');
+
+  const unauth = api.resolveConflict(draft, conflict, 'cancel');
+  await expect(unauth).rejects.toBeInstanceOf(ApiError);
+  await expect(unauth).rejects.toMatchObject({ status: 401, code: 'AUTH_REQUIRED' });
+  await expect(unauth).rejects.not.toThrow('private-auth-detail');
+
+  const gateway = api.resolveConflict(draft, conflict, 'cancel');
+  await expect(gateway).rejects.toBeInstanceOf(ApiError);
+  await expect(gateway).rejects.toMatchObject({ status: 502 });
+  await expect(gateway).rejects.not.toThrow('upstream-502-secret');
+});
