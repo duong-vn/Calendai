@@ -1,6 +1,6 @@
 import { isRecord, parseEvent, parseProposal, type AuthStatus, type CalendarEvent, type MeetingProposal, type ModelOption } from '../types';
 import { authClient } from './auth';
-import { API_ORIGIN, nativeFetch, readJson, type Fetcher } from './transport';
+import { API_ORIGIN, ApiError, nativeFetch, readJson, type Fetcher } from './transport';
 
 export interface CalendarConflict {
   id: string;
@@ -26,7 +26,12 @@ export function parseConflicts(data: unknown): CalendarConflict[] {
 }
 
 export class CalendarConflictError extends Error {
-  constructor(readonly conflicts: CalendarConflict[]) { super('Khung giờ này trùng với lịch có sẵn.'); }
+  constructor(
+    readonly conflicts: CalendarConflict[],
+    message = 'Khung giờ này trùng với lịch có sẵn.',
+  ) {
+    super(message);
+  }
 }
 
 export class MobileApi {
@@ -51,10 +56,49 @@ export class MobileApi {
     return parseConflicts(data);
   }
   async resolveConflict(proposal: MeetingProposal, conflict: CalendarConflict, action: 'cancel' | 'reschedule', times?: { startDateTime: string; endDateTime: string }): Promise<void> {
-    const data = await readJson(await this.fetcher(`${API_ORIGIN}/api/calendar/resolve`, {
+    const response = await this.fetcher(`${API_ORIGIN}/api/calendar/resolve`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ proposal: parseProposal(proposal), eventId: conflict.id, etag: conflict.etag, action, ...times }),
-    }));
+    });
+    if (response.status === 409) {
+      let body: unknown = null;
+      try { body = await response.json(); } catch { body = null; }
+      if (isRecord(body) && body.code === 'CALENDAR_CONFLICT') {
+        let overlaps: CalendarConflict[] = [];
+        if (Array.isArray(body.conflicts)) {
+          try { overlaps = parseConflicts(body); } catch { overlaps = []; }
+        }
+        const overlapsDraft = overlaps.length === 1 && overlaps[0].id === conflict.id;
+        throw new CalendarConflictError(
+          overlaps,
+          overlapsDraft
+            ? 'Giờ mới vẫn trùng với bản thảo đang tạo. Vui lòng chọn khung giờ khác hoặc giữ lịch cũ.'
+            : 'Giờ mới vẫn trùng với lịch hiện có hoặc bản thảo đang tạo. Vui lòng chọn khung giờ khác hoặc giữ lịch cũ.',
+        );
+      }
+      const code = isRecord(body) && typeof body.code === 'string' ? body.code : 'STALE_EVENT';
+      throw new ApiError(
+        'Sự kiện đã thay đổi hoặc không còn trùng lịch. Vui lòng kiểm tra lại xung đột trước khi tiếp tục.',
+        409,
+        code,
+      );
+    }
+    if (response.status === 400) {
+      let body: unknown = null;
+      try { body = await response.json(); } catch { body = null; }
+      const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined;
+      const isRecurring =
+        code === 'RECURRING_EVENT' ||
+        (isRecord(body) && typeof body.error === 'string' && body.error.includes('chuỗi sự kiện'));
+      throw new ApiError(
+        isRecurring
+          ? 'Không thể thay đổi cả chuỗi sự kiện. Vui lòng chọn một lần diễn ra cụ thể.'
+          : 'Ngày giờ hoặc thông tin thay đổi lịch không hợp lệ. Vui lòng kiểm tra lại.',
+        400,
+        code ?? (isRecurring ? 'RECURRING_EVENT' : 'INVALID_INPUT'),
+      );
+    }
+    const data = await readJson(response);
     if (!isRecord(data) || data.success !== true) throw new Error('Chưa cập nhật được lịch cũ.');
   }
   async confirm(proposal: MeetingProposal, signal?: AbortSignal, allowConflict = false): Promise<CalendarEvent> {
