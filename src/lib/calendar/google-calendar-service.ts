@@ -48,6 +48,7 @@ interface GoogleApiEventResponse {
     date?: string;
     timeZone?: string;
   };
+  endTimeUnspecified?: boolean;
   attendees?: Array<{
     email: string;
     displayName?: string;
@@ -279,13 +280,16 @@ function resolveSafeCalendarHtmlLink(rawHtmlLink: string | undefined, eventId: s
 function mapGoogleCalendarEvent(event: GoogleApiEventResponse): UpcomingEventItem {
   const hangoutLink = extractSafeMeetLink(event);
   const isAllDay = Boolean(event.start?.date && !event.start?.dateTime);
+  const start = event.start?.dateTime || event.start?.date || '';
+  const rawEnd = event.end?.dateTime || event.end?.date || '';
+  const end = rawEnd || (Number.isFinite(Date.parse(start)) ? start : '');
 
   return {
     id: event.id,
     summary: event.summary || '(Không có tiêu đề)',
     description: event.description,
-    start: event.start?.dateTime || event.start?.date || '',
-    end: event.end?.dateTime || event.end?.date || '',
+    start,
+    end,
     hangoutLink,
     htmlLink: resolveSafeCalendarHtmlLink(event.htmlLink, event.id),
     isAllDay,

@@ -416,6 +416,65 @@ describe('Google Calendar Service Layer', () => {
     expect(events[0].isAllDay).toBe(false);
   });
 
+  it('normalizes omitted end to start for zero-duration Google Calendar events while keeping normal events intact', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            id: 'zero-omitted-end',
+            summary: 'Nhắc nộp báo cáo',
+            endTimeUnspecified: true,
+            start: { dateTime: '2026-11-24T09:45:00+07:00' },
+          },
+          {
+            id: 'zero-empty-end-obj',
+            summary: 'Mốc kiểm tra',
+            start: { dateTime: '2026-11-24T11:00:00+07:00' },
+            end: {},
+          },
+          {
+            id: 'normal-meeting',
+            summary: 'Họp nhóm',
+            start: { dateTime: '2026-11-24T14:00:00+07:00' },
+            end: { dateTime: '2026-11-24T15:00:00+07:00' },
+          },
+          {
+            id: 'missing-start',
+            summary: 'Dữ liệu lỗi',
+          },
+        ],
+      }),
+    }));
+
+    const events = await listGoogleCalendarEvents('valid-token', { maxResults: 10 });
+    expect(events).toHaveLength(4);
+    expect(events[0]).toMatchObject({
+      id: 'zero-omitted-end',
+      summary: 'Nhắc nộp báo cáo',
+      start: '2026-11-24T09:45:00+07:00',
+      end: '2026-11-24T09:45:00+07:00',
+      isAllDay: false,
+    });
+    expect(events[1]).toMatchObject({
+      id: 'zero-empty-end-obj',
+      start: '2026-11-24T11:00:00+07:00',
+      end: '2026-11-24T11:00:00+07:00',
+      isAllDay: false,
+    });
+    expect(events[2]).toMatchObject({
+      id: 'normal-meeting',
+      start: '2026-11-24T14:00:00+07:00',
+      end: '2026-11-24T15:00:00+07:00',
+      isAllDay: false,
+    });
+    expect(events[3]).toMatchObject({
+      id: 'missing-start',
+      start: '',
+      end: '',
+    });
+  });
+
   it('continues across empty and short pages until maxResults matching events are collected', async () => {
     const mockFetch = vi.fn<(url: string) => Promise<Response>>()
       .mockResolvedValueOnce(Response.json({ items: [], nextPageToken: 'page-2' }))

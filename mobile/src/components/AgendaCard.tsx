@@ -25,7 +25,7 @@ export function AgendaCard({ event, created = false, requestedMeet = false }: { 
   return <Panel style={{ gap: 10, borderColor: created ? colors.teal : colors.border }}>
     {created && <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><CalendarCheck size={18} color={colors.teal} /><Copy strong style={{ color: colors.teal }}>Đã tạo trên Google Calendar</Copy></View>}
     <Copy strong style={{ fontSize: 17 }}>{event.summary}</Copy>
-    <Copy style={{ color: colors.accent }}>{event.isAllDay ? `${event.start.slice(0, 10)} · Cả ngày` : `${formatDateTime(event.start, event.timeZone)}\nđến ${formatDateTime(event.end, event.timeZone)}`}</Copy>
+    <Copy style={{ color: colors.accent }}>{event.isAllDay ? `${event.start.slice(0, 10)} · Cả ngày` : Date.parse(event.end) > Date.parse(event.start) ? `${formatDateTime(event.start, event.timeZone)}\nđến ${formatDateTime(event.end, event.timeZone)}` : formatDateTime(event.start, event.timeZone)}</Copy>
     <Copy style={{ color: colors.muted, fontSize: 12 }}>{event.timeZone || 'Asia/Ho_Chi_Minh'}</Copy>
     {!!event.description && <Copy>{event.description}</Copy>}
     {created && requestedMeet && !meet && <Copy style={{ color: colors.muted }}>{event.meetStatus === 'failure' ? 'Sự kiện đã tạo, nhưng Google chưa tạo được Meet. Mở Calendar để kiểm tra.' : 'Sự kiện đã tạo. Google chưa trả link Meet; vui lòng kiểm tra lại trong Calendar.'}</Copy>}

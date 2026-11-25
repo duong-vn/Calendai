@@ -5,6 +5,7 @@ import { ChatMessage } from './ChatMessage';
 import { Copy } from '../theme';
 import { View } from 'react-native';
 import { ProposalCard } from './ProposalModal';
+import { AgendaCard } from './AgendaCard';
 
 jest.mock('./ProposalModal', () => ({ ProposalCard: () => null }));
 jest.mock('./AgendaCard', () => ({ AgendaCard: () => null }));
@@ -80,5 +81,40 @@ it('shows session refresh guidance when listUpcomingEvents signals SESSION_REFRE
   const text = tree.root.findAllByType(Copy).map(node => JSON.stringify(node.props.children)).join(' ');
   expect(text).toContain('Lịch sắp tới');
   expect(text).toContain('đăng nhập lại');
+  act(() => tree.unmount());
+});
+
+it('renders every event in listUpcomingEvents including zero-duration events with omitted or equal end', () => {
+  const upcomingMessage: Message = {
+    id: 'upcoming-msg',
+    role: 'assistant',
+    content: '',
+    toolInvocations: [{
+      state: 'result',
+      toolCallId: 'lookup-1',
+      toolName: 'listUpcomingEvents',
+      args: { range: 'today' },
+      result: {
+        success: true,
+        mode: 'google',
+        events: [
+          { id: 'zero-omitted', summary: 'Nhắc hạn nộp', start: '2026-11-24T09:45:00+07:00', end: '', isAllDay: false },
+          { id: 'zero-equal', summary: 'Check-in nhanh', start: '2026-11-24T10:30:00+07:00', end: '2026-11-24T10:30:00+07:00', isAllDay: false },
+          { id: 'regular-meeting', summary: 'Họp dự án', start: '2026-11-24T14:00:00+07:00', end: '2026-11-24T15:00:00+07:00', isAllDay: false },
+        ],
+      },
+    }],
+  };
+  let tree!: ReactTestRenderer;
+  const props = { message: upcomingMessage, confirmed: {}, submitted: {}, disabled: false, onSubmit: jest.fn(), onCreated: jest.fn(), onEdit: jest.fn() };
+  act(() => { tree = create(<ChatMessage {...props} />); });
+  const cards = tree.root.findAllByType(AgendaCard);
+  expect(cards).toHaveLength(3);
+  expect(cards.map(card => card.props.event)).toEqual([
+    expect.objectContaining({ id: 'zero-omitted', start: '2026-11-24T09:45:00+07:00', end: '2026-11-24T09:45:00+07:00' }),
+    expect.objectContaining({ id: 'zero-equal', start: '2026-11-24T10:30:00+07:00', end: '2026-11-24T10:30:00+07:00' }),
+    expect.objectContaining({ id: 'regular-meeting', start: '2026-11-24T14:00:00+07:00', end: '2026-11-24T15:00:00+07:00' }),
+  ]);
+  expect(tree.root.findAllByType(Copy).some(node => JSON.stringify(node.props.children).includes('chưa hợp lệ'))).toBe(false);
   act(() => tree.unmount());
 });

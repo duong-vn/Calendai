@@ -69,6 +69,58 @@ describe('Calendar route boundaries', () => {
     expect(second.get('pageToken')).toBe('next/page');
   });
 
+  it('normalizes zero-duration events with omitted end in GET /api/calendar/upcoming for both list and week queries', async () => {
+    const googleItems = [
+      {
+        id: 'zero-omitted-end',
+        summary: 'Nhắc deadline',
+        endTimeUnspecified: true,
+        start: { dateTime: '2026-11-18T09:45:00+07:00' },
+      },
+      {
+        id: 'regular-event',
+        summary: 'Họp định kỳ',
+        start: { dateTime: '2026-11-18T14:00:00+07:00' },
+        end: { dateTime: '2026-11-18T15:00:00+07:00' },
+      },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => Response.json({ items: googleItems })));
+
+    const upcomingRes = await GET(new Request('http://localhost/api/calendar/upcoming'));
+    expect(upcomingRes.status).toBe(200);
+    const upcomingBody = await upcomingRes.json();
+    expect(upcomingBody.events).toEqual([
+      expect.objectContaining({
+        id: 'zero-omitted-end',
+        start: '2026-11-18T09:45:00+07:00',
+        end: '2026-11-18T09:45:00+07:00',
+        isAllDay: false,
+      }),
+      expect.objectContaining({
+        id: 'regular-event',
+        start: '2026-11-18T14:00:00+07:00',
+        end: '2026-11-18T15:00:00+07:00',
+        isAllDay: false,
+      }),
+    ]);
+
+    const weekRes = await GET(new Request('http://localhost/api/calendar/upcoming?week=2026-11-16'));
+    expect(weekRes.status).toBe(200);
+    const weekBody = await weekRes.json();
+    expect(weekBody.events).toEqual([
+      expect.objectContaining({
+        id: 'zero-omitted-end',
+        start: '2026-11-18T09:45:00+07:00',
+        end: '2026-11-18T09:45:00+07:00',
+      }),
+      expect.objectContaining({
+        id: 'regular-event',
+        start: '2026-11-18T14:00:00+07:00',
+        end: '2026-11-18T15:00:00+07:00',
+      }),
+    ]);
+  });
+
   it('collects every event in a Vietnam week across multiple pages without truncating at pageSize 250', async () => {
     const firstPage = Array.from({ length: 250 }, (_, index) => ({
       id: `wk-1-${index}`,

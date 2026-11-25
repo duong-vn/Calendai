@@ -91,12 +91,15 @@ export function parseSession(value: unknown): MobileSession {
 
 export function parseEvent(value: unknown): CalendarEvent {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.summary !== 'string' ||
-      typeof value.start !== 'string' || typeof value.end !== 'string' ||
-      !Number.isFinite(Date.parse(value.start)) || !Number.isFinite(Date.parse(value.end))) {
+      typeof value.start !== 'string' || !Number.isFinite(Date.parse(value.start))) {
+    throw new Error('Dữ liệu Google Calendar không hợp lệ.');
+  }
+  const end = value.end === undefined || value.end === '' ? value.start : value.end;
+  if (typeof end !== 'string' || !Number.isFinite(Date.parse(end))) {
     throw new Error('Dữ liệu Google Calendar không hợp lệ.');
   }
   return {
-    id: value.id, summary: value.summary, start: value.start, end: value.end,
+    id: value.id, summary: value.summary, start: value.start, end,
     isAllDay: value.isAllDay === true,
     description: typeof value.description === 'string' ? value.description : undefined,
     timeZone: typeof value.timeZone === 'string' ? value.timeZone : undefined,
