@@ -52,16 +52,42 @@ describe('UpcomingEventCard external link validation', () => {
       'https://www.google.com/calendar/event?eid=valid-www'
     );
   });
+
+  it.each([
+    ['normalized zero-duration end === start', '2026-11-24T09:45:00+07:00'],
+    ['same instant in UTC offset', '2026-11-24T02:45:00Z'],
+    ['raw omitted empty end string', ''],
+  ])('renders valid start time and omits empty/redundant end line in showDetails for %s', (_caseName, endValue) => {
+    render(
+      <UpcomingEventCard
+        event={{
+          id: 'zero-detail',
+          summary: 'Nhắc nộp báo cáo',
+          description: 'Gửi qua email',
+          start: '2026-11-24T09:45:00+07:00',
+          end: endValue,
+          isAllDay: false,
+          htmlLink: 'https://calendar.google.com/calendar/event?eid=zero',
+        }}
+        showDetails
+      />
+    );
+
+    expect(screen.getByText('09:45 Thứ 3, 24/11')).toBeInTheDocument();
+    expect(screen.getByText('Gửi qua email')).toBeInTheDocument();
+    expect(screen.queryByText(/Kết thúc ·/)).not.toBeInTheDocument();
+  });
 });
 
 describe('UpcomingEventsModal event dates', () => {
   it.each([
-    ['2026-11-12', true, 'Cả ngày · Thứ 5, 12/11'],
-    ['2026-12-31', true, 'Cả ngày · Thứ 5, 31/12'],
-    ['2026-11-12T02:30:00Z', false, '09:30 Thứ 5, 12/11'],
-  ])('formats %s (all-day: %s) without inventing a meeting time', async (start, isAllDay, expected) => {
+    ['2026-11-12', '2026-11-13', true, 'Cả ngày · Thứ 5, 12/11'],
+    ['2026-11-12', '', true, 'Cả ngày · Thứ 5, 12/11'],
+    ['2026-12-31', '2027-01-01', true, 'Cả ngày · Thứ 5, 31/12'],
+    ['2026-11-12T02:30:00Z', '2026-11-12T02:30:00Z', false, '09:30 Thứ 5, 12/11'],
+  ])('formats %s (end: %s, all-day: %s) without inventing a meeting time', async (start, end, isAllDay, expected) => {
     const event: UpcomingEventItem = {
-      id: 'event', summary: 'Lịch kiểm thử', start, end: start, isAllDay,
+      id: 'event', summary: 'Lịch kiểm thử', start, end, isAllDay,
       htmlLink: 'https://calendar.google.com/calendar/event?eid=fixture',
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, events: [event] }))));
@@ -95,6 +121,10 @@ describe('Weekly calendar', () => {
     const events: UpcomingEventItem[] = [
       { id: 'all-day', summary: 'Nghỉ phép', start: '2026-11-16', end: '2026-11-17', isAllDay: true, htmlLink: '' },
       {
+        id: 'zero-milestone', summary: 'Mốc nhắc việc', description: 'Kiểm tra tiến độ',
+        start: '2026-11-16T09:45:00+07:00', end: '2026-11-16T09:45:00+07:00', isAllDay: false, htmlLink: '',
+      },
+      {
         id: 'overnight', summary: 'Trực đêm', description: 'Bàn giao ca trực', start: '2026-11-16T23:30:00+07:00',
         end: '2026-11-17T00:30:00+07:00', isAllDay: false, htmlLink: '',
       },
@@ -110,11 +140,20 @@ describe('Weekly calendar', () => {
     const monday = screen.getByRole('region', { name: 'Thứ Hai · 16/11' });
     const tuesday = screen.getByRole('region', { name: 'Thứ Ba · 17/11' });
     expect(within(monday).queryByText('Nghỉ phép')).not.toBeInTheDocument();
+    const zeroEvent = within(monday).getByRole('button', { name: '09:45 Mốc nhắc việc' });
+    fireEvent.click(zeroEvent);
+    const details = screen.getByRole('region', { name: 'Chi tiết sự kiện' });
+    expect(within(details).getByText('09:45 Thứ 2, 16/11')).toBeInTheDocument();
+    expect(within(details).getByText('Kiểm tra tiến độ')).toBeInTheDocument();
+    expect(within(details).queryByText(/Kết thúc ·/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng chi tiết' }));
+
     const mondayEvent = within(monday).getByRole('button', { name: '23:30 Trực đêm' });
     expect(mondayEvent).toHaveStyle({ top: `${Number.parseFloat(monday.style.height) * 23.5 / 24}px` });
     expect(within(tuesday).getByRole('button', { name: '00:00 Trực đêm' })).toBeInTheDocument();
     fireEvent.click(mondayEvent);
     expect(screen.getByText('Bàn giao ca trực')).toBeInTheDocument();
+    expect(screen.getByText('Kết thúc · 00:30 Thứ 3, 17/11')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Đóng chi tiết' }));
     expect(mondayEvent).toHaveFocus();
 

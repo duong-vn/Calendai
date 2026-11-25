@@ -23,6 +23,9 @@ function formatEventTime(isoString: string, isAllDay: boolean) {
 export function UpcomingEventCard({ event: evt, showDetails }: { event: UpcomingEventItem; showDetails?: boolean }) {
   const safeCalendarLink = safeHttpsUrl(evt.htmlLink, 'calendar');
   const safeMeetLink = safeHttpsUrl(evt.hangoutLink, 'meet');
+  const startMs = Date.parse(evt.start);
+  const endMs = Date.parse(evt.end);
+  const hasDistinctEnd = !evt.isAllDay && Number.isFinite(endMs) && (!Number.isFinite(startMs) || endMs > startMs);
 
   return (
     <div
@@ -50,7 +53,7 @@ export function UpcomingEventCard({ event: evt, showDetails }: { event: Upcoming
 
       {showDetails && (
         <>
-          {!evt.isAllDay && <p className="mt-1 text-xs">Kết thúc · {formatEventTime(evt.end, false)}</p>}
+          {hasDistinctEnd && <p className="mt-1 text-xs">Kết thúc · {formatEventTime(evt.end, false)}</p>}
           {evt.description && <p className="mt-2 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{evt.description}</p>}
         </>
       )}

@@ -91,13 +91,18 @@ export function parseSession(value: unknown): MobileSession {
 
 export function parseEvent(value: unknown): CalendarEvent {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.summary !== 'string' ||
-      typeof value.start !== 'string' || typeof value.end !== 'string' ||
-      !Number.isFinite(Date.parse(value.start)) || !Number.isFinite(Date.parse(value.end))) {
+      typeof value.start !== 'string' || !Number.isFinite(Date.parse(value.start))) {
     throw new Error('Dữ liệu Google Calendar không hợp lệ.');
   }
+  const isAllDay = value.isAllDay === true;
+  const rawEnd = value.end === undefined ? '' : value.end;
+  if (typeof rawEnd !== 'string' || (rawEnd !== '' && !Number.isFinite(Date.parse(rawEnd)))) {
+    throw new Error('Dữ liệu Google Calendar không hợp lệ.');
+  }
+  const end = rawEnd || (isAllDay ? '' : value.start);
   return {
-    id: value.id, summary: value.summary, start: value.start, end: value.end,
-    isAllDay: value.isAllDay === true,
+    id: value.id, summary: value.summary, start: value.start, end,
+    isAllDay,
     description: typeof value.description === 'string' ? value.description : undefined,
     timeZone: typeof value.timeZone === 'string' ? value.timeZone : undefined,
     hangoutLink: typeof value.hangoutLink === 'string' ? value.hangoutLink : undefined,

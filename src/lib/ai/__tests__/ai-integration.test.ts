@@ -92,6 +92,96 @@ describe('AI & LLM Integration Layer', () => {
     }
   });
 
+  it('preserves zero-duration Google Calendar events with omitted end in listUpcomingEvents tool results', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-24T01:00:00Z'));
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({
+      items: [
+        {
+          id: 'zero-omitted-end',
+          summary: 'Nhắc gửi tài liệu',
+          endTimeUnspecified: true,
+          start: { dateTime: '2026-11-24T09:45:00+07:00' },
+        },
+        {
+          id: 'regular-today',
+          summary: 'Họp chiều',
+          start: { dateTime: '2026-11-24T14:00:00+07:00' },
+          end: { dateTime: '2026-11-24T15:00:00+07:00' },
+        },
+      ],
+    })));
+
+    const result = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'today' },
+      { toolCallId: 'lookup-zero-duration', messages: [] }
+    );
+
+    expect(result).toMatchObject({ success: true, mode: 'google' });
+    if (result && 'events' in result && result.events) {
+      expect(result.events).toEqual([
+        expect.objectContaining({
+          id: 'zero-omitted-end',
+          summary: 'Nhắc gửi tài liệu',
+          start: '2026-11-24T09:45:00+07:00',
+          end: '2026-11-24T09:45:00+07:00',
+          isAllDay: false,
+        }),
+        expect.objectContaining({
+          id: 'regular-today',
+          summary: 'Họp chiều',
+          start: '2026-11-24T14:00:00+07:00',
+          end: '2026-11-24T15:00:00+07:00',
+          isAllDay: false,
+        }),
+      ]);
+    }
+
+    // Mid-day upcoming lookup (12:30 GMT+7) must keep an ongoing all-day event with omitted end via the 24h fallback
+    vi.setSystemTime(new Date('2026-11-24T05:30:00Z'));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({
+      items: [
+        {
+          id: 'all-day-omitted-end',
+          summary: 'Nghỉ lễ',
+          start: { date: '2026-11-24' },
+        },
+        {
+          id: 'afternoon-zero-omitted-end',
+          summary: 'Nhắc nộp báo cáo chiều',
+          endTimeUnspecified: true,
+          start: { dateTime: '2026-11-24T15:00:00+07:00' },
+        },
+      ],
+    })));
+
+    const midDayUpcoming = await createCalendarTools(createMockSession(), 'access').listUpcomingEvents.execute?.(
+      { range: 'upcoming' },
+      { toolCallId: 'lookup-midday-all-day-omitted', messages: [] }
+    );
+
+    expect(midDayUpcoming).toMatchObject({ success: true, mode: 'google' });
+    if (midDayUpcoming && 'events' in midDayUpcoming && midDayUpcoming.events) {
+      expect(midDayUpcoming.events).toEqual([
+        expect.objectContaining({
+          id: 'all-day-omitted-end',
+          summary: 'Nghỉ lễ',
+          start: '2026-11-24',
+          end: '',
+          isAllDay: true,
+        }),
+        expect.objectContaining({
+          id: 'afternoon-zero-omitted-end',
+          summary: 'Nhắc nộp báo cáo chiều',
+          start: '2026-11-24T15:00:00+07:00',
+          end: '2026-11-24T15:00:00+07:00',
+          isAllDay: false,
+        }),
+      ]);
+    }
+  });
+
   it('bounds "this_week" lookup to Monday-Sunday in Asia/Ho_Chi_Minh near the Sunday/Monday boundary', async () => {
     vi.useFakeTimers();
     const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ items: [] })));
