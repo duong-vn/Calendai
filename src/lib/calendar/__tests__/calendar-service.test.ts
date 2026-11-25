@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { isEventInTimeRange } from '../date-range';
 import {
   CalendarPermissionError,
   CalendarUnauthorizedError,
@@ -473,6 +474,87 @@ describe('Google Calendar Service Layer', () => {
       start: '',
       end: '',
     });
+  });
+
+  it('keeps omitted end empty for all-day events so mid-day filtering preserves ongoing all-day events', async () => {
+    const timeMin = '2026-11-24T12:30:00+07:00';
+    const timeMax = '2026-12-01T12:30:00+07:00';
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            id: 'yesterday-all-day-omitted',
+            summary: 'Sự kiện cả ngày hôm qua',
+            start: { date: '2026-11-23' },
+          },
+          {
+            id: 'today-all-day-omitted',
+            summary: 'Nghỉ lễ hôm nay',
+            start: { date: '2026-11-24' },
+          },
+          {
+            id: 'today-all-day-empty-end',
+            summary: 'Lịch trực cả ngày',
+            start: { date: '2026-11-24' },
+            end: {},
+          },
+          {
+            id: 'today-all-day-explicit',
+            summary: 'Công tác',
+            start: { date: '2026-11-24' },
+            end: { date: '2026-11-25' },
+          },
+          {
+            id: 'morning-zero-omitted',
+            summary: 'Nhắc sáng đã qua',
+            endTimeUnspecified: true,
+            start: { dateTime: '2026-11-24T09:00:00+07:00' },
+          },
+          {
+            id: 'afternoon-zero-omitted',
+            summary: 'Nhắc chiều sắp tới',
+            endTimeUnspecified: true,
+            start: { dateTime: '2026-11-24T15:30:00+07:00' },
+          },
+        ],
+      }),
+    }));
+
+    const events = await listGoogleCalendarEvents('valid-token', {
+      maxResults: 10,
+      timeMin,
+      timeMax,
+      filter: (event) => isEventInTimeRange(event, timeMin, timeMax),
+    });
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        id: 'today-all-day-omitted',
+        start: '2026-11-24',
+        end: '',
+        isAllDay: true,
+      }),
+      expect.objectContaining({
+        id: 'today-all-day-empty-end',
+        start: '2026-11-24',
+        end: '',
+        isAllDay: true,
+      }),
+      expect.objectContaining({
+        id: 'today-all-day-explicit',
+        start: '2026-11-24',
+        end: '2026-11-25',
+        isAllDay: true,
+      }),
+      expect.objectContaining({
+        id: 'afternoon-zero-omitted',
+        start: '2026-11-24T15:30:00+07:00',
+        end: '2026-11-24T15:30:00+07:00',
+        isAllDay: false,
+      }),
+    ]);
   });
 
   it('continues across empty and short pages until maxResults matching events are collected', async () => {

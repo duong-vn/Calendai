@@ -29,4 +29,13 @@ it('renders single timestamp for zero-duration events and range for regular time
   const rangeTexts = rangeTree.root.findAllByType(Copy).map(node => String(node.props.children));
   expect(rangeTexts).toContain(`${formatDateTime('2026-11-24T09:00:00+07:00')}\nđến ${formatDateTime('2026-11-24T10:00:00+07:00')}`);
   act(() => rangeTree.unmount());
+
+  let allDayTree!: ReactTestRenderer;
+  act(() => {
+    allDayTree = create(<AgendaCard event={{ id: 'a1', summary: 'Nghỉ lễ', start: '2026-11-24', end: '', isAllDay: true }} />);
+  });
+  const allDayTexts = allDayTree.root.findAllByType(Copy).map(node => String(node.props.children));
+  expect(allDayTexts).toContain('2026-11-24 · Cả ngày');
+  expect(allDayTexts.some(text => text.includes('\nđến '))).toBe(false);
+  act(() => allDayTree.unmount());
 });

@@ -94,13 +94,15 @@ export function parseEvent(value: unknown): CalendarEvent {
       typeof value.start !== 'string' || !Number.isFinite(Date.parse(value.start))) {
     throw new Error('Dữ liệu Google Calendar không hợp lệ.');
   }
-  const end = value.end === undefined || value.end === '' ? value.start : value.end;
-  if (typeof end !== 'string' || !Number.isFinite(Date.parse(end))) {
+  const isAllDay = value.isAllDay === true;
+  const rawEnd = value.end === undefined ? '' : value.end;
+  if (typeof rawEnd !== 'string' || (rawEnd !== '' && !Number.isFinite(Date.parse(rawEnd)))) {
     throw new Error('Dữ liệu Google Calendar không hợp lệ.');
   }
+  const end = rawEnd || (isAllDay ? '' : value.start);
   return {
     id: value.id, summary: value.summary, start: value.start, end,
-    isAllDay: value.isAllDay === true,
+    isAllDay,
     description: typeof value.description === 'string' ? value.description : undefined,
     timeZone: typeof value.timeZone === 'string' ? value.timeZone : undefined,
     hangoutLink: typeof value.hangoutLink === 'string' ? value.hangoutLink : undefined,

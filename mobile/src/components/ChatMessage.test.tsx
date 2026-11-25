@@ -98,6 +98,7 @@ it('renders every event in listUpcomingEvents including zero-duration events wit
         success: true,
         mode: 'google',
         events: [
+          { id: 'all-day-omitted', summary: 'Nghỉ lễ', start: '2026-11-24', end: '', isAllDay: true },
           { id: 'zero-omitted', summary: 'Nhắc hạn nộp', start: '2026-11-24T09:45:00+07:00', end: '', isAllDay: false },
           { id: 'zero-equal', summary: 'Check-in nhanh', start: '2026-11-24T10:30:00+07:00', end: '2026-11-24T10:30:00+07:00', isAllDay: false },
           { id: 'regular-meeting', summary: 'Họp dự án', start: '2026-11-24T14:00:00+07:00', end: '2026-11-24T15:00:00+07:00', isAllDay: false },
@@ -109,11 +110,12 @@ it('renders every event in listUpcomingEvents including zero-duration events wit
   const props = { message: upcomingMessage, confirmed: {}, submitted: {}, disabled: false, onSubmit: jest.fn(), onCreated: jest.fn(), onEdit: jest.fn() };
   act(() => { tree = create(<ChatMessage {...props} />); });
   const cards = tree.root.findAllByType(AgendaCard);
-  expect(cards).toHaveLength(3);
+  expect(cards).toHaveLength(4);
   expect(cards.map(card => card.props.event)).toEqual([
-    expect.objectContaining({ id: 'zero-omitted', start: '2026-11-24T09:45:00+07:00', end: '2026-11-24T09:45:00+07:00' }),
-    expect.objectContaining({ id: 'zero-equal', start: '2026-11-24T10:30:00+07:00', end: '2026-11-24T10:30:00+07:00' }),
-    expect.objectContaining({ id: 'regular-meeting', start: '2026-11-24T14:00:00+07:00', end: '2026-11-24T15:00:00+07:00' }),
+    expect.objectContaining({ id: 'all-day-omitted', start: '2026-11-24', end: '', isAllDay: true }),
+    expect.objectContaining({ id: 'zero-omitted', start: '2026-11-24T09:45:00+07:00', end: '2026-11-24T09:45:00+07:00', isAllDay: false }),
+    expect.objectContaining({ id: 'zero-equal', start: '2026-11-24T10:30:00+07:00', end: '2026-11-24T10:30:00+07:00', isAllDay: false }),
+    expect.objectContaining({ id: 'regular-meeting', start: '2026-11-24T14:00:00+07:00', end: '2026-11-24T15:00:00+07:00', isAllDay: false }),
   ]);
   expect(tree.root.findAllByType(Copy).some(node => JSON.stringify(node.props.children).includes('chưa hợp lệ'))).toBe(false);
   act(() => tree.unmount());

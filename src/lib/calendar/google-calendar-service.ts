@@ -282,7 +282,7 @@ function mapGoogleCalendarEvent(event: GoogleApiEventResponse): UpcomingEventIte
   const isAllDay = Boolean(event.start?.date && !event.start?.dateTime);
   const start = event.start?.dateTime || event.start?.date || '';
   const rawEnd = event.end?.dateTime || event.end?.date || '';
-  const end = rawEnd || (Number.isFinite(Date.parse(start)) ? start : '');
+  const end = rawEnd || (!isAllDay && Number.isFinite(Date.parse(start)) ? start : '');
 
   return {
     id: event.id,

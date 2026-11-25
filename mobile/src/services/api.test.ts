@@ -45,7 +45,7 @@ it('does not represent failed auth/upcoming as an empty calendar', async () => {
   fetcher.mockResolvedValue(response({ success: true, mode: 'mock', events: [] }));
   await expect(new MobileApi(fetcher).upcoming()).rejects.toThrow('lịch thật');
 });
-it('loads all upcoming events when zero-duration events omit or normalize end alongside regular events', async () => {
+it('loads all upcoming events when timed or all-day events omit end alongside regular events', async () => {
   const fetcher = jest.fn().mockResolvedValue(response({
     success: true,
     mode: 'google',
@@ -53,16 +53,23 @@ it('loads all upcoming events when zero-duration events omit or normalize end al
       { id: 'zero-normalized', summary: 'Nhắc việc 1', start: '2026-11-24T09:45:00+07:00', end: '2026-11-24T09:45:00+07:00', isAllDay: false },
       { id: 'zero-omitted', summary: 'Nhắc việc 2', start: '2026-11-24T10:15:00+07:00', end: '', isAllDay: false },
       { id: 'zero-missing', summary: 'Nhắc việc 3', start: '2026-11-24T11:00:00+07:00', isAllDay: false },
+      { id: 'all-day-omitted', summary: 'Nghỉ lễ', start: '2026-11-24', end: '', isAllDay: true },
+      { id: 'all-day-missing', summary: 'Sự kiện cả ngày', start: '2026-11-25', isAllDay: true },
+      { id: 'all-day-explicit', summary: 'Công tác', start: '2026-11-26', end: '2026-11-27', isAllDay: true },
       event,
     ],
   }));
   const upcoming = await new MobileApi(fetcher).upcoming();
-  expect(upcoming).toHaveLength(4);
-  expect(upcoming[0]).toMatchObject({ id: 'zero-normalized', start: '2026-11-24T09:45:00+07:00', end: '2026-11-24T09:45:00+07:00' });
-  expect(upcoming[1]).toMatchObject({ id: 'zero-omitted', start: '2026-11-24T10:15:00+07:00', end: '2026-11-24T10:15:00+07:00' });
-  expect(upcoming[2]).toMatchObject({ id: 'zero-missing', start: '2026-11-24T11:00:00+07:00', end: '2026-11-24T11:00:00+07:00' });
-  expect(upcoming[3]).toMatchObject(event);
+  expect(upcoming).toHaveLength(7);
+  expect(upcoming[0]).toMatchObject({ id: 'zero-normalized', start: '2026-11-24T09:45:00+07:00', end: '2026-11-24T09:45:00+07:00', isAllDay: false });
+  expect(upcoming[1]).toMatchObject({ id: 'zero-omitted', start: '2026-11-24T10:15:00+07:00', end: '2026-11-24T10:15:00+07:00', isAllDay: false });
+  expect(upcoming[2]).toMatchObject({ id: 'zero-missing', start: '2026-11-24T11:00:00+07:00', end: '2026-11-24T11:00:00+07:00', isAllDay: false });
+  expect(upcoming[3]).toMatchObject({ id: 'all-day-omitted', start: '2026-11-24', end: '', isAllDay: true });
+  expect(upcoming[4]).toMatchObject({ id: 'all-day-missing', start: '2026-11-25', end: '', isAllDay: true });
+  expect(upcoming[5]).toMatchObject({ id: 'all-day-explicit', start: '2026-11-26', end: '2026-11-27', isAllDay: true });
+  expect(upcoming[6]).toMatchObject(event);
   expect(() => parseEvent({ ...event, end: 'not-a-date' })).toThrow('Dữ liệu Google Calendar không hợp lệ.');
+  expect(() => parseEvent({ id: 'bad-all-day', summary: 'Lỗi', start: '2026-11-24', end: 'not-a-date', isAllDay: true })).toThrow('Dữ liệu Google Calendar không hợp lệ.');
   expect(() => parseEvent({ ...event, start: '' })).toThrow('Dữ liệu Google Calendar không hợp lệ.');
 });
 it('preserves the canonical pending/failed conference status separately from event success', () => {

@@ -82,10 +82,12 @@ describe('Vietnam Calendar Date Ranges (Asia/Ho_Chi_Minh)', () => {
     expect(isEventInTimeRange({ start: '2026-11-11T00:00:00+07:00', end: '2026-11-11T00:00:00+07:00', isAllDay: false }, timeMin, timeMax)).toBe(true);
     expect(isEventInTimeRange({ start: '2026-11-12T00:00:00+07:00', end: '2026-11-12T00:00:00+07:00', isAllDay: false }, timeMin, timeMax)).toBe(false);
 
-    // All-day events in Vietnam timezone
+    // All-day events in Vietnam timezone (including omitted-end 24h fallback mid-day)
     expect(isEventInTimeRange({ start: '2026-11-10', end: '2026-11-11', isAllDay: true }, timeMin, timeMax)).toBe(false);
     expect(isEventInTimeRange({ start: '2026-11-11', end: '2026-11-12', isAllDay: true }, timeMin, timeMax)).toBe(true);
     expect(isEventInTimeRange({ start: '2026-11-10', end: '2026-11-13', isAllDay: true }, timeMin, timeMax)).toBe(true);
     expect(isEventInTimeRange({ start: '2026-11-12', end: '2026-11-13', isAllDay: true }, timeMin, timeMax)).toBe(false);
+    expect(isEventInTimeRange({ start: '2026-11-11', end: '', isAllDay: true }, '2026-11-11T13:00:00+07:00', timeMax)).toBe(true);
+    expect(isEventInTimeRange({ start: '2026-11-10', end: '', isAllDay: true }, '2026-11-11T00:00:00+07:00', timeMax)).toBe(false);
   });
 });
