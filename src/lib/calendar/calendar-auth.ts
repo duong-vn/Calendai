@@ -1,11 +1,81 @@
 import { getValidAccessToken } from '@/lib/auth/server-session';
 import type { SessionData } from '@/lib/auth/types';
 
+const GOOGLE_CALENDAR_PERMISSION_REASONS = new Set([
+  'insufficientPermissions',
+  'authError',
+  'ACCESS_TOKEN_SCOPE_INSUFFICIENT',
+]);
+
+const GOOGLE_CALENDAR_RATE_LIMIT_REASONS = new Set([
+  'rateLimitExceeded',
+  'userRateLimitExceeded',
+  'quotaExceeded',
+  'dailyLimitExceeded',
+  'calendarUsageLimitsExceeded',
+]);
+
 export class CalendarUnauthorizedError extends Error {
   constructor() {
     super('Quyền truy cập Google Calendar đã hết hạn hoặc bị thu hồi. Vui lòng kết nối lại tài khoản Google.');
     this.name = 'CalendarUnauthorizedError';
   }
+}
+
+export class CalendarPermissionError extends Error {
+  constructor() {
+    super('Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.');
+    this.name = 'CalendarPermissionError';
+  }
+}
+
+export function isGoogleCalendarPermissionError(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object' || !('error' in payload)) return false;
+  const errorObj = (payload as { error?: unknown }).error;
+  if (!errorObj || typeof errorObj !== 'object') return false;
+
+  const reasons: string[] = [];
+  const collectReasons = (items: unknown) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      if (item && typeof item === 'object' && 'reason' in item && typeof (item as { reason?: unknown }).reason === 'string') {
+        reasons.push((item as { reason: string }).reason);
+      }
+    }
+  };
+
+  collectReasons((errorObj as { errors?: unknown }).errors);
+  collectReasons((errorObj as { details?: unknown }).details);
+
+  if (reasons.some((reason) => GOOGLE_CALENDAR_RATE_LIMIT_REASONS.has(reason))) {
+    return false;
+  }
+  return reasons.some((reason) => GOOGLE_CALENDAR_PERMISSION_REASONS.has(reason));
+}
+
+export async function isCalendarPermissionResponse(response: Response): Promise<boolean> {
+  if (response.status !== 403) return false;
+  try {
+    return isGoogleCalendarPermissionError(await response.json());
+  } catch {
+    return false;
+  }
+}
+
+export function calendarPermissionResponse(): Response {
+  return Response.json(
+    {
+      success: false,
+      error: 'Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.',
+      code: 'google_calendar_permission_required',
+    },
+    {
+      status: 403,
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    }
+  );
 }
 
 export function isBearerSessionRequest(session: SessionData | null, request?: Request): boolean {

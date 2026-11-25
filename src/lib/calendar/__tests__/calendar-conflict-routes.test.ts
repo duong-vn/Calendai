@@ -421,4 +421,54 @@ describe('Calendar conflict HTTP contracts', () => {
     expect(mobileRes.status).toBe(200);
     expect(await mobileRes.json()).toMatchObject({ success: true, conflicts: [{ id: busy.id }] });
   });
+
+  it('maps Google Calendar 403 insufficientPermissions/authError to 403 google_calendar_permission_required, and keeps 403 rateLimitExceeded as 502', async () => {
+    const permission403 = (reason: string) => Response.json({
+      error: {
+        code: 403,
+        message: 'Insufficient Permission internal',
+        errors: [{ domain: 'global', reason, message: 'Insufficient Permission' }],
+      },
+    }, { status: 403 });
+    const rateLimit403 = (reason: string) => Response.json({
+      error: {
+        code: 403,
+        message: 'Rate Limit Exceeded internal',
+        errors: [{ domain: 'usageLimits', reason, message: 'Rate Limit Exceeded' }],
+      },
+    }, { status: 403 });
+
+    for (const reason of ['insufficientPermissions', 'authError']) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403(reason)));
+      const conflictsRes = await conflicts(request(proposal));
+      expect(conflictsRes.status).toBe(403);
+      expect(conflictsRes.headers.get('Cache-Control')).toBe('no-store');
+      const conflictsBody = await conflictsRes.json();
+      expect(conflictsBody).toMatchObject({ success: false, code: 'google_calendar_permission_required' });
+      expect(JSON.stringify(conflictsBody)).not.toContain('internal');
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403(reason)));
+      const resolveGetRes = await resolve(request(mutation));
+      expect(resolveGetRes.status).toBe(403);
+      expect(resolveGetRes.headers.get('Cache-Control')).toBe('no-store');
+      expect(await resolveGetRes.json()).toMatchObject({ success: false, code: 'google_calendar_permission_required' });
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(busy)).mockResolvedValueOnce(permission403(reason)));
+      const resolveMutRes = await resolve(request(mutation));
+      expect(resolveMutRes.status).toBe(403);
+      expect(await resolveMutRes.json()).toMatchObject({ success: false, code: 'google_calendar_permission_required' });
+    }
+
+    for (const reason of ['rateLimitExceeded', 'userRateLimitExceeded']) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(rateLimit403(reason)));
+      const conflictsRateRes = await conflicts(request(proposal));
+      expect(conflictsRateRes.status).toBe(502);
+      expect((await conflictsRateRes.json()).code).toBeUndefined();
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json(busy)).mockResolvedValueOnce(rateLimit403(reason)));
+      const resolveRateRes = await resolve(request(mutation));
+      expect(resolveRateRes.status).toBe(502);
+      expect((await resolveRateRes.json()).code).toBeUndefined();
+    }
+  });
 });

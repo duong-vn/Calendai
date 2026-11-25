@@ -290,6 +290,92 @@ describe('Google Calendar Service Layer', () => {
     await expect(listGoogleCalendarEvents('expired-token')).rejects.toBeInstanceOf(CalendarUnauthorizedError);
   });
 
+  it('distinguishes HTTP 403 insufficientPermissions/authError from 403 rateLimitExceeded across create and list', async () => {
+    const permission403 = (reason = 'insufficientPermissions') => Response.json({
+      error: {
+        code: 403,
+        message: 'Insufficient Permission secret detail',
+        errors: [{ domain: 'global', reason, message: 'Insufficient Permission' }],
+      },
+    }, { status: 403 });
+    const detailsScope403 = () => Response.json({
+      error: {
+        code: 403,
+        message: 'Request had insufficient authentication scopes.',
+        status: 'PERMISSION_DENIED',
+        details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' }],
+      },
+    }, { status: 403 });
+    const rateLimit403 = (reason: 'rateLimitExceeded' | 'userRateLimitExceeded') => Response.json({
+      error: {
+        code: 403,
+        message: 'Rate Limit Exceeded',
+        errors: [{ domain: 'usageLimits', reason, message: 'Rate Limit Exceeded' }],
+      },
+    }, { status: 403 });
+
+    // 1. Pre-insert check 403 insufficientPermissions aborts before beforeInsert and POST
+    const precheckFetch = vi.fn().mockResolvedValueOnce(permission403());
+    const beforeInsert = vi.fn();
+    vi.stubGlobal('fetch', precheckFetch);
+    await expect(
+      createGoogleCalendarEvent(
+        'narrow-token',
+        { summary: 'Test', startDateTime: '2026-10-12T09:00:00+07:00', endDateTime: '2026-10-12T10:00:00+07:00' },
+        { accountId: 'acc-1', proposalId: 'prop-1' },
+        beforeInsert
+      )
+    ).rejects.toMatchObject({ name: 'CalendarPermissionError' });
+    expect(beforeInsert).not.toHaveBeenCalled();
+    expect(precheckFetch).toHaveBeenCalledTimes(1);
+
+    // 2. Direct POST 403 insufficientPermissions / ACCESS_TOKEN_SCOPE_INSUFFICIENT throws CalendarPermissionError without reconcile
+    for (const makeRes of [() => permission403('authError'), detailsScope403]) {
+      const postFetch = vi.fn().mockResolvedValueOnce(makeRes());
+      vi.stubGlobal('fetch', postFetch);
+      const err = await createGoogleCalendarEvent(
+        'narrow-token',
+        { summary: 'Test', startDateTime: '2026-10-12T09:00:00+07:00', endDateTime: '2026-10-12T10:00:00+07:00' },
+        { accountId: 'acc-1', proposalId: 'prop-1' }
+      ).catch((e: unknown) => e);
+      expect((err as Error).name).toBe('CalendarPermissionError');
+      expect((err as Error).message).not.toContain('secret detail');
+      expect(postFetch).toHaveBeenCalledTimes(1);
+    }
+
+    // 3. Uncertain POST 500 followed by 403 insufficientPermissions during reconcile keeps uncertain 500 error
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce(Response.json({ error: { message: 'Backend down' } }, { status: 500 }))
+        .mockResolvedValueOnce(permission403())
+    );
+    const uncertainErr = await createGoogleCalendarEvent(
+      'narrow-token',
+      { summary: 'Test', startDateTime: '2026-10-12T09:00:00+07:00', endDateTime: '2026-10-12T10:00:00+07:00' },
+      { accountId: 'acc-1', proposalId: 'prop-1' }
+    ).catch((e: unknown) => e);
+    expect((uncertainErr as Error).name).not.toBe('CalendarPermissionError');
+    expect((uncertainErr as Error).message).toContain('500');
+
+    // 4. listGoogleCalendarEvents 403 insufficientPermissions throws CalendarPermissionError, rateLimitExceeded does not
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403()));
+    await expect(listGoogleCalendarEvents('narrow-token')).rejects.toMatchObject({ name: 'CalendarPermissionError' });
+
+    for (const reason of ['rateLimitExceeded', 'userRateLimitExceeded'] as const) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(rateLimit403(reason)));
+      const listRateErr = await listGoogleCalendarEvents('valid-token').catch((e: unknown) => e);
+      expect((listRateErr as Error).name).not.toBe('CalendarPermissionError');
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(rateLimit403(reason)));
+      const createRateErr = await createGoogleCalendarEvent(
+        'valid-token',
+        { summary: 'Test', startDateTime: '2026-10-12T09:00:00+07:00', endDateTime: '2026-10-12T10:00:00+07:00' }
+      ).catch((e: unknown) => e);
+      expect((createRateErr as Error).name).not.toBe('CalendarPermissionError');
+    }
+  });
+
   it('lists upcoming events accurately', async () => {
     const mockApiResponse = {
       items: [

@@ -75,7 +75,13 @@ export function ProposalCard({ proposal, submitted, event, disabled, meetChoice,
       if (mounted.current) await onCreated(targetDraft.proposalId, created);
     } catch (failure) {
       const conflict = failure instanceof CalendarConflictError && failure.conflicts.length > 0;
-      const preWriteRejection = conflict || (failure instanceof ApiError && (failure.status === 400 || failure.status === 401));
+      const preWriteRejection = conflict || (
+        failure instanceof ApiError && (
+          failure.status === 400 ||
+          failure.status === 401 ||
+          (failure.status === 403 && failure.code === 'google_calendar_permission_required')
+        )
+      );
       let discardError: unknown;
       if (!previous && preWriteRejection) {
         try {

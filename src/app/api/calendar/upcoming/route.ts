@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { authErrorResponse, getServerSession } from '@/lib/auth/server-session';
 import type { SessionData } from '@/lib/auth/types';
 import {
+  CalendarPermissionError,
   CalendarUnauthorizedError,
+  calendarPermissionResponse,
   calendarUnauthorizedResponse,
   executeWithCalendarAuth,
 } from '@/lib/calendar/calendar-auth';
@@ -73,6 +75,9 @@ export async function GET(request: Request) {
     if (authResponse) return authResponse;
     if (error instanceof CalendarUnauthorizedError) {
       return calendarUnauthorizedResponse(session, request);
+    }
+    if (error instanceof CalendarPermissionError) {
+      return calendarPermissionResponse();
     }
     const message = 'Không thể lấy danh sách sự kiện. Vui lòng thử lại hoặc kết nối lại Google.';
     return NextResponse.json({ success: false, error: message }, { status: 500 });

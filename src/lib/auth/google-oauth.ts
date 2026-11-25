@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import { UserProfileSchema, type GoogleTokens, type UserProfile } from './types';
 
+const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+
 export const GOOGLE_OAUTH_SCOPES = [
   'openid',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
-  'https://www.googleapis.com/auth/calendar.events',
+  CALENDAR_EVENTS_SCOPE,
 ];
 
 export class GoogleOAuthError extends Error {
@@ -90,6 +92,16 @@ async function fetchGoogleProfile(accessToken: string, requireVerifiedEmail: boo
   return UserProfileSchema.parse(parsed.data);
 }
 
+function assertCalendarEventsScope(scope: string): void {
+  if (!scope.split(/\s+/).includes(CALENDAR_EVENTS_SCOPE)) {
+    throw new GoogleOAuthError(
+      'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.',
+      401,
+      'google_calendar_permission_required'
+    );
+  }
+}
+
 export async function exchangeCodeForTokens(
   code: string,
   redirectUri: string,
@@ -100,9 +112,7 @@ export async function exchangeCodeForTokens(
     code, client_id: clientId, client_secret: clientSecret,
     redirect_uri: redirectUri, grant_type: 'authorization_code',
   }));
-  if (!tokens.scope.split(/\s+/).includes('https://www.googleapis.com/auth/calendar.events')) {
-    throw new GoogleOAuthError('Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.', 401, 'google_calendar_permission_required');
-  }
+  assertCalendarEventsScope(tokens.scope);
   return { tokens, user: await fetchGoogleProfile(tokens.accessToken, false) };
 }
 
@@ -120,9 +130,7 @@ export async function exchangeNativeCodeForTokens(
   if (!tokens.refreshToken) {
     throw new GoogleOAuthError('Google chưa cấp quyền truy cập ngoại tuyến. Vui lòng cấp lại quyền Google rồi đăng nhập lại.', 401, 'google_consent_required');
   }
-  if (!tokens.scope.split(/\s+/).includes('https://www.googleapis.com/auth/calendar.events')) {
-    throw new GoogleOAuthError('Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.', 401, 'google_calendar_permission_required');
-  }
+  assertCalendarEventsScope(tokens.scope);
   return { tokens, user: await fetchGoogleProfile(tokens.accessToken, true) };
 }
 
@@ -132,8 +140,10 @@ export async function refreshGoogleAccessToken(
   clientSecret: string,
   previousScope?: string
 ): Promise<GoogleTokens> {
-  return requestGoogleTokens(new URLSearchParams({
+  const tokens = await requestGoogleTokens(new URLSearchParams({
     client_id: clientId, client_secret: clientSecret,
     refresh_token: refreshToken, grant_type: 'refresh_token',
   }), { refreshToken, scope: previousScope });
+  assertCalendarEventsScope(tokens.scope);
+  return tokens;
 }

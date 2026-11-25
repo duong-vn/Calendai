@@ -196,4 +196,27 @@ describe('Google OAuth Layer', () => {
     expect(refreshed.accessToken).toBe('new-access-token');
     expect(refreshed.refreshToken).toBe('current-refresh-token'); // preserved
   });
+
+  it.each([
+    { scope: 'openid email profile', previousScope: 'openid email profile https://www.googleapis.com/auth/calendar.events' },
+    { scope: 'https://www.googleapis.com/auth/calendar.readonly', previousScope: 'https://www.googleapis.com/auth/calendar.events' },
+    { scope: '', previousScope: 'https://www.googleapis.com/auth/calendar.events' },
+    { scope: undefined, previousScope: 'openid email profile' },
+    { scope: undefined, previousScope: undefined },
+  ])('rejects refreshed tokens missing Calendar events scope ($scope / prev: $previousScope)', async ({ scope, previousScope }) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({
+      access_token: 'narrowed-access-token',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      ...(scope !== undefined ? { scope } : {}),
+    })));
+
+    await expect(
+      refreshGoogleAccessToken('current-refresh-token', 'client-id', 'client-secret', previousScope)
+    ).rejects.toMatchObject({
+      status: 401,
+      code: 'google_calendar_permission_required',
+      message: 'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.',
+    });
+  });
 });

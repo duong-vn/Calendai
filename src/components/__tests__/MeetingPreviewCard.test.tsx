@@ -179,6 +179,60 @@ describe('MeetingPreviewCard Component', () => {
     });
   });
 
+  it('unlocks Meet toggle, edit button, and reminders on first-attempt 403 google_calendar_permission_required, while keeping locked on uncertain 403/500', async () => {
+    localStorage.setItem('calendai_reminder_minutes', '[60,10]');
+    const discard = vi.fn(() => true);
+    const onSubmitPayload = vi.fn(() => discard);
+    const onEditRequest = vi.fn();
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({
+        success: false,
+        code: 'google_calendar_permission_required',
+        error: 'Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.',
+      }, { status: 403 }))
+      .mockResolvedValueOnce(Response.json({
+        success: true,
+        event: { id: 'created-after-regrant' },
+        isMock: false,
+      }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    render(
+      <>
+        <ReminderSettings />
+        <MeetingPreviewCard
+          proposal={mockProposal}
+          onSubmitPayload={onSubmitPayload}
+          onEditRequest={onEditRequest}
+          onConfirmSuccess={vi.fn()}
+        />
+      </>
+    );
+
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    expect(
+      await screen.findByText('Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.')
+    ).toBeInTheDocument();
+
+    expect(discard).toHaveBeenCalledOnce();
+    const meetButton = screen.getByRole('button', { name: /Google Meet/ });
+    const editButton = screen.getByRole('button', { name: 'Chỉnh sửa' });
+    expect(meetButton).toBeEnabled();
+    expect(editButton).toBeEnabled();
+
+    fireEvent.click(meetButton);
+    fireEvent.click(screen.getByText('Cài đặt'));
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ mốc nhắc 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
+
+    fireEvent.click(screen.getByText('Xác nhận tạo lịch'));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toMatchObject({
+      createMeet: false,
+      reminderMinutes: [60],
+    });
+  });
+
   it('displays the DST offset at the meeting start time for a July America/New_York proposal viewed in January and preserves confirmation payload', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-01-15T12:00:00Z'));

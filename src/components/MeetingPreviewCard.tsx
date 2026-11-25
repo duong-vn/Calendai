@@ -183,7 +183,8 @@ export function MeetingPreviewCard({
         (response.status === 400 && data.success === false) ||
         (response.status === 401 && [
           'AUTH_REQUIRED', 'UNAUTHORIZED', 'google_reauthorization_required', 'google_calendar_permission_required',
-        ].includes(data.code))
+        ].includes(data.code)) ||
+        (response.status === 403 && data.code === 'google_calendar_permission_required')
       );
       // A rejection settles this request only. Any earlier attempt may still have written.
       if (!previous && (calendarConflict || requestRejected) && (discardSnapshot?.() ?? true)) {
