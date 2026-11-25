@@ -23,6 +23,9 @@ export class CalendarUnauthorizedError extends Error {
 }
 
 export class CalendarPermissionError extends Error {
+  readonly code = 'google_calendar_permission_required' as const;
+  readonly status = 403 as const;
+
   constructor() {
     super('Chưa đủ quyền quản lý sự kiện Google Calendar. Vui lòng kết nối lại tài khoản Google và cấp quyền.');
     this.name = 'CalendarPermissionError';

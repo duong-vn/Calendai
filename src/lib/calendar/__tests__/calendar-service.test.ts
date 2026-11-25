@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CalendarPermissionError,
   CalendarUnauthorizedError,
   createGoogleCalendarEvent,
   listGoogleCalendarEvents,
@@ -325,7 +326,11 @@ describe('Google Calendar Service Layer', () => {
         { accountId: 'acc-1', proposalId: 'prop-1' },
         beforeInsert
       )
-    ).rejects.toMatchObject({ name: 'CalendarPermissionError' });
+    ).rejects.toMatchObject({
+      name: 'CalendarPermissionError',
+      code: 'google_calendar_permission_required',
+      status: 403,
+    });
     expect(beforeInsert).not.toHaveBeenCalled();
     expect(precheckFetch).toHaveBeenCalledTimes(1);
 
@@ -338,7 +343,12 @@ describe('Google Calendar Service Layer', () => {
         { summary: 'Test', startDateTime: '2026-10-12T09:00:00+07:00', endDateTime: '2026-10-12T10:00:00+07:00' },
         { accountId: 'acc-1', proposalId: 'prop-1' }
       ).catch((e: unknown) => e);
-      expect((err as Error).name).toBe('CalendarPermissionError');
+      expect(err).toBeInstanceOf(CalendarPermissionError);
+      expect(err).toMatchObject({
+        name: 'CalendarPermissionError',
+        code: 'google_calendar_permission_required',
+        status: 403,
+      });
       expect((err as Error).message).not.toContain('secret detail');
       expect(postFetch).toHaveBeenCalledTimes(1);
     }
@@ -360,7 +370,11 @@ describe('Google Calendar Service Layer', () => {
 
     // 4. listGoogleCalendarEvents 403 insufficientPermissions throws CalendarPermissionError, rateLimitExceeded does not
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(permission403()));
-    await expect(listGoogleCalendarEvents('narrow-token')).rejects.toMatchObject({ name: 'CalendarPermissionError' });
+    await expect(listGoogleCalendarEvents('narrow-token')).rejects.toMatchObject({
+      name: 'CalendarPermissionError',
+      code: 'google_calendar_permission_required',
+      status: 403,
+    });
 
     for (const reason of ['rateLimitExceeded', 'userRateLimitExceeded'] as const) {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(rateLimit403(reason)));
