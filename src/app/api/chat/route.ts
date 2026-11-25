@@ -5,6 +5,7 @@ import { buildSystemPrompt } from '@/lib/ai/system-prompt';
 import { createCalendarTools } from '@/lib/ai/tools';
 import { requireJsonContentType, requireSameOrigin } from '@/lib/auth/request-guards';
 import { authErrorResponse, getServerSession, getValidAccessToken } from '@/lib/auth/server-session';
+import { isBearerSessionRequest } from '@/lib/calendar/calendar-auth';
 import { checkChatRateLimit } from '@/lib/chat/rate-limit';
 import { getServerEnv } from '@/lib/env';
 
@@ -151,14 +152,18 @@ export async function POST(req: Request) {
     }
 
     const session = await getServerSession(req);
+    let activeSession = session;
     let validAccessToken: string | null = null;
     if (session) {
       try {
-        const { accessToken } = await getValidAccessToken(session, req);
+        const { accessToken, updatedSession } = await getValidAccessToken(session, req);
         validAccessToken = accessToken;
+        if (updatedSession) {
+          activeSession = updatedSession;
+        }
       } catch (error) {
         // Web chat remains available when Google Calendar needs reconnecting.
-        if (req.headers.has('authorization')) {
+        if (isBearerSessionRequest(session, req)) {
           const authResponse = authErrorResponse(error);
           if (authResponse) return authResponse;
           return Response.json({ error: 'Vui lòng kết nối lại tài khoản Google.', code: 'AUTH_REQUIRED' }, { status: 401 });
@@ -166,7 +171,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const rateLimit = checkChatRateLimit(req, Boolean(session));
+    const rateLimit = checkChatRateLimit(req, Boolean(activeSession));
     if (!rateLimit.allowed) {
       return Response.json(
         { error: 'Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ một chút rồi thử lại.' },
@@ -180,8 +185,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const systemPrompt = buildSystemPrompt(session?.user?.email);
-    const tools = createCalendarTools(session, validAccessToken);
+    const systemPrompt = buildSystemPrompt(activeSession?.user?.email);
+    const tools = createCalendarTools(activeSession, validAccessToken, { request: req });
     const selectedModelId =
       typeof requestModel === 'string' && requestModel.trim()
         ? requestModel.trim()

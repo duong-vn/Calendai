@@ -480,4 +480,301 @@ describe('AI & LLM Integration Layer', () => {
     const fallbackModel = getChatModel('   ');
     expect(fallbackModel.modelId).toBe('default-model');
   });
+
+  describe('listUpcomingEvents 401 recovery and session-aware guidance (#74)', () => {
+    function createWebSessionWithRefresh(refreshToken?: string) {
+      return {
+        user: { id: 'web-user-1', email: 'web@example.com', name: 'Người dùng Web' },
+        tokens: {
+          accessToken: 'stale-web-access',
+          ...(refreshToken ? { refreshToken } : {}),
+          expiresAt: Date.now() + 50 * 60 * 1000,
+          tokenType: 'Bearer' as const,
+          scope: 'https://www.googleapis.com/auth/calendar.events',
+        },
+        createdAt: Date.now(),
+      };
+    }
+
+    function createMobileBearerSession() {
+      const now = Date.now();
+      return {
+        kind: 'mobile' as const,
+        createdAt: now,
+        expiresAt: now + 7 * 24 * 60 * 60 * 1000,
+        user: { id: 'mobile-user-1', email: 'mobile@example.com', name: 'Người dùng Mobile' },
+        tokens: {
+          accessToken: 'stale-mobile-access',
+          refreshToken: 'mobile-refresh-token',
+          expiresAt: now + 50 * 60 * 1000,
+          tokenType: 'Bearer' as const,
+          scope: 'https://www.googleapis.com/auth/calendar.events',
+        },
+      };
+    }
+
+    it('refreshes Web access token once when Google Calendar returns 401 and succeeds on retry', async () => {
+      vi.stubEnv('GOOGLE_CLIENT_ID', 'web-client-id');
+      vi.stubEnv('GOOGLE_CLIENT_SECRET', 'web-client-secret');
+
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === 'https://oauth2.googleapis.com/token') {
+          return Response.json({
+            access_token: 'fresh-web-access',
+            refresh_token: 'rotated-web-refresh',
+            expires_in: 3600,
+            token_type: 'Bearer',
+            scope: 'https://www.googleapis.com/auth/calendar.events',
+          });
+        }
+        const auth = new Headers(init?.headers).get('Authorization');
+        if (auth === 'Bearer stale-web-access') {
+          return Response.json(
+            { error: { code: 401, message: 'Invalid Credentials' } },
+            { status: 401 }
+          );
+        }
+        if (auth === 'Bearer fresh-web-access') {
+          return Response.json({
+            items: [
+              {
+                id: 'recovered-event-1',
+                summary: 'Họp sau khi làm mới token',
+                start: { dateTime: new Date(Date.now() + 3600_000).toISOString() },
+                end: { dateTime: new Date(Date.now() + 7200_000).toISOString() },
+              },
+            ],
+          });
+        }
+        throw new Error(`Unexpected Authorization header: ${auth}`);
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const webSession = createWebSessionWithRefresh('valid-web-refresh');
+      const tools = createCalendarTools(webSession, webSession.tokens.accessToken);
+      const result = await tools.listUpcomingEvents.execute?.(
+        { daysAhead: 7 },
+        { toolCallId: 'lookup-401-recover', messages: [] }
+      );
+
+      expect(result).toMatchObject({
+        success: true,
+        mode: 'google',
+      });
+      if (result && 'events' in result && result.events) {
+        expect(result.events.map((e) => e.id)).toEqual(['recovered-event-1']);
+      }
+
+      const tokenCalls = fetchMock.mock.calls.filter(([url]) => url === 'https://oauth2.googleapis.com/token');
+      const calendarCalls = fetchMock.mock.calls.filter(([url]) => url.includes('/calendars/primary/events'));
+      expect(tokenCalls).toHaveLength(1);
+      expect(calendarCalls).toHaveLength(2);
+
+      // Subsequent tool call in the same turn reuses the refreshed token without hitting 401 again
+      const secondResult = await tools.listUpcomingEvents.execute?.(
+        { daysAhead: 7 },
+        { toolCallId: 'lookup-401-second', messages: [] }
+      );
+      expect(secondResult).toMatchObject({ success: true, mode: 'google' });
+      expect(fetchMock.mock.calls.filter(([url]) => url === 'https://oauth2.googleapis.com/token')).toHaveLength(1);
+      expect(fetchMock.mock.calls.filter(([url]) => url.includes('/calendars/primary/events'))).toHaveLength(3);
+    });
+
+    it('deduplicates concurrent 401 refreshes in the same turn and stops cleanly if the refreshed token also receives 401 or OAuth 502', async () => {
+      vi.stubEnv('GOOGLE_CLIENT_ID', 'web-client-id');
+      vi.stubEnv('GOOGLE_CLIENT_SECRET', 'web-client-secret');
+
+      // 1. Concurrent parallel tool calls share one single-flight refresh
+      const parallelFetch = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === 'https://oauth2.googleapis.com/token') {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return Response.json({
+            access_token: 'parallel-fresh-access',
+            refresh_token: 'valid-refresh',
+            expires_in: 3600,
+            token_type: 'Bearer',
+            scope: 'https://www.googleapis.com/auth/calendar.events',
+          });
+        }
+        const auth = new Headers(init?.headers).get('Authorization');
+        if (auth === 'Bearer stale-web-access') {
+          return Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 });
+        }
+        return Response.json({ items: [] });
+      });
+      vi.stubGlobal('fetch', parallelFetch);
+
+      const parallelTools = createCalendarTools(
+        createWebSessionWithRefresh('valid-refresh'),
+        'stale-web-access'
+      );
+      const [resA, resB] = await Promise.all([
+        parallelTools.listUpcomingEvents.execute?.({ daysAhead: 1 }, { toolCallId: 'p-1', messages: [] }),
+        parallelTools.listUpcomingEvents.execute?.({ daysAhead: 3 }, { toolCallId: 'p-2', messages: [] }),
+      ]);
+      expect(resA).toMatchObject({ success: true, mode: 'google' });
+      expect(resB).toMatchObject({ success: true, mode: 'google' });
+      expect(parallelFetch.mock.calls.filter(([url]) => url === 'https://oauth2.googleapis.com/token')).toHaveLength(1);
+
+      // 2. Refreshed token STILL returns 401 -> fails cleanly without infinite retry loop
+      const double401Fetch = vi.fn(async (url: string) => {
+        if (url === 'https://oauth2.googleapis.com/token') {
+          return Response.json({
+            access_token: 'still-invalid-access',
+            refresh_token: 'valid-refresh',
+            expires_in: 3600,
+            token_type: 'Bearer',
+            scope: 'https://www.googleapis.com/auth/calendar.events',
+          });
+        }
+        return Response.json({ error: { code: 401, message: 'Still Unauthorized' } }, { status: 401 });
+      });
+      vi.stubGlobal('fetch', double401Fetch);
+
+      const double401Result = await createCalendarTools(
+        createWebSessionWithRefresh('valid-refresh'),
+        'stale-web-access'
+      ).listUpcomingEvents.execute?.({ range: 'today' }, { toolCallId: 'double-401', messages: [] });
+
+      expect(double401Result).toMatchObject({
+        success: false,
+        code: 'google_reauthorization_required',
+      });
+      expect(JSON.stringify(double401Result)).not.toContain('Still Unauthorized');
+      expect(double401Fetch.mock.calls.filter(([url]) => url === 'https://oauth2.googleapis.com/token')).toHaveLength(1);
+      expect(double401Fetch.mock.calls.filter(([url]) => url.includes('/calendars/primary/events'))).toHaveLength(2);
+
+      // 3. Transient Google OAuth 503 during refresh does not falsely claim grant revocation
+      const transientOAuthFetch = vi.fn(async (url: string) => {
+        if (url === 'https://oauth2.googleapis.com/token') {
+          return Response.json({ error: 'temporarily_unavailable' }, { status: 503 });
+        }
+        return Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 });
+      });
+      vi.stubGlobal('fetch', transientOAuthFetch);
+
+      const transientResult = await createCalendarTools(
+        createWebSessionWithRefresh('valid-refresh'),
+        'stale-web-access'
+      ).listUpcomingEvents.execute?.({ range: 'today' }, { toolCallId: 'transient-503', messages: [] });
+
+      expect(transientResult).toMatchObject({ success: false });
+      expect(transientResult).not.toHaveProperty('code', 'google_reauthorization_required');
+      expect(JSON.stringify(transientResult)).not.toContain('temporarily_unavailable');
+    });
+
+    it('returns google_reauthorization_required with reconnect instructions (not "Chưa kết nối tài khoản Google") when Web session has null accessToken or revoked refresh', async () => {
+      vi.stubEnv('NODE_ENV', 'development');
+      vi.stubEnv('GOOGLE_CLIENT_ID', '');
+      vi.stubEnv('GOOGLE_CLIENT_SECRET', '');
+
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      // 1. Pre-stream refresh already failed -> session exists, accessToken is null
+      const webSession = createWebSessionWithRefresh('revoked-refresh');
+      const nullTokenResult = await createCalendarTools(webSession, null).listUpcomingEvents.execute?.(
+        { range: 'today' },
+        { toolCallId: 'lookup-null-token', messages: [] }
+      );
+
+      expect(nullTokenResult).toMatchObject({
+        success: false,
+        code: 'google_reauthorization_required',
+      });
+      expect(nullTokenResult).not.toHaveProperty('isMock');
+      if (nullTokenResult && 'error' in nullTokenResult) {
+        expect(nullTokenResult.error).not.toContain('Chưa kết nối tài khoản Google');
+        expect(nullTokenResult.error).toMatch(/đăng xuất.*kết nối lại|kết nối lại tài khoản Google/i);
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      // 2. Mid-stream 401 with revoked refresh grant -> returns google_reauthorization_required without leaking Google error payload
+      vi.stubEnv('GOOGLE_CLIENT_ID', 'web-client-id');
+      vi.stubEnv('GOOGLE_CLIENT_SECRET', 'web-client-secret');
+      const revokedFetch = vi.fn(async (url: string) => {
+        if (url === 'https://oauth2.googleapis.com/token') {
+          return Response.json(
+            { error: 'invalid_grant', error_description: 'Token has been expired or revoked-secret-detail' },
+            { status: 400 }
+          );
+        }
+        return Response.json(
+          { error: { code: 401, message: 'Invalid Credentials Secret' } },
+          { status: 401 }
+        );
+      });
+      vi.stubGlobal('fetch', revokedFetch);
+
+      const revokedResult = await createCalendarTools(webSession, webSession.tokens.accessToken).listUpcomingEvents.execute?.(
+        { range: 'today' },
+        { toolCallId: 'lookup-revoked-refresh', messages: [] }
+      );
+
+      expect(revokedResult).toMatchObject({
+        success: false,
+        code: 'google_reauthorization_required',
+      });
+      expect(JSON.stringify(revokedResult)).not.toContain('revoked-secret-detail');
+      expect(JSON.stringify(revokedResult)).not.toContain('Invalid Credentials Secret');
+      if (revokedResult && 'error' in revokedResult) {
+        expect(revokedResult.error).not.toContain('Chưa kết nối tài khoản Google');
+        expect(revokedResult.error).toMatch(/đăng xuất.*kết nối lại|kết nối lại tài khoản Google/i);
+      }
+
+      // 3. Mid-stream 401 without refreshToken -> fails cleanly with google_reauthorization_required
+      const noRefreshSession = createWebSessionWithRefresh(undefined);
+      const noRefreshFetch = vi.fn().mockResolvedValue(
+        Response.json({ error: { code: 401, message: 'Invalid Credentials' } }, { status: 401 })
+      );
+      vi.stubGlobal('fetch', noRefreshFetch);
+
+      const noRefreshResult = await createCalendarTools(noRefreshSession, noRefreshSession.tokens.accessToken).listUpcomingEvents.execute?.(
+        { range: 'today' },
+        { toolCallId: 'lookup-no-refresh-token', messages: [] }
+      );
+      expect(noRefreshResult).toMatchObject({
+        success: false,
+        code: 'google_reauthorization_required',
+      });
+      expect(noRefreshFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('never refreshes Mobile Bearer grants on the server or falls back to mock when Google Calendar returns 401', async () => {
+      vi.stubEnv('NODE_ENV', 'development');
+      vi.stubEnv('GOOGLE_CLIENT_ID', '');
+      vi.stubEnv('GOOGLE_CLIENT_SECRET', '');
+
+      const mobileSession = createMobileBearerSession();
+      const mobileFetch = vi.fn().mockResolvedValue(
+        Response.json({ error: { code: 401, message: 'Mobile Invalid Credentials' } }, { status: 401 })
+      );
+      vi.stubGlobal('fetch', mobileFetch);
+
+      const result = await createCalendarTools(mobileSession, mobileSession.tokens.accessToken).listUpcomingEvents.execute?.(
+        { range: 'today' },
+        { toolCallId: 'lookup-mobile-401', messages: [] }
+      );
+
+      expect(result).toMatchObject({
+        success: false,
+        code: 'SESSION_REFRESH_REQUIRED',
+      });
+      expect(result).not.toHaveProperty('isMock');
+      expect(JSON.stringify(result)).not.toContain('Mobile Invalid Credentials');
+      expect(mobileFetch).toHaveBeenCalledTimes(1);
+      expect(mobileFetch.mock.calls.some(([url]) => String(url).includes('oauth2.googleapis.com'))).toBe(false);
+
+      // Even if mobile accessToken were null, never fall back to mock events
+      const nullMobileResult = await createCalendarTools(mobileSession, null).listUpcomingEvents.execute?.(
+        { range: 'today' },
+        { toolCallId: 'lookup-mobile-null', messages: [] }
+      );
+      expect(nullMobileResult).toMatchObject({
+        success: false,
+        code: 'SESSION_REFRESH_REQUIRED',
+      });
+      expect(nullMobileResult).not.toHaveProperty('isMock');
+    });
+  });
 });

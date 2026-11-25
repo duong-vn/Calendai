@@ -69,7 +69,12 @@ export const ChatMessage = memo(function ChatMessage({ message, confirmed, submi
       }
       if (tool.toolName === 'listUpcomingEvents') {
         const result: unknown = tool.result;
-        if (!isRecord(result) || result.success !== true || result.mode === 'mock' || !Array.isArray(result.events)) return <Copy key={tool.toolCallId} style={{ color: colors.danger }}>Không lấy được lịch thật. Kiểm tra kết nối Google rồi thử lại.</Copy>;
+        if (!isRecord(result) || result.success !== true || result.mode === 'mock' || !Array.isArray(result.events)) {
+          const errorMessage = isRecord(result) && result.code === 'SESSION_REFRESH_REQUIRED'
+            ? 'Phiên truy cập Google Calendar cần được làm mới. Vui lòng mở Lịch sắp tới hoặc đăng nhập lại Google rồi thử lại.'
+            : 'Không lấy được lịch thật. Kiểm tra kết nối Google rồi thử lại.';
+          return <Copy key={tool.toolCallId} style={{ color: colors.danger }}>{errorMessage}</Copy>;
+        }
         try {
           const events = result.events.map(parseEvent);
           return <View key={tool.toolCallId} style={{ width: '100%', gap: 12 }}><Copy strong>Lịch sắp tới</Copy>{events.length ? events.map(event => <AgendaCard key={event.id} event={event} />) : <Copy style={{ color: colors.muted }}>Không có sự kiện trong khoảng thời gian này.</Copy>}</View>;
