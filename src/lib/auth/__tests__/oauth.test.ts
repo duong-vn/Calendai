@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GET as googleAuthStart } from '@/app/api/auth/google/route';
+import { GET as googleAuthCallback } from '@/app/api/auth/google/callback/route';
+import { OAUTH_STATE_COOKIE_NAME } from '../session';
 import {
   GOOGLE_OAUTH_SCOPES,
   exchangeCodeForTokens,
@@ -7,6 +10,9 @@ import {
   getGoogleAuthUrl,
   refreshGoogleAccessToken,
 } from '../google-oauth';
+
+const cookieMocks = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn(), delete: vi.fn() }));
+vi.mock('next/headers', () => ({ cookies: vi.fn(async () => cookieMocks) }));
 
 describe('Google OAuth Layer', () => {
   beforeEach(() => {
@@ -218,5 +224,152 @@ describe('Google OAuth Layer', () => {
       code: 'google_calendar_permission_required',
       message: 'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.',
     });
+  });
+});
+
+describe('Web OAuth routes auth_error handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cookieMocks.get.mockReturnValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('redirects with google_not_configured when Google OAuth credentials are missing', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', '');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', '');
+
+    const res = await googleAuthStart(new Request('https://calendai.tduong.online/api/auth/google'));
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location')!;
+    const redirectUrl = new URL(location);
+    expect(redirectUrl.pathname).toBe('/');
+    expect(redirectUrl.searchParams.get('auth_error')).toBe('google_not_configured');
+  });
+
+  it('masks internal env/server errors in GET /api/auth/google and never double-encodes auth_error', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'web-client-id');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'web-client-secret');
+    vi.stubEnv('AI_API_KEY', '');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    vi.stubEnv('AI_MODEL', 'gpt-4o-mini');
+
+    const res = await googleAuthStart(new Request('https://calendai.tduong.online/api/auth/google'));
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location')!;
+    const redirectUrl = new URL(location);
+    const authError = redirectUrl.searchParams.get('auth_error')!;
+
+    expect(location).not.toContain('%25');
+    expect(location).not.toContain('AI_API_KEY');
+    expect(location).not.toContain('SESSION_SECRET');
+    expect(authError).not.toContain('AI_API_KEY');
+    expect(authError).not.toMatch(/%[0-9A-Fa-f]{2}/);
+    expect(authError).toBe('Không thể khởi tạo đăng nhập Google lúc này. Vui lòng thử lại sau.');
+  });
+
+  it('sanitizes ?error= on GET /api/auth/google/callback without echoing raw input or %', async () => {
+    const deniedRes = await googleAuthCallback(
+      new Request('https://calendai.tduong.online/api/auth/google/callback?error=access_denied')
+    );
+    expect(deniedRes.status).toBe(307);
+    const deniedUrl = new URL(deniedRes.headers.get('location')!);
+    expect(deniedRes.headers.get('location')).not.toContain('%25');
+    expect(deniedUrl.searchParams.get('auth_error')).toBe(
+      'Bạn đã từ chối cấp quyền kết nối Google Calendar.'
+    );
+
+    for (const untrusted of ['100%25', 'Visit%20https%3A%2F%2Fevil.example']) {
+      const res = await googleAuthCallback(
+        new Request(`https://calendai.tduong.online/api/auth/google/callback?error=${untrusted}`)
+      );
+      expect(res.status).toBe(307);
+      const rawLocation = res.headers.get('location')!;
+      const redirectUrl = new URL(rawLocation);
+      const authError = redirectUrl.searchParams.get('auth_error')!;
+
+      expect(rawLocation).not.toContain('100%');
+      expect(rawLocation).not.toContain('evil.example');
+      expect(authError).not.toContain('100%');
+      expect(authError).not.toContain('evil.example');
+      expect(authError).toBe('Google từ chối ủy quyền đăng nhập. Vui lòng thử lại.');
+    }
+  });
+
+  it('single-encodes controlled GoogleOAuthError messages and masks internal errors on callback', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'web-client-id');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'web-client-secret');
+    vi.stubEnv('AI_API_KEY', 'test-ai-key');
+    vi.stubEnv('AI_MODEL', 'gpt-4o-mini');
+    vi.stubEnv('SESSION_SECRET', 'test-key-1234567890-abcdefghijklmnopqrstuvwxyz');
+
+    cookieMocks.get.mockImplementation((name: string) =>
+      name === OAUTH_STATE_COOKIE_NAME ? { value: 'valid-state' } : undefined
+    );
+
+    // 1. Controlled GoogleOAuthError (missing calendar.events scope) is single-encoded
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(
+        Response.json({
+          access_token: 'access-value',
+          refresh_token: 'refresh-value',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: 'openid email profile',
+        })
+      )
+    );
+
+    const oauthErrRes = await googleAuthCallback(
+      new Request('https://calendai.tduong.online/api/auth/google/callback?code=auth-code&state=valid-state')
+    );
+    expect(oauthErrRes.status).toBe(307);
+    const oauthErrLocation = oauthErrRes.headers.get('location')!;
+    const oauthErrUrl = new URL(oauthErrLocation);
+    expect(oauthErrLocation).not.toContain('%25');
+    expect(oauthErrUrl.searchParams.get('auth_error')).toBe(
+      'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.'
+    );
+
+    // 2. Internal server/config error (missing AI_API_KEY) is masked and single-encoded
+    vi.stubEnv('AI_API_KEY', '');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+
+    const internalErrRes = await googleAuthCallback(
+      new Request('https://calendai.tduong.online/api/auth/google/callback?code=auth-code&state=valid-state')
+    );
+    expect(internalErrRes.status).toBe(307);
+    const internalErrLocation = internalErrRes.headers.get('location')!;
+    const internalErrUrl = new URL(internalErrLocation);
+    const internalAuthError = internalErrUrl.searchParams.get('auth_error')!;
+
+    expect(internalErrLocation).not.toContain('%25');
+    expect(internalErrLocation).not.toContain('AI_API_KEY');
+    expect(internalErrLocation).not.toContain('SESSION_SECRET');
+    expect(internalAuthError).not.toContain('AI_API_KEY');
+    expect(internalAuthError).toBe('Xác thực Google thất bại. Vui lòng thử lại sau.');
+
+    // 3. Missing code/state and CSRF mismatch redirect with single-encoded Vietnamese messages
+    const missingParamsRes = await googleAuthCallback(
+      new Request('https://calendai.tduong.online/api/auth/google/callback?code=only-code')
+    );
+    expect(missingParamsRes.headers.get('location')).not.toContain('%25');
+    expect(new URL(missingParamsRes.headers.get('location')!).searchParams.get('auth_error')).toBe(
+      'Thiếu mã xác thực hoặc trạng thái bảo mật từ phản hồi của Google. Vui lòng thử lại.'
+    );
+
+    cookieMocks.delete.mockClear();
+    const csrfMismatchRes = await googleAuthCallback(
+      new Request('https://calendai.tduong.online/api/auth/google/callback?code=auth-code&state=forged-state')
+    );
+    expect(csrfMismatchRes.headers.get('location')).not.toContain('%25');
+    expect(new URL(csrfMismatchRes.headers.get('location')!).searchParams.get('auth_error')).toBe(
+      'Lỗi bảo mật CSRF: State không khớp hoặc đã hết hạn. Vui lòng thử lại.'
+    );
+    expect(cookieMocks.delete).not.toHaveBeenCalled();
   });
 });

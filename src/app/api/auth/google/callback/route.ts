@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { exchangeCodeForTokens } from '@/lib/auth/google-oauth';
+import { exchangeCodeForTokens, GoogleOAuthError } from '@/lib/auth/google-oauth';
+import { OAUTH_ERROR_MESSAGES, sanitizeGoogleCallbackErrorParam } from '@/lib/auth/oauth-error';
 import { OAUTH_STATE_COOKIE_NAME } from '@/lib/auth/session';
 import { setServerSession } from '@/lib/auth/server-session';
 import { getServerEnv } from '@/lib/env';
@@ -11,8 +12,8 @@ export async function GET(request: Request) {
 
   try {
     const errorParam = requestUrl.searchParams.get('error');
-    if (errorParam) {
-      homeUrl.searchParams.set('auth_error', `Google từ chối ủy quyền: ${errorParam}`);
+    if (errorParam !== null) {
+      homeUrl.searchParams.set('auth_error', sanitizeGoogleCallbackErrorParam(errorParam));
       return NextResponse.redirect(homeUrl);
     }
 
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     const state = requestUrl.searchParams.get('state');
 
     if (!code || !state) {
-      homeUrl.searchParams.set('auth_error', 'Thiếu authorization code hoặc state từ phản hồi của Google.');
+      homeUrl.searchParams.set('auth_error', OAUTH_ERROR_MESSAGES.missing_oauth_params);
       return NextResponse.redirect(homeUrl);
     }
 
@@ -28,10 +29,7 @@ export async function GET(request: Request) {
     const storedState = cookieStore.get(OAUTH_STATE_COOKIE_NAME)?.value;
 
     if (!storedState || storedState !== state) {
-      homeUrl.searchParams.set(
-        'auth_error',
-        'Lỗi bảo mật CSRF: State không khớp hoặc đã hết hạn. Vui lòng thử lại.'
-      );
+      homeUrl.searchParams.set('auth_error', OAUTH_ERROR_MESSAGES.csrf_mismatch);
       return NextResponse.redirect(homeUrl);
     }
 
@@ -57,8 +55,9 @@ export async function GET(request: Request) {
     homeUrl.searchParams.set('auth_success', 'true');
     return NextResponse.redirect(homeUrl);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Xác thực Google thất bại';
-    homeUrl.searchParams.set('auth_error', encodeURIComponent(message));
+    const message =
+      error instanceof GoogleOAuthError ? error.message : OAUTH_ERROR_MESSAGES.oauth_failed;
+    homeUrl.searchParams.set('auth_error', message);
     return NextResponse.redirect(homeUrl);
   }
 }

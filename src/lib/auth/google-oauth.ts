@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GOOGLE_OAUTH_MESSAGES } from './oauth-error';
 import { UserProfileSchema, type GoogleTokens, type UserProfile } from './types';
 
 const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
@@ -46,7 +47,7 @@ async function googleFetch(url: string, init: RequestInit): Promise<Response> {
   try {
     return await fetch(url, { ...init, cache: 'no-store', signal: AbortSignal.timeout(15000) });
   } catch {
-    throw new GoogleOAuthError('Không thể kết nối Google. Vui lòng thử lại sau.');
+    throw new GoogleOAuthError(GOOGLE_OAUTH_MESSAGES.networkUnavailable);
   }
 }
 
@@ -59,13 +60,13 @@ async function requestGoogleTokens(body: URLSearchParams, previous?: { refreshTo
   if (!response.ok) {
     // Never forward Google's error payload: it may contain supplied codes or other sensitive data.
     if (response.status === 400 || response.status === 401) {
-      throw new GoogleOAuthError('Mã đăng nhập hoặc quyền truy cập Google đã hết hiệu lực. Vui lòng đăng nhập lại.', 401, 'google_reauthorization_required');
+      throw new GoogleOAuthError(GOOGLE_OAUTH_MESSAGES.reauthorizationRequired, 401, 'google_reauthorization_required');
     }
-    throw new GoogleOAuthError('Google chưa thể xác thực tài khoản. Vui lòng thử lại sau.');
+    throw new GoogleOAuthError(GOOGLE_OAUTH_MESSAGES.authUnavailable);
   }
   const parsed = GoogleTokenResponseSchema.safeParse(await response.json().catch(() => null));
   if (!parsed.success) {
-    throw new GoogleOAuthError('Phản hồi xác thực Google không hợp lệ. Vui lòng thử lại.');
+    throw new GoogleOAuthError(GOOGLE_OAUTH_MESSAGES.invalidTokenResponse);
   }
   const data = parsed.data;
   return {
@@ -82,12 +83,12 @@ async function fetchGoogleProfile(accessToken: string, requireVerifiedEmail: boo
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) {
-    throw new GoogleOAuthError('Không thể xác minh thông tin tài khoản Google. Vui lòng đăng nhập lại.', response.status === 401 ? 401 : 502);
+    throw new GoogleOAuthError(GOOGLE_OAUTH_MESSAGES.userinfoFailed, response.status === 401 ? 401 : 502);
   }
   const parsed = UserProfileSchema.extend({ verified_email: z.boolean().optional() })
     .safeParse(await response.json().catch(() => null));
   if (!parsed.success || (requireVerifiedEmail && parsed.data.verified_email !== true)) {
-    throw new GoogleOAuthError('Thông tin tài khoản Google chưa được xác minh hoặc không hợp lệ.', 401, 'google_profile_invalid');
+    throw new GoogleOAuthError(GOOGLE_OAUTH_MESSAGES.profileInvalid, 401, 'google_profile_invalid');
   }
   return UserProfileSchema.parse(parsed.data);
 }
@@ -95,7 +96,7 @@ async function fetchGoogleProfile(accessToken: string, requireVerifiedEmail: boo
 function assertCalendarEventsScope(scope: string): void {
   if (!scope.split(/\s+/).includes(CALENDAR_EVENTS_SCOPE)) {
     throw new GoogleOAuthError(
-      'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.',
+      GOOGLE_OAUTH_MESSAGES.calendarPermissionRequired,
       401,
       'google_calendar_permission_required'
     );
@@ -128,7 +129,7 @@ export async function exchangeNativeCodeForTokens(
     redirect_uri: '', grant_type: 'authorization_code',
   }));
   if (!tokens.refreshToken) {
-    throw new GoogleOAuthError('Google chưa cấp quyền truy cập ngoại tuyến. Vui lòng cấp lại quyền Google rồi đăng nhập lại.', 401, 'google_consent_required');
+    throw new GoogleOAuthError(GOOGLE_OAUTH_MESSAGES.consentRequired, 401, 'google_consent_required');
   }
   assertCalendarEventsScope(tokens.scope);
   return { tokens, user: await fetchGoogleProfile(tokens.accessToken, true) };
