@@ -1,4 +1,5 @@
 import { generateText } from 'ai';
+import { getAdminModelConfig } from '@/lib/ai/admin-config';
 import { getChatModel } from '@/lib/ai/provider';
 
 export const dynamic = 'force-dynamic';
@@ -11,9 +12,19 @@ interface HealthResult {
   error?: string;
 }
 
+const DEFAULT_MODEL_CACHE_KEY = '__default__';
+
+function getActiveProbeModelKey(): string {
+  try {
+    return getAdminModelConfig().primaryModel;
+  } catch {
+    return DEFAULT_MODEL_CACHE_KEY;
+  }
+}
+
 // shortcut: cache and single-flight are per process; use a shared limiter if public probe traffic grows.
-let cached: { result: HealthResult; expiresAt: number } | undefined;
-let pending: Promise<HealthResult> | undefined;
+const cached = new Map<string, { result: HealthResult; expiresAt: number }>();
+const pending = new Map<string, Promise<HealthResult>>();
 
 async function probe(): Promise<HealthResult> {
   const startedAt = Date.now();
@@ -47,15 +58,34 @@ async function probe(): Promise<HealthResult> {
 }
 
 export async function GET() {
+  const modelKey = getActiveProbeModelKey();
+  const now = Date.now();
+  const cachedEntry = cached.get(modelKey);
   let result: HealthResult;
-  if (cached && cached.expiresAt > Date.now()) {
-    result = cached.result;
+  if (cachedEntry && cachedEntry.expiresAt > now) {
+    result = cachedEntry.result;
   } else {
-    pending ??= probe().then(value => {
-      cached = { result: value, expiresAt: Date.now() + 60_000 };
-      return value;
-    }).finally(() => { pending = undefined; });
-    result = await pending;
+    let inflight = pending.get(modelKey);
+    if (!inflight) {
+      inflight = probe()
+        .then((value) => {
+          const settledAt = Date.now();
+          for (const [key, entry] of cached.entries()) {
+            if (entry.expiresAt <= settledAt) {
+              cached.delete(key);
+            }
+          }
+          cached.set(modelKey, { result: value, expiresAt: settledAt + 60_000 });
+          return value;
+        })
+        .finally(() => {
+          if (pending.get(modelKey) === inflight) {
+            pending.delete(modelKey);
+          }
+        });
+      pending.set(modelKey, inflight);
+    }
+    result = await inflight;
   }
   return Response.json(result, {
     status: result.status === 'ok' ? 200 : 503,

@@ -52,7 +52,7 @@ export default function Home() {
   const [isTipsOpen, setIsTipsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -102,24 +102,29 @@ export default function Home() {
   }, [historyScope]);
 
   useEffect(() => {
-    try {
-      const savedModel = localStorage.getItem('calendai_selected_model');
-      if (savedModel && typeof savedModel === 'string') {
-        setSelectedModel(savedModel);
-      }
-    } catch {
-      // Ignore localStorage errors
+    if (!isAuthenticated) {
+      setIsAdmin(false);
+      return;
     }
-  }, []);
 
-  const handleSelectModel = (modelId: string) => {
-    setSelectedModel(modelId);
-    try {
-      localStorage.setItem('calendai_selected_model', modelId);
-    } catch {
-      // Ignore localStorage errors
+    const controller = new AbortController();
+    async function checkAdminStatus() {
+      try {
+        const res = await fetch('/api/admin/config', { signal: controller.signal });
+        if (!res.ok) {
+          if (!controller.signal.aborted) setIsAdmin(false);
+          return;
+        }
+        const data = (await res.json()) as { isAdmin?: unknown };
+        if (!controller.signal.aborted) setIsAdmin(data?.isAdmin === true);
+      } catch {
+        if (!controller.signal.aborted) setIsAdmin(false);
+      }
     }
-  };
+
+    void checkAdminStatus();
+    return () => controller.abort();
+  }, [isAuthenticated]);
 
   const handleSelectSession = (session: ChatSession) => {
     if (!historyReady) return;
@@ -130,7 +135,7 @@ export default function Home() {
 
   const handleNewSession = () => {
     if (!historyReady) return;
-    const newSession = createNewSession(selectedModel, historyScope);
+    const newSession = createNewSession(historyScope);
     refreshSessions();
     setActiveSessionIdState(newSession.id);
     setChatKey((prev) => prev + 1);
@@ -268,8 +273,7 @@ export default function Home() {
         user={auth.user}
         isAuthenticated={isAuthenticated}
         isConfigured={auth.isConfigured}
-        selectedModel={selectedModel}
-        onSelectModel={handleSelectModel}
+        isAdmin={isAdmin}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => {
           refreshSessions();
@@ -325,8 +329,6 @@ export default function Home() {
             key={`${historyScope}:${chatKey}`}
             historyScope={historyScope}
             isAuthenticated={isAuthenticated}
-            selectedModel={selectedModel}
-            onSelectModel={handleSelectModel}
             activeSessionId={activeSessionId}
             onSessionsChange={refreshSessions}
             isTipsOpen={isTipsOpen}

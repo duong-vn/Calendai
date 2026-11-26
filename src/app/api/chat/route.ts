@@ -1,5 +1,6 @@
-import { streamText } from 'ai';
+import { APICallError, RetryError, streamText } from 'ai';
 import { z } from 'zod';
+import { getAdminModelConfig } from '@/lib/ai/admin-config';
 import { getChatModel } from '@/lib/ai/provider';
 import { buildSystemPrompt } from '@/lib/ai/system-prompt';
 import { createCalendarTools } from '@/lib/ai/tools';
@@ -47,8 +48,272 @@ const ChatRequestSchema = z.object({
     toolInvocations: z.array(ToolInvocationSchema).optional(),
     parts: z.array(MessagePartSchema).optional(),
   })).min(1).max(200),
-  model: z.string().trim().max(200).optional(),
 });
+
+const MODEL_STREAM_START_TIMEOUT_MS = 25_000;
+const AI_UNAVAILABLE_MESSAGE = 'Dịch vụ AI hiện tạm thời quá tải hoặc không phản hồi. Vui lòng thử lại sau.';
+
+class ModelStreamAttemptError extends Error {
+  constructor(
+    public readonly causeError: unknown,
+    public readonly timedOut = false
+  ) {
+    super('Model stream attempt failed');
+    this.name = 'ModelStreamAttemptError';
+  }
+}
+
+function getErrorStatusCode(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  if (APICallError.isInstance(error)) return error.statusCode;
+  if (RetryError.isInstance(error)) {
+    return getErrorStatusCode(error.lastError);
+  }
+  const record = error as Record<string, unknown>;
+  if (typeof record.statusCode === 'number') return record.statusCode;
+  if (typeof record.status === 'number') return record.status;
+  if (record.lastError) return getErrorStatusCode(record.lastError);
+  if (record.cause) return getErrorStatusCode(record.cause);
+  return undefined;
+}
+
+function isTimeoutLikeError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  if (RetryError.isInstance(error)) return isTimeoutLikeError(error.lastError);
+  const record = error as Record<string, unknown>;
+  const name = typeof record.name === 'string' ? record.name : '';
+  const code = typeof record.code === 'string' ? record.code : '';
+  const message = typeof record.message === 'string' ? record.message : '';
+  if (
+    name === 'TimeoutError' ||
+    code === 'ETIMEDOUT' ||
+    code === 'UND_ERR_HEADERS_TIMEOUT' ||
+    code === 'UND_ERR_CONNECT_TIMEOUT' ||
+    /timeout|timed out/i.test(message)
+  ) {
+    return true;
+  }
+  return record.cause ? isTimeoutLikeError(record.cause) : false;
+}
+
+function isFallbackEligibleError(error: unknown, timedOut: boolean, requestAborted: boolean): boolean {
+  if (requestAborted) return false;
+  if (timedOut) return true;
+  const statusCode = getErrorStatusCode(error);
+  if (statusCode === 429 || (statusCode !== undefined && statusCode >= 500 && statusCode <= 599)) {
+    return true;
+  }
+  return isTimeoutLikeError(error);
+}
+
+async function readChunkWithTimeout(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  timeoutMs: number
+): Promise<{ result: ReadableStreamReadResult<Uint8Array>; timedOut: boolean }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      reader.read().then((result) => ({ result, timedOut: false })),
+      new Promise<{ result: ReadableStreamReadResult<Uint8Array>; timedOut: boolean }>((resolve) => {
+        timer = setTimeout(() => {
+          resolve({ result: { done: true, value: undefined }, timedOut: true });
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+async function runModelStream(
+  modelId: string,
+  system: string,
+  messages: ChatMessageInput[],
+  tools: ReturnType<typeof createCalendarTools>,
+  abortSignal: AbortSignal
+): Promise<Response> {
+  const model = getChatModel(modelId);
+  const attemptController = new AbortController();
+  let abortLinkCleaned = false;
+  const onExternalAbort = () => {
+    attemptController.abort(abortSignal.reason);
+  };
+  const cleanupAbortLink = () => {
+    if (abortLinkCleaned) return;
+    abortLinkCleaned = true;
+    abortSignal.removeEventListener('abort', onExternalAbort);
+  };
+
+  if (abortSignal.aborted) {
+    attemptController.abort(abortSignal.reason);
+    abortLinkCleaned = true;
+  } else {
+    abortSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+
+  let capturedError: unknown = null;
+  let dataResponse: Response;
+  try {
+    const result = streamText({
+      model,
+      system,
+      messages,
+      tools,
+      maxSteps: 3, // Bounded multi-step execution
+      maxTokens: 4000,
+      maxRetries: 0,
+      abortSignal: attemptController.signal,
+    });
+
+    dataResponse = result.toDataStreamResponse({
+      getErrorMessage: (err) => {
+        capturedError = err;
+        return 'Không thể nhận phản hồi AI. Vui lòng thử lại.';
+      },
+    });
+  } catch (error) {
+    attemptController.abort(error);
+    cleanupAbortLink();
+    throw error;
+  }
+
+  if (!dataResponse.body) {
+    cleanupAbortLink();
+    return dataResponse;
+  }
+
+  const reader = dataResponse.body.getReader();
+  const decoder = new TextDecoder();
+  const bufferedChunks: Uint8Array[] = [];
+  let linePrefix = '';
+  let streamDone = false;
+  const startDeadline = Date.now() + MODEL_STREAM_START_TIMEOUT_MS;
+
+  try {
+    while (true) {
+      const remainingMs = startDeadline - Date.now();
+      if (remainingMs <= 0) {
+        const timeoutErr = new Error('Model response timed out');
+        attemptController.abort(timeoutErr);
+        cleanupAbortLink();
+        await reader.cancel().catch(() => undefined);
+        throw new ModelStreamAttemptError(timeoutErr, true);
+      }
+
+      const { result: readResult, timedOut } = await readChunkWithTimeout(reader, remainingMs);
+
+      if (timedOut) {
+        const timeoutErr = new Error('Model response timed out');
+        attemptController.abort(timeoutErr);
+        cleanupAbortLink();
+        await reader.cancel().catch(() => undefined);
+        throw new ModelStreamAttemptError(timeoutErr, true);
+      }
+
+      if (capturedError !== null) {
+        attemptController.abort(capturedError);
+        cleanupAbortLink();
+        await reader.cancel().catch(() => undefined);
+        throw new ModelStreamAttemptError(capturedError, false);
+      }
+
+      if (readResult.done) {
+        const tail = decoder.decode();
+        const finalCombined = linePrefix + tail;
+        const finalLines = finalCombined.split('\n');
+        if (
+          finalLines.some((line) => line.startsWith('3:')) ||
+          linePrefix.startsWith('3:') ||
+          capturedError !== null
+        ) {
+          const streamErr = capturedError ?? new Error('Stream error');
+          attemptController.abort(streamErr);
+          cleanupAbortLink();
+          throw new ModelStreamAttemptError(streamErr, false);
+        }
+        streamDone = true;
+        cleanupAbortLink();
+        break;
+      }
+
+      const chunk = readResult.value;
+      const text = decoder.decode(chunk, { stream: true });
+      const combined = linePrefix + text;
+      const lines = combined.split('\n');
+      linePrefix = lines.pop() ?? '';
+
+      const hasErrorPart = lines.some((line) => line.startsWith('3:')) || linePrefix.startsWith('3:');
+      if (hasErrorPart || capturedError !== null) {
+        const streamErr = capturedError ?? new Error('Stream error');
+        attemptController.abort(streamErr);
+        cleanupAbortLink();
+        await reader.cancel().catch(() => undefined);
+        throw new ModelStreamAttemptError(streamErr, false);
+      }
+
+      bufferedChunks.push(chunk);
+
+      // Buffer step-start header frames (`f:...`) and partial `f:`/`3:` prefixes so pre-content errors are still caught.
+      const hasContentOrData = lines.some(
+        (line) => line.length > 0 && !line.startsWith('f:') && !line.startsWith('3:')
+      );
+      const prefixReady =
+        linePrefix.length >= 2 && !linePrefix.startsWith('f:') && !linePrefix.startsWith('3:');
+      if (hasContentOrData || prefixReady) {
+        break;
+      }
+    }
+  } catch (error) {
+    if (error instanceof ModelStreamAttemptError) {
+      throw error;
+    }
+    attemptController.abort(error);
+    cleanupAbortLink();
+    await reader.cancel().catch(() => undefined);
+    throw new ModelStreamAttemptError(error, false);
+  }
+
+  const combinedStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of bufferedChunks) {
+        controller.enqueue(chunk);
+      }
+      if (streamDone) {
+        controller.close();
+      }
+    },
+    async pull(controller) {
+      if (streamDone) {
+        controller.close();
+        return;
+      }
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          cleanupAbortLink();
+          controller.close();
+          return;
+        }
+        controller.enqueue(value);
+      } catch (error) {
+        attemptController.abort(error);
+        cleanupAbortLink();
+        controller.error(error);
+      }
+    },
+    cancel(reason) {
+      attemptController.abort(reason);
+      cleanupAbortLink();
+      return reader.cancel(reason);
+    },
+  });
+
+  return new Response(combinedStream, {
+    status: dataResponse.status,
+    statusText: dataResponse.statusText,
+    headers: dataResponse.headers,
+  });
+}
 
 type ChatMessageInput = z.infer<typeof ChatRequestSchema>['messages'][number];
 
@@ -137,7 +402,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages: rawMessages, model: requestModel } = parsed.data;
+    const { messages: rawMessages } = parsed.data;
     const messages = sanitizeMessagesForStream(rawMessages);
 
     // Kiểm tra cấu hình API Key
@@ -187,43 +452,48 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(activeSession?.user?.email);
     const tools = createCalendarTools(activeSession, validAccessToken, { request: req });
-    const selectedModelId =
-      typeof requestModel === 'string' && requestModel.trim()
-        ? requestModel.trim()
-        : undefined;
-    const env = getServerEnv();
-    if (selectedModelId && selectedModelId !== env.AI_MODEL) {
-      const catalogResponse = await fetch(`${env.AI_BASE_URL}/models`, {
-        headers: { Authorization: `Bearer ${env.AI_API_KEY}` },
-        next: { revalidate: 3600 },
-        signal: req.signal,
-      });
-      if (!catalogResponse.ok) {
-        return Response.json({ error: 'Không thể kiểm tra model. Vui lòng chọn model mặc định.' }, { status: 503 });
+    const { primaryModel, fallbackModel } = getAdminModelConfig();
+
+    try {
+      const response = await runModelStream(primaryModel, systemPrompt, messages, tools, req.signal);
+      console.info('[chat] model served:', primaryModel);
+      return response;
+    } catch (primaryError) {
+      const causeError =
+        primaryError instanceof ModelStreamAttemptError ? primaryError.causeError : primaryError;
+      const timedOut =
+        primaryError instanceof ModelStreamAttemptError ? primaryError.timedOut : false;
+
+      if (!isFallbackEligibleError(causeError, timedOut, req.signal.aborted)) {
+        throw causeError;
       }
-      const catalog: unknown = await catalogResponse.json();
-      const allowed = catalog && typeof catalog === 'object' && 'data' in catalog &&
-        Array.isArray(catalog.data) && catalog.data.some((item: unknown) =>
-          item !== null && typeof item === 'object' && 'id' in item && item.id === selectedModelId);
-      if (!allowed) {
-        return Response.json({ error: 'Model không nằm trong danh sách được máy chủ hỗ trợ.' }, { status: 400 });
+
+      if (!fallbackModel || fallbackModel === primaryModel) {
+        return Response.json(
+          { error: AI_UNAVAILABLE_MESSAGE },
+          { status: 503, headers: { 'Cache-Control': 'no-store' } }
+        );
+      }
+
+      console.warn('[chat] primary model failed, retrying with fallback:', primaryModel, '->', fallbackModel);
+
+      try {
+        const fallbackResponse = await runModelStream(
+          fallbackModel,
+          systemPrompt,
+          messages,
+          tools,
+          req.signal
+        );
+        console.info('[chat] model served (fallback):', fallbackModel);
+        return fallbackResponse;
+      } catch {
+        return Response.json(
+          { error: AI_UNAVAILABLE_MESSAGE },
+          { status: 503, headers: { 'Cache-Control': 'no-store' } }
+        );
       }
     }
-    const model = getChatModel(selectedModelId);
-
-    const result = streamText({
-      model,
-      system: systemPrompt,
-      messages,
-      tools,
-      maxSteps: 3, // Bounded multi-step execution
-      maxTokens: 4000,
-      abortSignal: req.signal,
-    });
-
-    return result.toDataStreamResponse({
-      getErrorMessage: () => 'Không thể nhận phản hồi AI. Vui lòng thử lại.',
-    });
   } catch (error) {
     const authResponse = authErrorResponse(error);
     if (authResponse) return authResponse;

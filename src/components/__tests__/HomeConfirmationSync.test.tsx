@@ -25,23 +25,15 @@ const event = {
   htmlLink: 'https://calendar.google.com/event?eid=home-a',
 };
 
-const modelCatalog = {
-  defaultModel: 'openai/gpt-4o-mini',
-  models: [
-    { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', isFree: true, supportsTools: true },
-    { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', isFree: false, supportsTools: true },
-  ],
-};
-
 function seedSessions() {
-  const sessionB = createNewSession('openai/gpt-4o-mini', 'user_A');
+  const sessionB = createNewSession('user_A');
   saveCurrentSession({
     ...sessionB,
     title: 'Hội thoại B',
     messages: [{ id: 'msg-b', role: 'user', content: 'Nội dung hội thoại B' }],
   }, 'user_A');
 
-  const sessionA = createNewSession('openai/gpt-4o-mini', 'user_A');
+  const sessionA = createNewSession('user_A');
   saveCurrentSession({
     ...sessionA,
     title: 'Hội thoại A',
@@ -75,8 +67,8 @@ function createFetchRouter(onConfirm: () => Promise<Response>) {
         user: { id: 'A', email: 'a@example.test', name: 'User A' },
       });
     }
-    if (url === '/api/models') {
-      return Response.json(modelCatalog);
+    if (url === '/api/admin/config') {
+      return Response.json({ isAdmin: false }, { status: 403 });
     }
     if (url === '/api/chat') {
       return new Response('0:"Đã ghi nhận tin nhắn mới"\n', {
@@ -106,7 +98,7 @@ describe('Home pending confirmation sync across session switches', () => {
     vi.unstubAllGlobals();
   });
 
-  it('transitions reopened session A to created when confirmation resolves, and preserves it across messaging, model change, and reopen', async () => {
+  it('transitions reopened session A to created when confirmation resolves, and preserves it across messaging and reopen', async () => {
     const { sessionA } = seedSessions();
     let resolveConfirm!: (response: Response) => void;
     const { fetchMock, getConfirmCalls } = createFetchRouter(
@@ -135,14 +127,11 @@ describe('Home pending confirmation sync across session switches', () => {
     expect(screen.queryByRole('button', { name: /Xác nhận tạo lịch/ })).not.toBeInTheDocument();
     expect(getConfirmCalls()).toBe(1);
 
-    // Send a new message in A, switch model, then switch away and reopen A.
+    // Send a new message in A, then switch away and reopen A.
     const input = screen.getByPlaceholderText('Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)');
     fireEvent.change(input, { target: { value: 'Cảm ơn trợ lý nhé' } });
     fireEvent.submit(input.closest('form')!);
     expect(await screen.findByText('Đã ghi nhận tin nhắn mới')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Chọn mô hình AI/ }));
-    fireEvent.click(await screen.findByRole('option', { name: /GPT-4o •/ }));
 
     fireEvent.click(screen.getByRole('button', { name: /^Hội thoại B/ }));
     expect(await screen.findByText('Nội dung hội thoại B', { selector: 'p' })).toBeInTheDocument();
@@ -154,10 +143,9 @@ describe('Home pending confirmation sync across session switches', () => {
     view.unmount();
     const storedA = loadAllSessions('user_A').find((s) => s.id === sessionA.id);
     expect(storedA?.confirmedEvents[proposal.proposalId]).toEqual({ event });
-    expect(storedA?.model).toBe('openai/gpt-4o');
   });
 
-  it('preserves messages and model changes made in reopened A before confirmation resolves', async () => {
+  it('preserves messages made in reopened A before confirmation resolves', async () => {
     const { sessionA } = seedSessions();
     let resolveConfirm!: (response: Response) => void;
     const { fetchMock, getConfirmCalls } = createFetchRouter(
@@ -172,14 +160,11 @@ describe('Home pending confirmation sync across session switches', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Hội thoại A/ }));
     expect(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ })).toBeInTheDocument();
 
-    // Send a new message and switch model BEFORE confirmation finishes.
+    // Send a new message BEFORE confirmation finishes.
     const input = screen.getByPlaceholderText('Đặt lịch hẹn (VD: Họp dự án sáng mai 9h có Google Meet...)');
     fireEvent.change(input, { target: { value: 'Nhắn thêm trước khi hoàn tất' } });
     fireEvent.submit(input.closest('form')!);
     expect(await screen.findByText('Đã ghi nhận tin nhắn mới')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Chọn mô hình AI/ }));
-    fireEvent.click(await screen.findByRole('option', { name: /GPT-4o •/ }));
 
     await act(async () => {
       resolveConfirm(Response.json({ success: true, event }));
@@ -196,7 +181,6 @@ describe('Home pending confirmation sync across session switches', () => {
 
     const storedA = loadAllSessions('user_A').find((s) => s.id === sessionA.id);
     expect(storedA?.confirmedEvents[proposal.proposalId]).toEqual({ event });
-    expect(storedA?.model).toBe('openai/gpt-4o');
   });
 
   it('keeps #27 behavior when staying on B or deleting A while confirmation is pending', async () => {

@@ -37,8 +37,20 @@ describe('Environment Config', () => {
 
     expect(env.AI_API_KEY).toBe('test-key');
     expect(env.AI_MODEL).toBe('custom-configured-model');
+    expect(env.AI_FALLBACK_MODEL).toBeUndefined();
     expect(env.AI_BASE_URL).toBe('https://api.openai.com/v1');
     expect(env.NEXT_PUBLIC_APP_URL).toBe('http://localhost:3000');
+  });
+
+  it('parses optional AI_FALLBACK_MODEL and ADMIN_EMAILS', () => {
+    process.env.AI_API_KEY = 'test-key';
+    process.env.AI_MODEL = 'primary-model';
+    process.env.AI_FALLBACK_MODEL = '  fallback-model  ';
+    process.env.ADMIN_EMAILS = 'admin@example.com, second@example.com';
+
+    const env = getServerEnv();
+    expect(env.AI_FALLBACK_MODEL).toBe('fallback-model');
+    expect(env.ADMIN_EMAILS).toBe('admin@example.com, second@example.com');
   });
 
   it('supports legacy OPENROUTER_API_KEY seamlessly', () => {

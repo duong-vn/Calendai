@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getAdminModelConfig } from '@/lib/ai/admin-config';
 import { getServerEnv } from '@/lib/env';
 import { formatModelOption, type AIModelOption } from '@/lib/ai/models';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 interface RawAIModel {
   id: string;
@@ -41,7 +42,7 @@ export async function GET() {
       throw new Error('Empty model list from AI provider');
     }
 
-    const defaultModelId = env.AI_MODEL;
+    const defaultModelId = getAdminModelConfig().primaryModel;
 
     const models: AIModelOption[] = rawModels.map((m) => {
       const isFree = Boolean(
@@ -83,7 +84,12 @@ export async function GET() {
       models,
     });
   } catch (error) {
-    const defaultModelId = process.env.AI_MODEL || process.env.OPENROUTER_MODEL || '';
+    let defaultModelId = process.env.AI_MODEL || process.env.OPENROUTER_MODEL || '';
+    try {
+      defaultModelId = getAdminModelConfig().primaryModel;
+    } catch {
+      // Fall back to raw env when server env validation fails
+    }
     const fallbackModel: AIModelOption = {
       ...formatModelOption(defaultModelId),
       badge: 'Mặc định',

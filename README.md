@@ -49,6 +49,8 @@ Calendai/
 ├── src/
 │   ├── app/                        # Next.js App Router
 │   │   ├── api/
+│   │   │   ├── admin/
+│   │   │   │   └── config/         # API cấu hình model chính & fallback cho admin
 │   │   │   ├── auth/
 │   │   │   │   ├── google/         # Đăng nhập Google, callback, trạng thái và đăng xuất
 │   │   │   │   └── mobile/         # Đổi mã OAuth và làm mới phiên mobile
@@ -57,9 +59,10 @@ Calendai/
 │   │   │   │   ├── conflicts/      # Kiểm tra sự kiện trùng giờ
 │   │   │   │   ├── resolve/        # Xử lý sự kiện trùng giờ
 │   │   │   │   └── upcoming/       # Tra cứu sự kiện sắp tới
-│   │   │   ├── chat/               # Streaming chat route với AI SDK tool calling
+│   │   │   ├── chat/               # Streaming chat route với AI SDK tool calling & fallback
 │   │   │   ├── health/ai/          # Kiểm tra kết nối AI
 │   │   │   └── models/             # Danh sách model AI
+│   │   ├── admin/                  # Trang quản trị chọn model chính & fallback (/admin)
 │   │   ├── globals.css             # Tailwind CSS styles
 │   │   ├── layout.tsx              # Root Layout
 │   │   ├── not-found.tsx           # Trang 404
@@ -67,6 +70,7 @@ Calendai/
 │   │   ├── privacy/                # Chính sách quyền riêng tư
 │   │   └── terms/                  # Điều khoản sử dụng
 │   ├── components/                 # UI Components
+│   │   ├── AdminModelSettings.tsx  # Biểu mẫu cấu hình model cho quản trị viên
 │   │   ├── CalendarConflictChoices.tsx # Lựa chọn khi trùng lịch
 │   │   ├── ChatHistoryModal.tsx     # Hộp thoại lịch sử hội thoại
 │   │   ├── ChatInterface.tsx       # Khung chat streaming & danh sách tin nhắn
@@ -74,8 +78,7 @@ Calendai/
 │   │   ├── EventCreatedCard.tsx    # Thẻ sự kiện thành công & Google Meet link
 │   │   ├── Header.tsx              # Thanh điều hướng, avatar & Google status
 │   │   ├── MeetingPreviewCard.tsx  # Thẻ xem trước & nút xác nhận tạo lịch
-│   │   ├── ModelSelector.tsx       # Bộ chọn model AI
-│   │   ├── PageHeader.tsx          # Điều hướng các trang chính sách
+│   │   ├── PageHeader.tsx          # Điều hướng các trang chính sách & quản trị
 │   │   ├── ReminderSettings.tsx    # Cài đặt nhắc lịch
 │   │   ├── Sidenote.tsx            # Ghi chú bên lề
 │   │   ├── ThemeToggle.tsx         # Chuyển giao diện sáng hoặc tối
@@ -118,9 +121,13 @@ Mở `.env.local` và điền các thông tin:
 # 1. Cấu hình AI Provider (Chuẩn OpenAI-compatible API)
 AI_API_KEY=your_ai_api_key_here
 AI_MODEL=gpt-4o-mini
+AI_FALLBACK_MODEL=
 AI_BASE_URL=https://api.openai.com/v1
 
-# 2. Google OAuth 2.0 Credentials (Cần khi kết nối Calendar thật)
+# 2. Danh sách email quản trị viên (cách nhau bằng dấu phẩy) cho /admin
+ADMIN_EMAILS=admin@example.com
+
+# 3. Google OAuth 2.0 Credentials (Cần khi kết nối Calendar thật)
 GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-your_client_secret
 
@@ -156,7 +163,8 @@ npm start
 ## Triển Khai Production
 
 - Vercel chạy web và API tại `https://calendai.tduong.online`. Nhánh PR có bản Preview. Khi có commit mới trên `main`, Vercel tự tạo bản Production. Theo dõi trạng thái trong tab **Deployments** của dự án. [Triển khai qua Git trên Vercel](https://vercel.com/docs/git)
-- Máy local dùng `.env.local`. Trên Vercel, vào **Settings → Environment Variables** của dự án và chọn **Production** khi khai báo `AI_API_KEY`, `AI_MODEL`, `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET`. Đặt `SESSION_SECRET` ngẫu nhiên tối thiểu 32 ký tự và cấu hình `AI_BASE_URL` nếu dùng endpoint khác mặc định. Thay đổi biến có hiệu lực ở lần triển khai tiếp theo. [Biến môi trường trên Vercel](https://vercel.com/docs/environment-variables)
+- Máy local dùng `.env.local`. Trên Vercel, vào **Settings → Environment Variables** của dự án và chọn **Production** khi khai báo `AI_API_KEY`, `AI_MODEL`, `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET`. Có thể khai báo thêm `AI_FALLBACK_MODEL` (model dự phòng) và `ADMIN_EMAILS` (danh sách email Google được phép truy cập `/admin`, phân tách bằng dấu phẩy). Đặt `SESSION_SECRET` ngẫu nhiên tối thiểu 32 ký tự và cấu hình `AI_BASE_URL` nếu dùng endpoint khác mặc định. Thay đổi biến có hiệu lực ở lần triển khai tiếp theo. [Biến môi trường trên Vercel](https://vercel.com/docs/environment-variables)
+- Trang quản trị `/admin` lưu cấu hình model vào tệp JSON phía máy chủ (`data/admin-config.json` cục bộ, `/tmp/calendai-admin-config.json` trên Vercel) kết hợp cache bộ nhớ để áp dụng ngay không cần deploy lại. Lưu ý hạn chế của Vercel: hệ thống tệp của Vercel là ephemeral (tạm thời), nên sau mỗi lần deploy hoặc cold start, cấu hình có thể quay về giá trị biến môi trường (`AI_MODEL` / `AI_FALLBACK_MODEL`).
 - Đặt `NEXT_PUBLIC_APP_URL=https://calendai.tduong.online` trong môi trường Production. Đăng ký `https://calendai.tduong.online/api/auth/google/callback` trong danh sách **Authorized redirect URIs** của Web OAuth client trên Google Cloud. Máy local dùng `http://localhost:3000` và callback tương ứng.
 
 ---

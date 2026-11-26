@@ -66,7 +66,7 @@ afterEach(() => {
 
 describe('End-to-end Web recovery after interrupted tool invocations', () => {
   it('shows incomplete state after reload and continues the conversation via follow-up message and reload against real POST /api/chat', async () => {
-    const session = createNewSession(undefined, 'guest');
+    const session = createNewSession('guest');
     saveCurrentSession(
       {
         ...session,

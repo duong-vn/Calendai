@@ -16,7 +16,7 @@ jest.mock('expo-speech-recognition', () => ({
 function setup() {
   const onChange = jest.fn(); const onSend = jest.fn();
   let tree!: ReactTestRenderer;
-  act(() => { tree = create(<VoiceAssistantBar value="" onChange={onChange} onSend={onSend} isLoading={false} disabled={false} onStop={jest.fn()} modelLabel="Mặc định" onModel={jest.fn()} />); });
+  act(() => { tree = create(<VoiceAssistantBar value="" onChange={onChange} onSend={onSend} isLoading={false} disabled={false} onStop={jest.fn()} />); });
   const mic = () => tree.root.findAllByType(IconButton).find(button => String(button.props.label).includes('giọng nói'))!;
   return { tree, onChange, onSend, mic };
 }
@@ -35,7 +35,7 @@ it('sends a private draft without logging its contents', () => {
   const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
   const onSend = jest.fn();
   let tree!: ReactTestRenderer;
-  act(() => { tree = create(<VoiceAssistantBar value="Cuộc hẹn riêng tư" onChange={jest.fn()} onSend={onSend} isLoading={false} disabled={false} onStop={jest.fn()} modelLabel="Mặc định" onModel={jest.fn()} />); });
+  act(() => { tree = create(<VoiceAssistantBar value="Cuộc hẹn riêng tư" onChange={jest.fn()} onSend={onSend} isLoading={false} disabled={false} onStop={jest.fn()} />); });
   act(() => tree.root.findAllByType(IconButton).find(button => button.props.label === 'Gửi tin nhắn')!.props.onPress());
   expect(onSend).toHaveBeenCalledTimes(1);
   expect(log).not.toHaveBeenCalled();

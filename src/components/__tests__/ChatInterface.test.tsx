@@ -47,7 +47,7 @@ const getRecognition = () => MockSpeechRecognition.instances.at(-1)!;
 // Mock ai/react useChat hook
 const mockUseChat = vi.fn();
 vi.mock('ai/react', () => ({
-  useChat: () => ({ stop: vi.fn(), ...mockUseChat() }),
+  useChat: (options: unknown) => ({ stop: vi.fn(), ...mockUseChat(options) }),
 }));
 
 describe('ChatInterface Component UX & States', () => {
@@ -328,18 +328,18 @@ describe('ChatInterface Component UX & States', () => {
     }));
 
     const { rerender, unmount } = render(
-      <ChatInterface isAuthenticated={true} activeSessionId={null} selectedModel="model-1" />
+      <ChatInterface isAuthenticated={true} activeSessionId={null} isTipsOpen={false} />
     );
 
     // Rerendering with a new stop identity or adopting the generated session ID must not stop the stream.
-    rerender(<ChatInterface isAuthenticated={true} activeSessionId={null} selectedModel="model-2" />);
+    rerender(<ChatInterface isAuthenticated={true} activeSessionId={null} isTipsOpen={true} />);
     const adoptedId = loadAllSessions('guest')[0]?.id ?? null;
     expect(adoptedId).not.toBeNull();
-    rerender(<ChatInterface isAuthenticated={true} activeSessionId={adoptedId} selectedModel="model-2" />);
+    rerender(<ChatInterface isAuthenticated={true} activeSessionId={adoptedId} isTipsOpen={true} />);
     expect(stop).not.toHaveBeenCalled();
 
     // Switching to another session via props stops the stream once.
-    rerender(<ChatInterface isAuthenticated={true} activeSessionId="other-session" selectedModel="model-2" />);
+    rerender(<ChatInterface isAuthenticated={true} activeSessionId="other-session" isTipsOpen={true} />);
     expect(stop).toHaveBeenCalledTimes(1);
 
     // Unmounting stops the stream.
@@ -347,9 +347,28 @@ describe('ChatInterface Component UX & States', () => {
     expect(stop).toHaveBeenCalledTimes(2);
   });
 
+  it('does not render a user model selector and calls useChat without body.model', () => {
+    mockUseChat.mockReturnValue({
+      messages: [],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: vi.fn(),
+    });
+
+    render(<ChatInterface isAuthenticated={true} />);
+
+    expect(screen.queryByRole('button', { name: /Chọn mô hình AI/ })).not.toBeInTheDocument();
+    expect(mockUseChat).toHaveBeenCalledWith({ api: '/api/chat' });
+  });
+
   it('shows tool loading spinners only while the last message is actively streaming, and shows incomplete Vietnamese notice once stopped or reloaded from localStorage', () => {
     localStorage.clear();
-    const savedSession = createNewSession(undefined, 'guest');
+    const savedSession = createNewSession('guest');
     saveCurrentSession(
       {
         ...savedSession,
@@ -466,15 +485,17 @@ describe('ChatInterface session hydration and persistence guards', () => {
   });
 
   it('does not re-persist on unchanged hydration, overwrite a newer active session, or resurrect a deleted session', () => {
-    const s1 = createNewSession('model-1', 'user_A');
+    const s1 = createNewSession('user_A');
     saveCurrentSession({
       ...s1,
       title: 'Phiên cũ',
       messages: [{ id: 'm1', role: 'user', content: 'Tin nhắn cũ' }],
     }, 'user_A');
 
+    let setHookMessages!: Dispatch<SetStateAction<Message[]>>;
     mockUseChat.mockImplementation(() => {
       const [messages, setMessages] = useState<Message[]>([]);
+      setHookMessages = setMessages;
       return {
         messages,
         setMessages,
@@ -490,12 +511,11 @@ describe('ChatInterface session hydration and persistence guards', () => {
     });
 
     const onSessionsChange = vi.fn();
-    const { rerender } = render(
+    render(
       <ChatInterface
         isAuthenticated
         historyScope="user_A"
         activeSessionId={s1.id}
-        selectedModel="model-1"
         onSessionsChange={onSessionsChange}
       />
     );
@@ -504,111 +524,20 @@ describe('ChatInterface session hydration and persistence guards', () => {
     expect(onSessionsChange).not.toHaveBeenCalled();
 
     // Switching active session in storage before s1 updates must not revert activeSessionId.
-    const s2 = createNewSession('model-1', 'user_A');
+    const s2 = createNewSession('user_A');
     expect(getActiveSessionId('user_A')).toBe(s2.id);
 
-    rerender(
-      <ChatInterface
-        isAuthenticated
-        historyScope="user_A"
-        activeSessionId={s1.id}
-        selectedModel="model-2"
-        onSessionsChange={onSessionsChange}
-      />
-    );
-    expect(getActiveSessionId('user_A')).toBe(s2.id);
-    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)?.model).toBe('model-2');
-
-    // Deleting s1 must prevent subsequent renders of s1 from resurrecting it.
-    deleteSessionById(s1.id, 'user_A');
-    rerender(
-      <ChatInterface
-        isAuthenticated
-        historyScope="user_A"
-        activeSessionId={s1.id}
-        selectedModel="model-3"
-        onSessionsChange={onSessionsChange}
-      />
-    );
-    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)).toBeUndefined();
-    expect(getActiveSessionId('user_A')).toBe(s2.id);
-  });
-});
-
-describe('ChatInterface session hydration and persistence guards', () => {
-  beforeEach(() => localStorage.clear());
-
-  afterEach(() => {
-    cleanup();
-    localStorage.clear();
-    vi.restoreAllMocks();
-  });
-
-  it('does not re-persist on unchanged hydration, overwrite a newer active session, or resurrect a deleted session', () => {
-    const s1 = createNewSession('model-1', 'user_A');
-    saveCurrentSession({
-      ...s1,
-      title: 'Phiên cũ',
-      messages: [{ id: 'm1', role: 'user', content: 'Tin nhắn cũ' }],
-    }, 'user_A');
-
-    mockUseChat.mockImplementation(() => {
-      const [messages, setMessages] = useState<Message[]>([]);
-      return {
-        messages,
-        setMessages,
-        input: '',
-        handleInputChange: vi.fn(),
-        handleSubmit: vi.fn(),
-        isLoading: false,
-        error: undefined,
-        reload: vi.fn(),
-        setInput: vi.fn(),
-        stop: vi.fn(),
-      };
+    act(() => {
+      setHookMessages((prev) => [...prev, { id: 'm2', role: 'assistant', content: 'Phản hồi mới' }]);
     });
-
-    const onSessionsChange = vi.fn();
-    const { rerender } = render(
-      <ChatInterface
-        isAuthenticated
-        historyScope="user_A"
-        activeSessionId={s1.id}
-        selectedModel="model-1"
-        onSessionsChange={onSessionsChange}
-      />
-    );
-
-    // Unchanged hydration must not trigger redundant session persistence.
-    expect(onSessionsChange).not.toHaveBeenCalled();
-
-    // Switching active session in storage before s1 updates must not revert activeSessionId.
-    const s2 = createNewSession('model-1', 'user_A');
     expect(getActiveSessionId('user_A')).toBe(s2.id);
+    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)?.messages).toHaveLength(2);
 
-    rerender(
-      <ChatInterface
-        isAuthenticated
-        historyScope="user_A"
-        activeSessionId={s1.id}
-        selectedModel="model-2"
-        onSessionsChange={onSessionsChange}
-      />
-    );
-    expect(getActiveSessionId('user_A')).toBe(s2.id);
-    expect(loadAllSessions('user_A').find((s) => s.id === s1.id)?.model).toBe('model-2');
-
-    // Deleting s1 must prevent subsequent renders of s1 from resurrecting it.
+    // Deleting s1 must prevent subsequent updates of s1 from resurrecting it.
     deleteSessionById(s1.id, 'user_A');
-    rerender(
-      <ChatInterface
-        isAuthenticated
-        historyScope="user_A"
-        activeSessionId={s1.id}
-        selectedModel="model-3"
-        onSessionsChange={onSessionsChange}
-      />
-    );
+    act(() => {
+      setHookMessages((prev) => [...prev, { id: 'm3', role: 'user', content: 'Tin nhắn sau khi xóa' }]);
+    });
     expect(loadAllSessions('user_A').find((s) => s.id === s1.id)).toBeUndefined();
     expect(getActiveSessionId('user_A')).toBe(s2.id);
   });
@@ -1062,7 +991,7 @@ describe('ChatInterface listUpcomingEvents display and malformed tool result gua
   });
 
   it('does not crash when localStorage-restored proposeMeeting or listUpcomingEvents results are null or malformed', () => {
-    const savedSession = createNewSession(undefined, 'guest');
+    const savedSession = createNewSession('guest');
     saveCurrentSession(
       {
         ...savedSession,

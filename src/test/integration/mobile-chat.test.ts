@@ -70,10 +70,41 @@ describe('Native chat authentication and input boundary', () => {
   });
 
   it('passes request to auth and propagates cancellation to the provider', async () => {
-    const req = request({ messages: [{ role: 'user', content: 'Xin chào' }] });
-    expect((await POST(req)).status).toBe(200);
+    let capturedSignal: AbortSignal | undefined;
+    let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+    mocks.stream.mockImplementation((options: { abortSignal?: AbortSignal }) => {
+      capturedSignal = options.abortSignal;
+      return {
+        toDataStreamResponse: () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                streamController = controller;
+                controller.enqueue(new TextEncoder().encode('0:"ok"\n'));
+              },
+            })
+          ),
+      };
+    });
+
+    const controller = new AbortController();
+    const req = new Request('https://calendai.tduong.online/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
     expect(mocks.session).toHaveBeenCalledWith(req);
-    expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({ abortSignal: req.signal }));
+    expect(capturedSignal).toBeInstanceOf(AbortSignal);
+    expect(capturedSignal?.aborted).toBe(false);
+
+    controller.abort();
+    expect(capturedSignal?.aborted).toBe(true);
+
+    streamController?.close();
+    await res.body?.cancel();
   });
 
   it('rejects client system instructions and invalid JSON', async () => {
@@ -183,22 +214,13 @@ describe('Native chat authentication and input boundary', () => {
     expect(mocks.stream).not.toHaveBeenCalled();
   });
 
-  it('rejects models not in the server provider catalog', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: [{ id: 'allowed-model' }] }));
+  it('ignores client-sent model and always uses server admin primary model without calling /models', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network request'));
     try {
-      const response = await POST(request({ model: 'unknown-model', messages: [{ role: 'user', content: 'Xin chào' }] }));
-      expect(response.status).toBe(400);
-      expect(mocks.stream).not.toHaveBeenCalled();
-    } finally {
-      fetchMock.mockRestore();
-    }
-  });
-
-  it('accepts provider-advertised model IDs', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: [{ id: 'allowed-model' }] }));
-    try {
-      expect((await POST(request({ model: 'allowed-model', messages: [{ role: 'user', content: 'Xin chào' }] }))).status).toBe(200);
+      const response = await POST(request({ model: 'expensive-client-model', messages: [{ role: 'user', content: 'Xin chào' }] }));
+      expect(response.status).toBe(200);
       expect(mocks.stream).toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
     } finally {
       fetchMock.mockRestore();
     }

@@ -32,7 +32,7 @@ beforeEach(() => localStorage.clear());
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function seedProposal(scope = 'user_A') {
-  const session = createNewSession(undefined, scope);
+  const session = createNewSession(scope);
   saveCurrentSession({ ...session, messages: [{ id: 'message-A', role: 'assistant', content: '', toolInvocations: [{
     toolCallId: 'tool-A', toolName: 'proposeMeeting', state: 'result', args: {}, result: proposal,
   }] }] }, scope);
@@ -167,7 +167,7 @@ describe('Confirmation payload recovery', () => {
     { failure: 'HTTP 500', status: 500 },
     { failure: 'proposal ID conflict', status: 409, code: 'PROPOSAL_CONFLICT' },
   ])('persists and restores the exact locked payload after $failure', async ({ status, code }) => {
-    const original = createNewSession(undefined, 'user_A');
+    const original = createNewSession('user_A');
     const messages: Message[] = [{ id: 'message-A', role: 'assistant', content: '', toolInvocations: [{
       toolCallId: 'tool-A', toolName: 'proposeMeeting', state: 'result', args: {}, result: proposal,
     }] }];
@@ -219,20 +219,20 @@ describe('Confirmation payload recovery', () => {
 
 describe('Confirmation completing after chat unmount', () => {
   it.each(['switch', 'new', 'logout', 'delete'] as const)('preserves the originating history after %s without changing the active session', async (action) => {
-    const original = createNewSession(undefined, 'user_A');
+    const original = createNewSession('user_A');
     saveCurrentSession({ ...original, messages: [{
       id: 'message-A', role: 'assistant', content: '', toolInvocations: [{
         toolCallId: 'tool-A', toolName: 'proposeMeeting', state: 'result', args: {}, result: proposal,
       }],
     }] }, 'user_A');
-    const other = createNewSession(undefined, 'user_A');
+    const other = createNewSession('user_A');
     let resolve!: (response: Response) => void;
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(done => { resolve = done; })));
     const view = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
     fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ }));
     view.unmount();
 
-    const next = action === 'new' ? createNewSession(undefined, 'user_A') : other;
+    const next = action === 'new' ? createNewSession('user_A') : other;
     if (action === 'delete') deleteSessionById(original.id, 'user_A');
     const scope = action === 'logout' ? 'guest' : 'user_A';
     render(<ChatInterface isAuthenticated={action !== 'logout'} historyScope={scope} activeSessionId={next.id} />);
@@ -258,22 +258,22 @@ describe('Confirmation completing after chat unmount', () => {
     }
   });
 
-  it('updates a reopened session in place when its pending confirmation resolves and preserves it across model changes', async () => {
+  it('updates a reopened session in place when its pending confirmation resolves and preserves it across rerenders', async () => {
     const original = seedProposal();
-    const other = createNewSession(undefined, 'user_A');
+    const other = createNewSession('user_A');
     let resolve!: (response: Response) => void;
     const fetchMock = vi.fn(() => new Promise<Response>((done) => { resolve = done; }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const viewA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    const viewA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
     fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     viewA.unmount();
 
-    const viewB = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={other.id} selectedModel="model-1" />);
+    const viewB = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={other.id} />);
     viewB.unmount();
 
-    const reopenedA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    const reopenedA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
     expect(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ })).toBeInTheDocument();
 
     await act(async () => resolve(new Response(JSON.stringify({ success: true, event }))));
@@ -282,31 +282,31 @@ describe('Confirmation completing after chat unmount', () => {
     expect(screen.queryByRole('button', { name: /Xác nhận tạo lịch/ })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    reopenedA.rerender(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+    reopenedA.rerender(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} isTipsOpen />);
     reopenedA.unmount();
 
-    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
     expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
     expect(loadAllSessions('user_A').find((s) => s.id === original.id)?.confirmedEvents[proposal.proposalId]).toEqual({ event });
   });
 
-  it('preserves a model change made after reopening A before the pending confirmation resolves', async () => {
+  it('preserves tips state changes made after reopening A before the pending confirmation resolves', async () => {
     const original = seedProposal();
-    const other = createNewSession(undefined, 'user_A');
+    const other = createNewSession('user_A');
     let resolve!: (response: Response) => void;
     const fetchMock = vi.fn(() => new Promise<Response>((done) => { resolve = done; }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const viewA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    const viewA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
     fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ }));
     viewA.unmount();
 
-    const viewB = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={other.id} selectedModel="model-1" />);
+    const viewB = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={other.id} />);
     viewB.unmount();
 
-    const reopenedA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-1" />);
+    const reopenedA = render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
     expect(await screen.findByRole('button', { name: /Xác nhận tạo lịch/ })).toBeInTheDocument();
-    reopenedA.rerender(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+    reopenedA.rerender(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} isTipsOpen />);
 
     await act(async () => resolve(new Response(JSON.stringify({ success: true, event }))));
 
@@ -314,16 +314,15 @@ describe('Confirmation completing after chat unmount', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     reopenedA.unmount();
-    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} selectedModel="model-2" />);
+    render(<ChatInterface isAuthenticated historyScope="user_A" activeSessionId={original.id} />);
     expect(await screen.findByText('Đã tạo sự kiện thành công!')).toBeInTheDocument();
     const stored = loadAllSessions('user_A').find((s) => s.id === original.id);
     expect(stored?.confirmedEvents[proposal.proposalId]).toEqual({ event });
-    expect(stored?.model).toBe('model-2');
   });
 
   it('unlocks a reopened session if its pending first-attempt confirmation is rejected before the write', async () => {
     const original = seedProposal();
-    const other = createNewSession(undefined, 'user_A');
+    const other = createNewSession('user_A');
     let resolve!: (response: Response) => void;
     const fetchMock = vi.fn(() => new Promise<Response>((done) => { resolve = done; }));
     vi.stubGlobal('fetch', fetchMock);
