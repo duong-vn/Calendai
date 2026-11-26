@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { z } from 'zod';
+import { resolveOAuthErrorMessage } from '@/lib/auth/oauth-error';
 import { UserProfileSchema, type UserProfile } from '@/lib/auth/types';
 import {
   type ChatSession,
@@ -189,13 +190,18 @@ export default function Home() {
         type: 'success',
         message: 'Kết nối tài khoản Google Calendar thành công!',
       });
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (authError) {
-      setToast({
-        type: 'error',
-        message: decodeURIComponent(authError),
-      });
-      window.history.replaceState({}, '', window.location.pathname);
+      url.searchParams.delete('auth_success');
+      url.searchParams.delete('auth_error');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    } else if (authError !== null) {
+      if (authError.trim()) {
+        setToast({
+          type: 'error',
+          message: resolveOAuthErrorMessage(authError),
+        });
+      }
+      url.searchParams.delete('auth_error');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     }
   }, []);
 

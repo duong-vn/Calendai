@@ -201,3 +201,58 @@ describe('Home logout error handling', () => {
     expect(screen.getAllByText('Nội dung tài khoản A').length).toBeGreaterThan(0);
   });
 });
+
+describe('Home OAuth redirect feedback (auth_error)', () => {
+  afterEach(() => {
+    window.history.replaceState({}, '', '/');
+  });
+
+  it.each([
+    '/?auth_error=100%25',
+    '/?auth_error=Google%20t%E1%BB%AB%20ch%E1%BB%91i%3A%20100%25',
+    '/?auth_error=constructor',
+    '/?auth_error=__proto__',
+  ])('renders cleanly without URIError when URL is %s and shows safe Vietnamese fallback', async (urlWithError) => {
+    window.history.replaceState({}, '', urlWithError);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(authResponse()));
+
+    expect(() => render(<Home />)).not.toThrow();
+    expect(
+      await screen.findByText('Xác thực Google thất bại. Vui lòng thử lại sau.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/100%/)).not.toBeInTheDocument();
+    expect(window.location.search).toBe('');
+  });
+
+  it('displays natural Vietnamese message for google_not_configured instead of raw code', async () => {
+    window.history.replaceState({}, '', '/?auth_error=google_not_configured');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(authResponse()));
+
+    render(<Home />);
+    expect(
+      await screen.findByText('Chức năng kết nối Google Calendar chưa được cấu hình trên máy chủ.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('google_not_configured')).not.toBeInTheDocument();
+    expect(window.location.search).toBe('');
+  });
+
+  it('displays controlled Vietnamese GoogleOAuthError message from single-encoded or legacy double-encoded callback URL', async () => {
+    const controlledMsg = 'Vui lòng cấp quyền quản lý sự kiện Google Calendar rồi đăng nhập lại.';
+    const callbackUrl = new URL('http://localhost:3000/');
+    callbackUrl.searchParams.set('auth_error', controlledMsg);
+    window.history.replaceState({}, '', `${callbackUrl.pathname}${callbackUrl.search}`);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(authResponse()));
+
+    const view = render(<Home />);
+    expect(await screen.findByText(controlledMsg)).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+    view.unmount();
+
+    const legacyUrl = new URL('http://localhost:3000/');
+    legacyUrl.searchParams.set('auth_error', encodeURIComponent(controlledMsg));
+    window.history.replaceState({}, '', `${legacyUrl.pathname}${legacyUrl.search}`);
+    render(<Home />);
+    expect(await screen.findByText(controlledMsg)).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+  });
+});

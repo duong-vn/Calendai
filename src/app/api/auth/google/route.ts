@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { generateOAuthState, getGoogleAuthUrl } from '@/lib/auth/google-oauth';
+import { generateOAuthState, getGoogleAuthUrl, GoogleOAuthError } from '@/lib/auth/google-oauth';
+import { OAUTH_ERROR_MESSAGES } from '@/lib/auth/oauth-error';
 import { OAUTH_STATE_COOKIE_NAME } from '@/lib/auth/session';
 import { getServerEnv, isGoogleConfigured } from '@/lib/env';
 
@@ -28,9 +29,10 @@ export async function GET(request: Request) {
     const authUrl = getGoogleAuthUrl(state, redirectUri, env.GOOGLE_CLIENT_ID!);
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message =
+      error instanceof GoogleOAuthError ? error.message : OAUTH_ERROR_MESSAGES.oauth_init_failed;
     const url = new URL('/', request.url);
-    url.searchParams.set('auth_error', encodeURIComponent(message));
+    url.searchParams.set('auth_error', message);
     return NextResponse.redirect(url);
   }
 }
