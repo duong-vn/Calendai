@@ -264,6 +264,7 @@ describe('Mobile chat transport across guest and authenticated sessions', () => 
       expect(firstChatInit?.credentials).toBe('omit');
       expect(getHeader(firstChatInit?.headers, 'authorization')).toBeNull();
       expect(getHeader(firstChatInit?.headers, 'content-type')).toBe('application/json');
+      expect(JSON.parse(String(firstChatInit?.body ?? '{}'))).not.toHaveProperty('model');
 
       const renderedText = collectText(tree!);
       expect(renderedText).toContain('Mình đã chuẩn bị bản thảo hẹn cà phê cho bạn.');

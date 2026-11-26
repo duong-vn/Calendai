@@ -6,7 +6,7 @@ import { ArrowLeft, FileText, Shield, Sparkles } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
 interface PageHeaderProps {
-  currentPage?: 'privacy' | 'terms' | 'not-found';
+  currentPage?: 'privacy' | 'terms' | 'not-found' | 'admin';
 }
 
 export function PageHeader({ currentPage }: PageHeaderProps) {

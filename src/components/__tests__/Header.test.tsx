@@ -139,4 +139,43 @@ describe('Header Component Mobile Responsiveness & Actions', () => {
 
     setItemSpy.mockRestore();
   });
+
+  it('shows Trang quản trị link only when authenticated as admin', () => {
+    const { rerender } = render(
+      <Header
+        user={null}
+        isAuthenticated={false}
+        isConfigured={true}
+        isAdmin={true}
+        onOpenUpcoming={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('link', { name: /Trang quản trị/ })).not.toBeInTheDocument();
+
+    rerender(
+      <Header
+        user={{ id: '123', email: 'member@example.com', name: 'Member' }}
+        isAuthenticated={true}
+        isConfigured={true}
+        isAdmin={false}
+        onOpenUpcoming={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('link', { name: /Trang quản trị/ })).not.toBeInTheDocument();
+
+    rerender(
+      <Header
+        user={{ id: '1', email: 'admin@example.com', name: 'Admin' }}
+        isAuthenticated={true}
+        isConfigured={true}
+        isAdmin={true}
+        onOpenUpcoming={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    );
+    const adminLink = screen.getByRole('link', { name: /Trang quản trị/ });
+    expect(adminLink).toHaveAttribute('href', '/admin');
+  });
 });

@@ -34,9 +34,8 @@ describe('Chat Session Storage', () => {
   });
 
   it('creates and saves new sessions', () => {
-    const session1 = createNewSession('test-model');
+    const session1 = createNewSession();
     expect(session1.id).toBeDefined();
-    expect(session1.model).toBe('test-model');
     expect(getActiveSessionId()).toBe(session1.id);
 
     const all = loadAllSessions();

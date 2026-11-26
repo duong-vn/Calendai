@@ -14,20 +14,19 @@ import {
   PanelLeft,
   RotateCcw,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Sun,
   Video,
   X,
 } from 'lucide-react';
 import type { UserProfile } from '@/lib/auth/types';
-import { ModelSelector } from './ModelSelector';
 
 interface HeaderProps {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isConfigured: boolean;
-  selectedModel?: string;
-  onSelectModel?: (modelId: string) => void;
+  isAdmin?: boolean;
   isSidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   onOpenUpcoming: () => void;
@@ -41,8 +40,7 @@ export function Header({
   user,
   isAuthenticated,
   isConfigured,
-  selectedModel,
-  onSelectModel,
+  isAdmin = false,
   isSidebarOpen,
   onToggleSidebar,
   onOpenUpcoming,
@@ -207,6 +205,17 @@ export function Header({
           <FileText className="h-3.5 w-3.5 text-[#786455] dark:text-[#ba9f88]" />
           <span>Điều khoản</span>
         </Link>
+
+        {isAuthenticated && isAdmin && (
+          <Link
+            href="/admin"
+            className="hidden xl:flex items-center gap-1.5 rounded-full border-2 border-[#2d2015] bg-[#fffaf2] px-3 py-1.5 text-xs font-semibold text-[#2b1f17] shadow-[2px_2px_0px_#2d2015] transition-all hover:bg-[#ede4d5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none dark:border-[#453427] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:shadow-[2px_2px_0px_#453427] dark:hover:bg-[#2a221b]"
+            title="Trang quản trị"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#1f7560] dark:text-[#2dd4bf]" />
+            <span>Trang quản trị</span>
+          </Link>
+        )}
 
         {onClearSession && (
           <button
@@ -400,6 +409,18 @@ export function Header({
                 <FileText className="h-4 w-4 text-[#786455] dark:text-[#ba9f88]" />
                 <span>Điều khoản dịch vụ</span>
               </Link>
+
+              {isAuthenticated && isAdmin && (
+                <Link
+                  href="/admin"
+                  role="menuitem"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#1f7560] hover:bg-[#ede4d5] transition-colors dark:text-[#2dd4bf] dark:hover:bg-[#2a221b]"
+                >
+                  <SlidersHorizontal className="h-4 w-4 text-[#1f7560] dark:text-[#2dd4bf]" />
+                  <span>Trang quản trị</span>
+                </Link>
+              )}
             </div>
           )}
         </div>

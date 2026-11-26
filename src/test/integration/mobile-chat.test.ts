@@ -183,22 +183,13 @@ describe('Native chat authentication and input boundary', () => {
     expect(mocks.stream).not.toHaveBeenCalled();
   });
 
-  it('rejects models not in the server provider catalog', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: [{ id: 'allowed-model' }] }));
+  it('ignores client-sent model and always uses server admin primary model without calling /models', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network request'));
     try {
-      const response = await POST(request({ model: 'unknown-model', messages: [{ role: 'user', content: 'Xin chào' }] }));
-      expect(response.status).toBe(400);
-      expect(mocks.stream).not.toHaveBeenCalled();
-    } finally {
-      fetchMock.mockRestore();
-    }
-  });
-
-  it('accepts provider-advertised model IDs', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: [{ id: 'allowed-model' }] }));
-    try {
-      expect((await POST(request({ model: 'allowed-model', messages: [{ role: 'user', content: 'Xin chào' }] }))).status).toBe(200);
+      const response = await POST(request({ model: 'expensive-client-model', messages: [{ role: 'user', content: 'Xin chào' }] }));
+      expect(response.status).toBe(200);
       expect(mocks.stream).toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
     } finally {
       fetchMock.mockRestore();
     }

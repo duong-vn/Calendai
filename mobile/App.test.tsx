@@ -11,7 +11,7 @@ import { loadHistory, loadConversation, newConversation, saveConversation, delet
 
 jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
 jest.mock('./src/services/auth', () => ({ authClient: { subscribe: () => () => undefined, getSnapshot: () => null, restore: async () => undefined }, signInGoogle: jest.fn(), signOutGoogle: jest.fn() }));
-jest.mock('./src/services/api', () => ({ fetchModels: async () => ({ models: [], defaultModel: '' }), mobileApi: {} }));
+jest.mock('./src/services/api', () => ({ mobileApi: {} }));
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('@expo-google-fonts/plus-jakarta-sans', () => ({ useFonts: () => [true, null] }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));

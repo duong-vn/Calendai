@@ -49,7 +49,6 @@ import {
   MeetingPreviewCard,
   type MeetingProposalData,
 } from './MeetingPreviewCard';
-import { ModelSelector } from './ModelSelector';
 import { ReminderSettings } from './ReminderSettings';
 import { formatEventTime } from './UpcomingEventCard';
 
@@ -538,8 +537,6 @@ type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 interface ChatInterfaceProps {
   isAuthenticated: boolean;
   historyScope?: string;
-  selectedModel?: string;
-  onSelectModel?: (modelId: string) => void;
   activeSessionId?: string | null;
   onSessionsChange?: () => void;
   isTipsOpen?: boolean;
@@ -550,8 +547,6 @@ interface ChatInterfaceProps {
 export function ChatInterface({
   isAuthenticated,
   historyScope = 'guest',
-  selectedModel: propSelectedModel,
-  onSelectModel,
   activeSessionId: propActiveSessionId,
   onSessionsChange,
   isTipsOpen: externalTipsOpen,
@@ -576,25 +571,8 @@ export function ChatInterface({
     historyScope: string;
     messageCount: number;
     confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
-    model: string;
   } | null>(null);
   const wasPersistedRef = useRef(false);
-
-  const [internalSelectedModel, setInternalSelectedModel] = useState<string>('');
-
-  useEffect(() => {
-    try {
-      const savedModel = localStorage.getItem('calendai_selected_model');
-      if (savedModel && typeof savedModel === 'string') {
-        setInternalSelectedModel(savedModel);
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
-
-  const activeModel =
-    propSelectedModel !== undefined ? propSelectedModel : internalSelectedModel;
 
   const {
     messages,
@@ -609,9 +587,6 @@ export function ChatInterface({
     stop,
   } = useChat({
     api: '/api/chat',
-    body: {
-      model: activeModel,
-    },
   });
   const stopRef = useRef(stop);
   stopRef.current = stop;
@@ -842,7 +817,6 @@ export function ChatInterface({
             historyScope,
             messageCount: restoredMessages.length,
             confirmedEvents: restoredConfirmed,
-            model: target.model || '',
           }
         : null;
     setCurrentSessionId(target.id);
@@ -890,8 +864,7 @@ export function ChatInterface({
         pendingHydrateSyncRef.current = null;
         if (
           messages.length === pendingHydration.messageCount &&
-          areRecordsEqual(confirmedEvents, pendingHydration.confirmedEvents) &&
-          (activeModel || '') === (pendingHydration.model || '')
+          areRecordsEqual(confirmedEvents, pendingHydration.confirmedEvents)
         ) {
           return;
         }
@@ -923,7 +896,6 @@ export function ChatInterface({
         confirmedEvents: { ...existing?.confirmedEvents, ...confirmedEvents },
         confirmationPayloads: existing?.confirmationPayloads,
         confirmationAttempts: existing?.confirmationAttempts,
-        model: activeModel,
       };
 
       hydratedSessionKeyRef.current = `${historyScope}:${currentSessionId}`;
@@ -931,7 +903,7 @@ export function ChatInterface({
       saveCurrentSession(sessionToSave, historyScope, { activate: isActiveInStorage });
       onSessionsChange?.();
     }
-  }, [messages, confirmedEvents, currentSessionId, activeModel, onSessionsChange, historyScope, propActiveSessionId]);
+  }, [messages, confirmedEvents, currentSessionId, onSessionsChange, historyScope, propActiveSessionId]);
 
   // Auto scroll to latest message
   useEffect(() => {
@@ -1161,15 +1133,9 @@ export function ChatInterface({
 
         {/* Floating Bottom Input Bar (Typewriter Console styling) */}
         <div className="shrink-0 border-t-2 border-[#2d2015]/60 bg-[#fffaf2]/95 px-2.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-2.5 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-colors dark:border-[#453427] dark:bg-[#181310]/95">
-          {/* Workbench Control Bar: Model Selector, Tips, Settings & Chronometer Timezone */}
+          {/* Workbench Control Bar: Tips, Settings & Chronometer Timezone */}
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-1.5 mb-1.5 px-0.5 sm:mb-2 sm:px-1">
             <div className="flex min-w-0 items-center gap-1.5 shrink-0">
-              {onSelectModel && (
-                <ModelSelector
-                  selectedModel={activeModel}
-                  onSelectModel={onSelectModel}
-                />
-              )}
               <button
                 type="button"
                 onClick={toggleTips}

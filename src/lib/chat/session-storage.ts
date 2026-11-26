@@ -16,7 +16,6 @@ export interface ChatSession {
   updatedAt: number;
   messages: Message[];
   confirmedEvents: Record<string, { event: CalendarEventResult; isMock?: boolean }>;
-  model?: string;
   confirmationPayloads?: Record<string, MeetingConfirmationPayload>;
   confirmationAttempts?: Record<string, string>;
 }
@@ -235,7 +234,7 @@ export function saveCurrentSession(
   }
 }
 
-export function createNewSession(model?: string, scope?: string | null): ChatSession {
+export function createNewSession(scope?: string | null): ChatSession {
   const newSession: ChatSession = {
     id: generateSessionId(),
     title: 'Cuộc trò chuyện mới',
@@ -243,7 +242,6 @@ export function createNewSession(model?: string, scope?: string | null): ChatSes
     updatedAt: Date.now(),
     messages: [],
     confirmedEvents: {},
-    model,
   };
 
   const keys = getStorageKeys(scope);

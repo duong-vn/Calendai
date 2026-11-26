@@ -1,18 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, TextInput, View } from 'react-native';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { ArrowUp, Cpu, Mic, MicOff, Square } from 'lucide-react-native';
+import { ArrowUp, Mic, MicOff, Square } from 'lucide-react-native';
 import { Copy, IconButton, useTheme } from '../theme';
 
-export function VoiceAssistantBar({ value, onChange, onSend, isLoading, disabled, onStop, modelLabel, onModel, voiceEnabled = true }: {
+export function VoiceAssistantBar({ value, onChange, onSend, isLoading, disabled, onStop, voiceEnabled = true }: {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
   isLoading: boolean;
   disabled: boolean;
   onStop: () => void;
-  modelLabel: string;
-  onModel: () => void;
   voiceEnabled?: boolean;
 }) {
   const { colors, fonts } = useTheme();
@@ -73,8 +71,7 @@ export function VoiceAssistantBar({ value, onChange, onSend, isLoading, disabled
       <IconButton icon={listening || pending ? MicOff : Mic} label={listening || pending ? 'Dừng nhận diện giọng nói' : 'Nhập bằng giọng nói tiếng Việt'} onPress={() => { void toggle(); }} disabled={disabled || isLoading || !voiceEnabled} />
       <IconButton icon={isLoading ? Square : ArrowUp} label={isLoading ? 'Dừng phản hồi' : 'Gửi tin nhắn'} onPress={() => { stop(); if (isLoading) onStop(); else onSend(); }} disabled={!isLoading && (disabled || !value.trim())} />
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}><IconButton icon={Cpu} label={`Chọn mô hình AI: ${modelLabel}`} onPress={() => { stop(); onModel(); }} disabled={isLoading} /><Copy numberOfLines={1} style={{ color: colors.muted, fontSize: 11, flexShrink: 1 }}>{modelLabel}</Copy></View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
       <Copy style={{ color: colors.muted, fontSize: 10 }}>Giờ Việt Nam · GMT+7</Copy>
     </View>
   </View>;

@@ -10,7 +10,7 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 
 describe('Reset during an AI response', () => {
   it('does not recreate the reset conversation after deleting it and sending another message', async () => {
-    const original = createNewSession(undefined, 'guest');
+    const original = createNewSession('guest');
     original.messages = [{ id: 'original', role: 'user', content: 'Hội thoại ban đầu' }];
     saveCurrentSession(original, 'guest');
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -240,14 +240,14 @@ describe('Abort active /api/chat stream on navigation, deletion, and logout', ()
     { action: 'delete-active' as const, label: 'deleting the active streaming session' },
   ])('aborts /api/chat and isolates late chunks when $label', async ({ action }) => {
     const encoder = new TextEncoder();
-    const sessionB = createNewSession(undefined, 'guest');
+    const sessionB = createNewSession('guest');
     saveCurrentSession({
       ...sessionB,
       title: 'Hội thoại B',
       messages: [{ id: 'msg-b', role: 'user', content: 'Nội dung hội thoại B' }],
     }, 'guest');
 
-    const sessionA = createNewSession(undefined, 'guest');
+    const sessionA = createNewSession('guest');
     saveCurrentSession({
       ...sessionA,
       title: 'Hội thoại A',
@@ -314,14 +314,14 @@ describe('Abort active /api/chat stream on navigation, deletion, and logout', ()
 
   it('aborts /api/chat on logout, switches cleanly to guest, and handles AbortError without uncaught errors', async () => {
     const encoder = new TextEncoder();
-    const sessionA = createNewSession(undefined, 'user_A');
+    const sessionA = createNewSession('user_A');
     saveCurrentSession({
       ...sessionA,
       title: 'Phiên người dùng A',
       messages: [{ id: 'msg-a', role: 'user', content: 'Tin nhắn riêng tư' }],
     }, 'user_A');
 
-    const guestSession = createNewSession(undefined, 'guest');
+    const guestSession = createNewSession('guest');
     saveCurrentSession({
       ...guestSession,
       title: 'Phiên khách',
@@ -385,14 +385,14 @@ describe('Abort active /api/chat stream on navigation, deletion, and logout', ()
 
   it('does not abort the active stream when deleting an inactive session or when logout fails', async () => {
     const encoder = new TextEncoder();
-    const sessionB = createNewSession(undefined, 'user_A');
+    const sessionB = createNewSession('user_A');
     saveCurrentSession({
       ...sessionB,
       title: 'Hội thoại B',
       messages: [{ id: 'msg-b', role: 'user', content: 'Nội dung B' }],
     }, 'user_A');
 
-    const sessionA = createNewSession(undefined, 'user_A');
+    const sessionA = createNewSession('user_A');
     saveCurrentSession({
       ...sessionA,
       title: 'Hội thoại A',
@@ -450,14 +450,14 @@ describe('Abort active /api/chat stream on navigation, deletion, and logout', ()
   });
 
   it('aborts a pending /api/chat fetch before response headers arrive when switching sessions', async () => {
-    const sessionB = createNewSession(undefined, 'guest');
+    const sessionB = createNewSession('guest');
     saveCurrentSession({
       ...sessionB,
       title: 'Hội thoại B',
       messages: [{ id: 'msg-b', role: 'user', content: 'Nội dung B' }],
     }, 'guest');
 
-    const sessionA = createNewSession(undefined, 'guest');
+    const sessionA = createNewSession('guest');
     saveCurrentSession({
       ...sessionA,
       title: 'Hội thoại A',

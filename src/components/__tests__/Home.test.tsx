@@ -7,7 +7,12 @@ import { createNewSession, getActiveSessionId, loadAllSessions, saveCurrentSessi
 
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@/components/Header', () => ({
-  Header: ({ onLogout }: { onLogout: () => void }) => <button onClick={onLogout}>Đăng xuất</button>,
+  Header: ({ onLogout, isAdmin }: { onLogout: () => void; isAdmin?: boolean }) => (
+    <div>
+      <button onClick={onLogout}>Đăng xuất</button>
+      {isAdmin && <a href="/admin">Trang quản trị</a>}
+    </div>
+  ),
 }));
 vi.mock('ai/react', () => ({
   useChat: () => {
@@ -20,7 +25,7 @@ vi.mock('ai/react', () => ({
 }));
 
 function seed(scope: string | undefined, title: string) {
-  const session = createNewSession(undefined, scope);
+  const session = createNewSession(scope);
   saveCurrentSession({ ...session, title, messages: [{ id: title, role: 'user', content: title }] }, scope);
   return session.id;
 }
@@ -254,5 +259,49 @@ describe('Home OAuth redirect feedback (auth_error)', () => {
     render(<Home />);
     expect(await screen.findByText(controlledMsg)).toBeInTheDocument();
     expect(window.location.search).toBe('');
+  });
+});
+
+describe('Home admin link visibility', () => {
+  it('checks /api/admin/config only when authenticated and shows admin link only for admin accounts', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === '/api/auth/google/status') {
+        return authResponse('admin-1');
+      }
+      if (url === '/api/admin/config') {
+        return Response.json({ isAdmin: true, primaryModel: 'm1', fallbackModel: null });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const view = render(<Home />);
+    expect(await screen.findByRole('link', { name: 'Trang quản trị' })).toHaveAttribute('href', '/admin');
+    view.unmount();
+
+    // Non-admin receives 403 -> admin link stays hidden
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === '/api/auth/google/status') return authResponse('member-1');
+        if (url === '/api/admin/config') return Response.json({ isAdmin: false }, { status: 403 });
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      })
+    );
+    const memberView = render(<Home />);
+    await screen.findByRole('button', { name: 'Đăng xuất' });
+    expect(screen.queryByRole('link', { name: 'Trang quản trị' })).not.toBeInTheDocument();
+    memberView.unmount();
+
+    // Guest does not query /api/admin/config at all
+    const guestFetch = vi.fn(async (url: string) => {
+      if (url === '/api/auth/google/status') return authResponse();
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', guestFetch);
+    render(<Home />);
+    await screen.findByRole('button', { name: 'Đăng xuất' });
+    expect(guestFetch.mock.calls.some(([url]) => url === '/api/admin/config')).toBe(false);
+    expect(screen.queryByRole('link', { name: 'Trang quản trị' })).not.toBeInTheDocument();
   });
 });

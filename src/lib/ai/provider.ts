@@ -1,4 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
+import { getAdminModelConfig } from '@/lib/ai/admin-config';
 import { getServerEnv } from '@/lib/env';
 
 export function getAIProvider() {
@@ -17,8 +18,7 @@ export function getAIProvider() {
 export const getOpenRouterProvider = getAIProvider;
 
 export function getChatModel(modelId?: string) {
-  const env = getServerEnv();
   const provider = getAIProvider();
-  const targetModel = modelId?.trim() ? modelId.trim() : env.AI_MODEL;
+  const targetModel = modelId?.trim() ? modelId.trim() : getAdminModelConfig().primaryModel;
   return provider.chat(targetModel);
 }
