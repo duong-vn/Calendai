@@ -111,4 +111,93 @@ describe('AdminModelSettings', () => {
       'Model chính không nằm trong danh sách được nhà cung cấp hỗ trợ.'
     );
   });
+
+  it('deduplicates filtered extras when primaryModel equals fallbackModel', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === '/api/models') {
+          return Response.json({
+            success: true,
+            defaultModel: 'openai/gpt-4o-mini',
+            models: [
+              { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', supportsTools: true, isFree: false, description: '' },
+              { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'openai', supportsTools: true, isFree: false, description: '' },
+            ],
+          });
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      })
+    );
+
+    try {
+      render(
+        <AdminModelSettings
+          initialPrimaryModel="openai/gpt-4o"
+          initialFallbackModel="openai/gpt-4o"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByRole('option', { name: /GPT-4o \(openai\/gpt-4o\)/ })).toHaveLength(2);
+      });
+
+      const searchInput = screen.getByLabelText('Lọc nhanh danh sách model');
+      fireEvent.change(searchInput, { target: { value: 'nonexistent-query' } });
+
+      const primarySelect = screen.getByLabelText('Model chính') as HTMLSelectElement;
+      const fallbackSelect = screen.getByLabelText('Model dự phòng (Fallback)') as HTMLSelectElement;
+      expect(
+        Array.from(primarySelect.options).filter((o) => o.value === 'openai/gpt-4o')
+      ).toHaveLength(1);
+      expect(
+        Array.from(fallbackSelect.options).filter((o) => o.value === 'openai/gpt-4o')
+      ).toHaveLength(1);
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('formats updatedAt consistently in Vietnam timezone and guards invalid timestamps', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          success: true,
+          defaultModel: 'openai/gpt-4o-mini',
+          models: [
+            { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', supportsTools: true, isFree: false, description: '' },
+          ],
+        })
+      )
+    );
+
+    const view = render(
+      <AdminModelSettings
+        initialPrimaryModel="openai/gpt-4o-mini"
+        initialFallbackModel={null}
+        initialUpdatedAt="2026-11-26T00:00:00.000Z"
+        initialUpdatedBy="admin@example.com"
+      />
+    );
+
+    const expectedFormatted = new Date('2026-11-26T00:00:00.000Z').toLocaleString('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+    });
+    expect(screen.getByText(/Cập nhật lần cuối:/)).toHaveTextContent(expectedFormatted);
+    expect(screen.getByText(/Cập nhật lần cuối:/)).toHaveTextContent('07:00');
+    view.unmount();
+
+    render(
+      <AdminModelSettings
+        initialPrimaryModel="openai/gpt-4o-mini"
+        initialFallbackModel={null}
+        initialUpdatedAt="not-a-date"
+      />
+    );
+    expect(screen.getByText(/Cập nhật lần cuối:/)).toHaveTextContent('Cập nhật lần cuối: —');
+    expect(screen.getByText(/Cập nhật lần cuối:/)).not.toHaveTextContent('Invalid Date');
+  });
 });

@@ -509,4 +509,245 @@ describe('Admin model config & fallback integration', () => {
     expect(res.status).toBe(200);
     expect(seenModels).toEqual(['provider/probe-primary']);
   });
+
+  it('aborts hanging primary doStream on start timeout and succeeds on fallback', async () => {
+    const { saveAdminModelConfig } = await import('@/lib/ai/admin-config');
+    saveAdminModelConfig({
+      primaryModel: 'provider/hanging-primary',
+      fallbackModel: 'provider/healthy-fallback',
+      updatedBy: 'admin@example.com',
+    });
+
+    let primarySignal: AbortSignal | undefined;
+    const requestedModels: string[] = [];
+
+    vi.doMock('@/lib/ai/provider', () => ({
+      getChatModel: (modelId?: string) => {
+        const resolved = modelId?.trim() || 'provider/hanging-primary';
+        requestedModels.push(resolved);
+        if (resolved === 'provider/hanging-primary') {
+          return new MockLanguageModelV1({
+            doStream: async ({ abortSignal }) => {
+              primarySignal = abortSignal;
+              return new Promise((_, reject) => {
+                abortSignal?.addEventListener(
+                  'abort',
+                  () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' })),
+                  { once: true }
+                );
+              });
+            },
+          });
+        }
+        return makeSuccessModel('Phản hồi từ fallback sau timeout');
+      },
+    }));
+
+    const { POST } = await import('@/app/api/chat/route');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    vi.useFakeTimers();
+    try {
+      const responsePromise = POST(
+        new Request('https://calendai.tduong.online/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'https://calendai.tduong.online',
+            'Sec-Fetch-Site': 'same-origin',
+          },
+          body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+        })
+      );
+
+      await vi.advanceTimersByTimeAsync(25_000);
+      const response = await responsePromise;
+      expect(response.status).toBe(200);
+      expect(primarySignal).toBeInstanceOf(AbortSignal);
+      expect(primarySignal?.aborted).toBe(true);
+      expect(requestedModels).toEqual(['provider/hanging-primary', 'provider/healthy-fallback']);
+      expect(await response.text()).toContain('Phản hồi từ fallback sau timeout');
+    } finally {
+      vi.useRealTimers();
+      warnSpy.mockRestore();
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('aborts primary and retries fallback when a 3: error frame is split across chunks after f: header', async () => {
+    const { saveAdminModelConfig } = await import('@/lib/ai/admin-config');
+    saveAdminModelConfig({
+      primaryModel: 'provider/split-error-primary',
+      fallbackModel: 'provider/split-error-fallback',
+      updatedBy: 'admin@example.com',
+    });
+
+    const requestedModels: string[] = [];
+    let primarySignal: AbortSignal | undefined;
+
+    vi.doMock('ai', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('ai')>();
+      return {
+        ...actual,
+        streamText: vi.fn(
+          ({
+            model,
+            abortSignal,
+          }: {
+            model: { modelId: string };
+            abortSignal?: AbortSignal;
+          }) => {
+            requestedModels.push(model.modelId);
+            if (model.modelId === 'provider/split-error-primary') {
+              primarySignal = abortSignal;
+              return {
+                toDataStreamResponse: ({
+                  getErrorMessage,
+                }: {
+                  getErrorMessage?: (err: unknown) => string;
+                }) => {
+                  const encoder = new TextEncoder();
+                  return new Response(
+                    new ReadableStream<Uint8Array>({
+                      start(controller) {
+                        controller.enqueue(encoder.encode('f:{"messageId":"m1"}\n'));
+                        controller.enqueue(encoder.encode('3'));
+                        getErrorMessage?.(
+                          new APICallError({
+                            message: 'upstream-split-500',
+                            url: 'https://api.example.test/v1/chat/completions',
+                            requestBodyValues: {},
+                            statusCode: 500,
+                            responseHeaders: {},
+                            responseBody: 'error',
+                            isRetryable: true,
+                          })
+                        );
+                        controller.enqueue(encoder.encode(':"Không thể nhận phản hồi"\n'));
+                        controller.close();
+                      },
+                    })
+                  );
+                },
+              };
+            }
+            return {
+              toDataStreamResponse: () =>
+                new Response('0:"Phản hồi từ fallback sau split 3:"\n', {
+                  headers: { 'Content-Type': 'text/plain', 'x-vercel-ai-data-stream': 'v1' },
+                }),
+            };
+          }
+        ),
+      };
+    });
+
+    vi.doMock('@/lib/ai/provider', () => ({
+      getChatModel: (modelId?: string) => ({ modelId: modelId?.trim() || 'provider/split-error-primary' }),
+    }));
+
+    const { POST } = await import('@/app/api/chat/route');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    try {
+      const response = await POST(
+        new Request('https://calendai.tduong.online/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'https://calendai.tduong.online',
+            'Sec-Fetch-Site': 'same-origin',
+          },
+          body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(primarySignal?.aborted).toBe(true);
+      expect(requestedModels).toEqual([
+        'provider/split-error-primary',
+        'provider/split-error-fallback',
+      ]);
+      expect(await response.text()).toContain('Phản hồi từ fallback sau split 3:');
+    } finally {
+      warnSpy.mockRestore();
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('keys the 60s /api/health/ai/probe cache by active primaryModel so admin updates probe immediately', async () => {
+    const { saveAdminModelConfig } = await import('@/lib/ai/admin-config');
+    saveAdminModelConfig({
+      primaryModel: 'provider/probe-a',
+      fallbackModel: null,
+      updatedBy: 'admin@example.com',
+    });
+
+    const seenModels: string[] = [];
+    vi.doMock('ai', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('ai')>();
+      return {
+        ...actual,
+        generateText: vi.fn(async ({ model }: { model: { modelId: string } }) => {
+          seenModels.push(model.modelId);
+          return { text: 'OK' };
+        }),
+      };
+    });
+
+    const { GET } = await import('@/app/api/health/ai/probe/route');
+    expect((await GET()).status).toBe(200);
+    expect(seenModels).toEqual(['provider/probe-a']);
+
+    // Switch primary model immediately -> probe must not return stale probe-a cache
+    saveAdminModelConfig({
+      primaryModel: 'provider/probe-b',
+      fallbackModel: null,
+      updatedBy: 'admin@example.com',
+    });
+
+    expect((await GET()).status).toBe(200);
+    expect(seenModels).toEqual(['provider/probe-a', 'provider/probe-b']);
+
+    // Second call with probe-b hits probe-b's 60s cache
+    expect((await GET()).status).toBe(200);
+    expect(seenModels).toEqual(['provider/probe-a', 'provider/probe-b']);
+  });
+
+  it('uses os.tmpdir() for Vercel tmp fallback and does not shadow an explicit ADMIN_CONFIG_PATH', async () => {
+    const tmpFallbackFile = path.join(os.tmpdir(), 'calendai-admin-config.json');
+    fs.rmSync(tmpFallbackFile, { force: true });
+
+    try {
+      vi.stubEnv('VERCEL', '1');
+      vi.stubEnv('ADMIN_CONFIG_PATH', '');
+
+      const { getAdminModelConfig, resolveAdminConfigPath, saveAdminModelConfig } = await import(
+        '@/lib/ai/admin-config'
+      );
+
+      expect(resolveAdminConfigPath()).toBe(path.join(os.tmpdir(), 'calendai-admin-config.json'));
+      saveAdminModelConfig({
+        primaryModel: 'provider/tmp-model',
+        fallbackModel: null,
+        updatedBy: 'admin@example.com',
+      });
+      expect(fs.existsSync(tmpFallbackFile)).toBe(true);
+      expect(getAdminModelConfig().primaryModel).toBe('provider/tmp-model');
+
+      // Setting an explicit ADMIN_CONFIG_PATH without resetting cache must not be shadowed by tmp cache
+      const explicitPath = path.join(tempDir, 'explicit-admin-config.json');
+      fs.writeFileSync(
+        explicitPath,
+        JSON.stringify({ primaryModel: 'provider/explicit-model', fallbackModel: null })
+      );
+      vi.stubEnv('ADMIN_CONFIG_PATH', explicitPath);
+
+      expect(getAdminModelConfig().primaryModel).toBe('provider/explicit-model');
+    } finally {
+      fs.rmSync(tmpFallbackFile, { force: true });
+    }
+  });
 });

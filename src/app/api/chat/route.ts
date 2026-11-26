@@ -133,27 +133,52 @@ async function runModelStream(
   abortSignal: AbortSignal
 ): Promise<Response> {
   const model = getChatModel(modelId);
+  const attemptController = new AbortController();
+  let abortLinkCleaned = false;
+  const onExternalAbort = () => {
+    attemptController.abort(abortSignal.reason);
+  };
+  const cleanupAbortLink = () => {
+    if (abortLinkCleaned) return;
+    abortLinkCleaned = true;
+    abortSignal.removeEventListener('abort', onExternalAbort);
+  };
+
+  if (abortSignal.aborted) {
+    attemptController.abort(abortSignal.reason);
+    abortLinkCleaned = true;
+  } else {
+    abortSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+
   let capturedError: unknown = null;
+  let dataResponse: Response;
+  try {
+    const result = streamText({
+      model,
+      system,
+      messages,
+      tools,
+      maxSteps: 3, // Bounded multi-step execution
+      maxTokens: 4000,
+      maxRetries: 0,
+      abortSignal: attemptController.signal,
+    });
 
-  const result = streamText({
-    model,
-    system,
-    messages,
-    tools,
-    maxSteps: 3, // Bounded multi-step execution
-    maxTokens: 4000,
-    maxRetries: 0,
-    abortSignal,
-  });
-
-  const dataResponse = result.toDataStreamResponse({
-    getErrorMessage: (err) => {
-      capturedError = err;
-      return 'Không thể nhận phản hồi AI. Vui lòng thử lại.';
-    },
-  });
+    dataResponse = result.toDataStreamResponse({
+      getErrorMessage: (err) => {
+        capturedError = err;
+        return 'Không thể nhận phản hồi AI. Vui lòng thử lại.';
+      },
+    });
+  } catch (error) {
+    attemptController.abort(error);
+    cleanupAbortLink();
+    throw error;
+  }
 
   if (!dataResponse.body) {
+    cleanupAbortLink();
     return dataResponse;
   }
 
@@ -161,25 +186,53 @@ async function runModelStream(
   const decoder = new TextDecoder();
   const bufferedChunks: Uint8Array[] = [];
   let linePrefix = '';
+  let streamDone = false;
+  const startDeadline = Date.now() + MODEL_STREAM_START_TIMEOUT_MS;
 
   try {
     while (true) {
-      const { result: readResult, timedOut } = await readChunkWithTimeout(
-        reader,
-        MODEL_STREAM_START_TIMEOUT_MS
-      );
+      const remainingMs = startDeadline - Date.now();
+      if (remainingMs <= 0) {
+        const timeoutErr = new Error('Model response timed out');
+        attemptController.abort(timeoutErr);
+        cleanupAbortLink();
+        await reader.cancel().catch(() => undefined);
+        throw new ModelStreamAttemptError(timeoutErr, true);
+      }
+
+      const { result: readResult, timedOut } = await readChunkWithTimeout(reader, remainingMs);
 
       if (timedOut) {
+        const timeoutErr = new Error('Model response timed out');
+        attemptController.abort(timeoutErr);
+        cleanupAbortLink();
         await reader.cancel().catch(() => undefined);
-        throw new ModelStreamAttemptError(new Error('Model response timed out'), true);
+        throw new ModelStreamAttemptError(timeoutErr, true);
       }
 
       if (capturedError !== null) {
+        attemptController.abort(capturedError);
+        cleanupAbortLink();
         await reader.cancel().catch(() => undefined);
         throw new ModelStreamAttemptError(capturedError, false);
       }
 
       if (readResult.done) {
+        const tail = decoder.decode();
+        const finalCombined = linePrefix + tail;
+        const finalLines = finalCombined.split('\n');
+        if (
+          finalLines.some((line) => line.startsWith('3:')) ||
+          linePrefix.startsWith('3:') ||
+          capturedError !== null
+        ) {
+          const streamErr = capturedError ?? new Error('Stream error');
+          attemptController.abort(streamErr);
+          cleanupAbortLink();
+          throw new ModelStreamAttemptError(streamErr, false);
+        }
+        streamDone = true;
+        cleanupAbortLink();
         break;
       }
 
@@ -189,17 +242,24 @@ async function runModelStream(
       const lines = combined.split('\n');
       linePrefix = lines.pop() ?? '';
 
-      const hasErrorPart = lines.some((line) => line.startsWith('3:'));
+      const hasErrorPart = lines.some((line) => line.startsWith('3:')) || linePrefix.startsWith('3:');
       if (hasErrorPart || capturedError !== null) {
+        const streamErr = capturedError ?? new Error('Stream error');
+        attemptController.abort(streamErr);
+        cleanupAbortLink();
         await reader.cancel().catch(() => undefined);
-        throw new ModelStreamAttemptError(capturedError ?? new Error('Stream error'), false);
+        throw new ModelStreamAttemptError(streamErr, false);
       }
 
       bufferedChunks.push(chunk);
 
-      // Buffer step-start header frames (`f:...`) so a pre-content stream error is still caught.
-      const hasContentOrData = lines.some((line) => line.length > 0 && !line.startsWith('f:'));
-      if (hasContentOrData || (linePrefix.length > 0 && !linePrefix.startsWith('f:'))) {
+      // Buffer step-start header frames (`f:...`) and partial `f:`/`3:` prefixes so pre-content errors are still caught.
+      const hasContentOrData = lines.some(
+        (line) => line.length > 0 && !line.startsWith('f:') && !line.startsWith('3:')
+      );
+      const prefixReady =
+        linePrefix.length >= 2 && !linePrefix.startsWith('f:') && !linePrefix.startsWith('3:');
+      if (hasContentOrData || prefixReady) {
         break;
       }
     }
@@ -207,6 +267,8 @@ async function runModelStream(
     if (error instanceof ModelStreamAttemptError) {
       throw error;
     }
+    attemptController.abort(error);
+    cleanupAbortLink();
     await reader.cancel().catch(() => undefined);
     throw new ModelStreamAttemptError(error, false);
   }
@@ -216,20 +278,32 @@ async function runModelStream(
       for (const chunk of bufferedChunks) {
         controller.enqueue(chunk);
       }
+      if (streamDone) {
+        controller.close();
+      }
     },
     async pull(controller) {
+      if (streamDone) {
+        controller.close();
+        return;
+      }
       try {
         const { done, value } = await reader.read();
         if (done) {
+          cleanupAbortLink();
           controller.close();
           return;
         }
         controller.enqueue(value);
       } catch (error) {
+        attemptController.abort(error);
+        cleanupAbortLink();
         controller.error(error);
       }
     },
     cancel(reason) {
+      attemptController.abort(reason);
+      cleanupAbortLink();
       return reader.cancel(reason);
     },
   });

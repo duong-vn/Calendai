@@ -70,10 +70,41 @@ describe('Native chat authentication and input boundary', () => {
   });
 
   it('passes request to auth and propagates cancellation to the provider', async () => {
-    const req = request({ messages: [{ role: 'user', content: 'Xin chào' }] });
-    expect((await POST(req)).status).toBe(200);
+    let capturedSignal: AbortSignal | undefined;
+    let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+    mocks.stream.mockImplementation((options: { abortSignal?: AbortSignal }) => {
+      capturedSignal = options.abortSignal;
+      return {
+        toDataStreamResponse: () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                streamController = controller;
+                controller.enqueue(new TextEncoder().encode('0:"ok"\n'));
+              },
+            })
+          ),
+      };
+    });
+
+    const controller = new AbortController();
+    const req = new Request('https://calendai.tduong.online/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Xin chào' }] }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
     expect(mocks.session).toHaveBeenCalledWith(req);
-    expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({ abortSignal: req.signal }));
+    expect(capturedSignal).toBeInstanceOf(AbortSignal);
+    expect(capturedSignal?.aborted).toBe(false);
+
+    controller.abort();
+    expect(capturedSignal?.aborted).toBe(true);
+
+    streamController?.close();
+    await res.body?.cancel();
   });
 
   it('rejects client system instructions and invalid JSON', async () => {

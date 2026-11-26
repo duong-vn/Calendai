@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 import { getServerEnv } from '@/lib/env';
@@ -34,7 +35,7 @@ export class ProviderCatalogError extends Error {
 let cachedConfig: { path: string; config: AdminModelConfig } | null = null;
 
 function getFallbackTmpConfigPath(): string {
-  return path.join('/tmp', 'calendai-admin-config.json');
+  return path.join(os.tmpdir(), 'calendai-admin-config.json');
 }
 
 export function resolveAdminConfigPath(): string {
@@ -117,8 +118,13 @@ function writeConfigFile(filePath: string, config: AdminModelConfig): void {
  * in tests or runtime remain live until an explicit admin save occurs.
  */
 export function getAdminModelConfig(): AdminModelConfig {
+  const hasExplicitPath = Boolean(process.env.ADMIN_CONFIG_PATH?.trim());
   const primaryPath = resolveAdminConfigPath();
-  if (cachedConfig && (cachedConfig.path === primaryPath || cachedConfig.path === getFallbackTmpConfigPath())) {
+  if (
+    cachedConfig &&
+    (cachedConfig.path === primaryPath ||
+      (!hasExplicitPath && cachedConfig.path === getFallbackTmpConfigPath()))
+  ) {
     return cachedConfig.config;
   }
 

@@ -13,6 +13,14 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import type { AIModelOption } from '@/lib/ai/models';
+import { VIETNAM_TIME_ZONE } from '@/lib/calendar/date-range';
+
+function formatUpdatedAt(value?: string): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('vi-VN', { timeZone: VIETNAM_TIME_ZONE });
+}
 
 interface AdminModelSettingsProps {
   initialPrimaryModel: string;
@@ -94,7 +102,11 @@ export function AdminModelSettings({
     // Always keep currently selected values selectable even when filtering
     const extras: AIModelOption[] = [];
     for (const selectedId of [primaryModel, fallbackModel]) {
-      if (selectedId && !base.some((m) => m.id === selectedId)) {
+      if (
+        selectedId &&
+        !base.some((m) => m.id === selectedId) &&
+        !extras.some((m) => m.id === selectedId)
+      ) {
         const known = models.find((m) => m.id === selectedId);
         if (known) {
           extras.push(known);
@@ -248,10 +260,7 @@ export function AdminModelSettings({
         </dl>
         {(savedConfig.updatedAt || savedConfig.updatedBy) && (
           <p className="mt-2.5 text-[11px] text-[#786455] dark:text-[#ba9f88]">
-            Cập nhật lần cuối:{' '}
-            {savedConfig.updatedAt
-              ? new Date(savedConfig.updatedAt).toLocaleString('vi-VN')
-              : '—'}
+            Cập nhật lần cuối: {formatUpdatedAt(savedConfig.updatedAt)}
             {savedConfig.updatedBy ? ` bởi ${savedConfig.updatedBy}` : ''}
           </p>
         )}
