@@ -12,6 +12,7 @@ import {
   ArrowUp,
   Calendar,
   Clock,
+  ExternalLink,
   Globe,
   Loader2,
   Mic,
@@ -23,6 +24,12 @@ import {
 } from 'lucide-react';
 import type { CalendarEventResult } from '@/lib/calendar/types';
 import { safeHttpsUrl, safeMarkdownUrl } from '@/lib/links';
+import {
+  getUpcomingEventsEmptyMessage,
+  getUpcomingEventsHeading,
+  parseMeetingProposalResult,
+  parseUpcomingEventsResult,
+} from '@/lib/chat/tool-results';
 import {
   type ChatSession,
   deriveSessionTitle,
@@ -44,6 +51,7 @@ import {
 } from './MeetingPreviewCard';
 import { ModelSelector } from './ModelSelector';
 import { ReminderSettings } from './ReminderSettings';
+import { formatEventTime } from './UpcomingEventCard';
 
 // Lazy-load drawer only when opened
 const Sidenote = dynamic(
@@ -135,13 +143,46 @@ const ChatMessageItem = memo(function ChatMessageItem({
   onReload,
 }: ChatMessageItemProps) {
   const isUser = message.role === 'user';
-  const proposalResults = message.toolInvocations?.filter(
-    (tool) => tool.toolName === 'proposeMeeting' && 'result' in tool
-  ) || [];
+  const hasContent = typeof message.content === 'string' && message.content.length > 0;
+  const toolInvocations = Array.isArray(message.toolInvocations)
+    ? message.toolInvocations.filter(
+        (tool): tool is NonNullable<Message['toolInvocations']>[number] =>
+          Boolean(tool && typeof tool === 'object')
+      )
+    : [];
+  const hasToolResult = (tool: NonNullable<Message['toolInvocations']>[number]) =>
+    tool.state === 'result' || 'result' in tool;
+  const proposalResults = toolInvocations.filter(
+    (tool) => tool.toolName === 'proposeMeeting' && hasToolResult(tool)
+  );
   const compactProposals = !isUser && proposalResults.length > 1;
-  const renderProposal = (proposal: MeetingProposalData, toolCallId: string) => {
+  const renderProposal = (rawResult: unknown, toolCallId: string) => {
+    const proposal = parseMeetingProposalResult(rawResult);
+    if (!proposal) {
+      return (
+        <div
+          key={toolCallId}
+          role="alert"
+          className="space-y-1 rounded-xl border-2 border-[#2d2015] bg-[#fdf2f0] p-3 text-xs shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#2b1614] dark:shadow-[2px_2px_0px_#453427]"
+        >
+          <div className="flex items-center gap-1.5 font-semibold text-[#a63024] dark:text-[#f87171]">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>Dữ liệu bản thảo cuộc họp không hợp lệ hoặc bị thiếu.</span>
+          </div>
+          <p className="text-[#786455] dark:text-[#ba9f88]">
+            Vui lòng yêu cầu Calendai tạo lại bản thảo.
+          </p>
+        </div>
+      );
+    }
     const confirmedEvent = confirmedEvents[proposal.proposalId];
-    if (confirmedEvent) return <EventCreatedCard key={toolCallId} event={confirmedEvent.event} isMock={confirmedEvent.isMock} />;
+    if (
+      confirmedEvent?.event &&
+      typeof confirmedEvent.event === 'object' &&
+      typeof confirmedEvent.event.summary === 'string'
+    ) {
+      return <EventCreatedCard key={toolCallId} event={confirmedEvent.event} isMock={confirmedEvent.isMock} />;
+    }
     return <MeetingPreviewCard key={toolCallId} compact={compactProposals} proposal={proposal}
       submittedPayload={confirmationPayloads[proposal.proposalId]} onSubmitPayload={onSubmitPayload}
       onConfirmSuccess={(event, isMock) => onConfirmSuccess(proposal.proposalId, event, isMock)}
@@ -149,8 +190,8 @@ const ChatMessageItem = memo(function ChatMessageItem({
   };
   const isEmptyAssistant =
     !isUser &&
-    !message.content &&
-    (!message.toolInvocations || message.toolInvocations.length === 0);
+    !hasContent &&
+    toolInvocations.length === 0;
 
   // Do not render empty phantom assistant messages if not loading and no error
   if (isEmptyAssistant && !isLoading && !error) {
@@ -182,7 +223,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
             : 'rounded-2xl rounded-tl-xs bg-[#fffaf2] px-3 py-3 sm:px-5 sm:py-3.5 text-sm text-[#2b1f17] border-2 border-[#2d2015] shadow-[2px_2px_0px_#2d2015] dark:bg-[#211a14] dark:text-[#f5ebd9] dark:border-[#453427] dark:shadow-[2px_2px_0px_#453427]'
         }`}
       >
-        {message.content && (
+        {hasContent && (
           <div className="min-w-0 leading-relaxed text-sm break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full">
             <ReactMarkdown
               remarkPlugins={MARKDOWN_PLUGINS}
@@ -224,20 +265,37 @@ const ChatMessageItem = memo(function ChatMessageItem({
         )}
 
         {/* Tool Invocations */}
-        {message.toolInvocations?.map((toolInvocation) => {
-          const { toolName, toolCallId } = toolInvocation;
+        {toolInvocations.map((toolInvocation, toolIndex) => {
+          const { toolName } = toolInvocation;
+          const toolCallId =
+            typeof toolInvocation.toolCallId === 'string' && toolInvocation.toolCallId
+              ? toolInvocation.toolCallId
+              : `${toolName || 'tool'}-${toolIndex}`;
 
           if (toolName === 'proposeMeeting') {
-            if ('result' in toolInvocation) {
-              if (toolCallId !== proposalResults[0].toolCallId) return null;
+            if (hasToolResult(toolInvocation)) {
+              if (toolInvocation !== proposalResults[0]) return null;
               return <ol key="meeting-proposals" role={compactProposals ? 'list' : 'presentation'}
                 aria-label={compactProposals ? 'Các cuộc họp đề xuất' : undefined}
                 className={compactProposals ? 'min-w-0 divide-y divide-[#2d2015]/20 dark:divide-[#453427]' : undefined}>
-                {proposalResults.map(tool => 'result' in tool && <li key={tool.toolCallId}
-                  role={compactProposals ? 'listitem' : 'presentation'}
-                  className={compactProposals ? 'min-w-0 py-3 first:pt-0 last:pb-0' : undefined}>
-                  {renderProposal(tool.result as MeetingProposalData, tool.toolCallId)}
-                </li>)}
+                {proposalResults.map((tool, proposalIndex) => (
+                  <li
+                    key={
+                      typeof tool.toolCallId === 'string' && tool.toolCallId
+                        ? tool.toolCallId
+                        : `proposal-${proposalIndex}`
+                    }
+                    role={compactProposals ? 'listitem' : 'presentation'}
+                    className={compactProposals ? 'min-w-0 py-3 first:pt-0 last:pb-0' : undefined}
+                  >
+                    {renderProposal(
+                      'result' in tool ? tool.result : undefined,
+                      typeof tool.toolCallId === 'string' && tool.toolCallId
+                        ? tool.toolCallId
+                        : `proposal-${proposalIndex}`
+                    )}
+                  </li>
+                ))}
               </ol>;
             }
 
@@ -270,30 +328,43 @@ const ChatMessageItem = memo(function ChatMessageItem({
           }
 
           if (toolName === 'listUpcomingEvents') {
-            if ('result' in toolInvocation) {
-              const res = toolInvocation.result as {
-                success?: boolean;
-                events?: Array<{
-                  id: string;
-                  summary: string;
-                  start: string;
-                  hangoutLink?: string;
-                  htmlLink: string;
-                }>;
-                error?: string;
-                note?: string;
-              };
+            if (hasToolResult(toolInvocation)) {
+              const parsed = parseUpcomingEventsResult(
+                'result' in toolInvocation ? toolInvocation.result : undefined
+              );
 
-              if (!res.success) {
+              if (parsed.status === 'invalid') {
+                return (
+                  <div
+                    key={toolCallId}
+                    role="alert"
+                    className="space-y-1 rounded-xl border-2 border-[#2d2015] bg-[#fdf2f0] p-3 text-xs shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#2b1614] dark:shadow-[2px_2px_0px_#453427]"
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-[#a63024] dark:text-[#f87171]">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>Dữ liệu lịch trả về không hợp lệ hoặc bị thiếu.</span>
+                    </div>
+                    <p className="text-[#786455] dark:text-[#ba9f88]">
+                      Vui lòng thử tra cứu lịch lại.
+                    </p>
+                  </div>
+                );
+              }
+
+              if (parsed.status === 'error') {
                 return (
                   <div
                     key={toolCallId}
                     className="rounded-xl border-2 border-[#2d2015] bg-[#fffaf2] p-3 text-xs text-[#c25e2e] shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:text-[#e07a3f] dark:shadow-[2px_2px_0px_#453427]"
                   >
-                    {res.error || 'Không thể lấy danh sách sự kiện.'}
+                    {parsed.error}
                   </div>
                 );
               }
+
+              const toolArgs = 'args' in toolInvocation ? toolInvocation.args : undefined;
+              const heading = getUpcomingEventsHeading(toolArgs, parsed.isMock);
+              const emptyMessage = getUpcomingEventsEmptyMessage(toolArgs);
 
               return (
                 <div
@@ -301,33 +372,54 @@ const ChatMessageItem = memo(function ChatMessageItem({
                   className="my-2 space-y-2 rounded-2xl border-2 border-[#2d2015] bg-[#fffaf2] p-4 shadow-[2px_2px_0px_#2d2015] dark:border-[#453427] dark:bg-[#211a14] dark:shadow-[2px_2px_0px_#453427]"
                 >
                   <div className="flex items-center gap-2 text-xs font-bold text-[#2b1f17] dark:text-[#f5ebd9]">
-                    <Calendar className="h-4 w-4 text-[#c25e2e] dark:text-[#e07a3f]" />
-                    <span>Sự kiện sắp diễn ra trên Google Calendar:</span>
+                    <Calendar className="h-4 w-4 shrink-0 text-[#c25e2e] dark:text-[#e07a3f]" />
+                    <span>{heading}</span>
                   </div>
-                  {res.events && res.events.length > 0 ? (
+                  {parsed.events.length > 0 ? (
                     <div className="space-y-1.5 pt-1">
-                      {res.events.map((evt) => {
+                      {parsed.events.map((evt, evtIndex) => {
                         const safeMeetLink = safeHttpsUrl(evt.hangoutLink, 'meet');
+                        const safeCalendarLink = safeHttpsUrl(evt.htmlLink, 'calendar');
                         return (
                           <div
-                            key={evt.id}
-                            className="flex items-center justify-between rounded-xl bg-[#ede4d5]/50 p-2.5 text-xs border border-[#2d2015]/30 dark:bg-[#2a221b] dark:border-[#453427]"
+                            key={`${evt.id}-${evtIndex}`}
+                            className="flex items-start justify-between gap-2 rounded-xl bg-[#ede4d5]/50 p-2.5 text-xs border border-[#2d2015]/30 dark:bg-[#2a221b] dark:border-[#453427]"
                           >
-                            <div className="truncate pr-2">
-                              <span className="font-medium text-[#2b1f17] dark:text-[#f5ebd9]">
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="font-medium text-[#2b1f17] [overflow-wrap:anywhere] dark:text-[#f5ebd9]">
                                 {evt.summary}
-                              </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#786455] dark:text-[#ba9f88]">
+                                <Clock className="h-3 w-3 shrink-0 text-[#c25e2e] dark:text-[#e07a3f]" />
+                                <span>{formatEventTime(evt.start, evt.isAllDay)}</span>
+                              </div>
                             </div>
-                            {safeMeetLink && (
-                              <a
-                                href={safeMeetLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="shrink-0 flex items-center gap-1 rounded-full border border-[#2d2015] bg-[#ede4d5] px-2.5 py-0.5 text-[11px] font-bold text-[#1f7560] hover:bg-[#fffaf2] transition-colors dark:border-[#453427] dark:bg-[#211a14] dark:text-[#2dd4bf] dark:hover:bg-[#2a221b]"
-                              >
-                                <Video className="h-3 w-3" />
-                                <span>Meet</span>
-                              </a>
+                            {(safeMeetLink || safeCalendarLink) && (
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                {safeMeetLink && (
+                                  <a
+                                    href={safeMeetLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 rounded-full border border-[#2d2015] bg-[#ede4d5] px-2.5 py-0.5 text-[11px] font-bold text-[#1f7560] hover:bg-[#fffaf2] transition-colors dark:border-[#453427] dark:bg-[#211a14] dark:text-[#2dd4bf] dark:hover:bg-[#2a221b]"
+                                  >
+                                    <Video className="h-3 w-3" />
+                                    <span>Meet</span>
+                                  </a>
+                                )}
+                                {safeCalendarLink && (
+                                  <a
+                                    href={safeCalendarLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex h-6 w-6 items-center justify-center rounded-full border border-[#2d2015]/30 bg-[#fffaf2] text-[#786455] hover:border-[#2d2015] hover:text-[#c25e2e] transition-colors dark:border-[#453427] dark:bg-[#211a14] dark:text-[#ba9f88] dark:hover:text-[#e07a3f]"
+                                    title="Mở trên Google Calendar"
+                                    aria-label="Mở trên Google Calendar"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                )}
+                              </div>
                             )}
                           </div>
                         );
@@ -335,12 +427,12 @@ const ChatMessageItem = memo(function ChatMessageItem({
                     </div>
                   ) : (
                     <p className="text-xs text-[#786455] italic dark:text-[#ba9f88]">
-                      Không có sự kiện nào sắp tới trong khoảng thời gian này.
+                      {emptyMessage}
                     </p>
                   )}
-                  {res.note && (
+                  {parsed.note && (
                     <p className="text-[11px] text-[#786455] italic dark:text-[#ba9f88]">
-                      {res.note}
+                      {parsed.note}
                     </p>
                   )}
                 </div>

@@ -3,16 +3,17 @@ import { VIETNAM_TIME_ZONE } from '@/lib/calendar/date-range';
 import type { UpcomingEventItem } from '@/lib/calendar/types';
 import { safeHttpsUrl } from '@/lib/links';
 
-function formatEventTime(isoString: string, isAllDay: boolean) {
+export function formatEventTime(isoString: string, isAllDay: boolean): string {
   try {
     const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return isoString;
     const formatted = new Intl.DateTimeFormat('vi-VN', {
       // Date-only values are calendar dates, not instants to shift into GMT+7.
       timeZone: isAllDay ? 'UTC' : VIETNAM_TIME_ZONE,
       weekday: 'short',
       day: '2-digit',
       month: '2-digit',
-      ...(isAllDay ? {} : { hour: '2-digit', minute: '2-digit', hour12: false } as const),
+      ...(isAllDay ? {} : ({ hour: '2-digit', minute: '2-digit', hour12: false } as const)),
     }).format(d);
     return isAllDay ? `Cả ngày · ${formatted}` : formatted;
   } catch {

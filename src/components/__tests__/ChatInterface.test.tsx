@@ -922,3 +922,246 @@ describe('ChatInterface voice recognition', () => {
     expect(screen.queryByRole('button', { name: 'Nói để đặt lịch' })).not.toBeInTheDocument();
   });
 });
+
+describe('ChatInterface listUpcomingEvents display and malformed tool result guards', () => {
+  beforeEach(() => localStorage.clear());
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('renders Vietnam start times, all-day labels without 07:00 shift, and safe Google Calendar links in listUpcomingEvents', () => {
+    mockUseChat.mockReturnValue({
+      messages: [
+        {
+          id: 'msg-upcoming-times',
+          role: 'assistant',
+          content: '',
+          toolInvocations: [
+            {
+              toolCallId: 'call-upcoming-times',
+              toolName: 'listUpcomingEvents',
+              state: 'result',
+              args: { range: 'upcoming' },
+              result: {
+                success: true,
+                events: [
+                  {
+                    id: 'evt-timed',
+                    summary: 'Họp Sprint',
+                    start: '2026-11-25T14:30:00+07:00',
+                    end: '2026-11-25T15:30:00+07:00',
+                    isAllDay: false,
+                    hangoutLink: 'https://meet.google.com/abc-defg-hij',
+                    htmlLink: 'https://calendar.google.com/calendar/event?eid=timed1',
+                  },
+                  {
+                    id: 'evt-utc',
+                    summary: 'Đồng bộ thiết kế',
+                    start: '2026-11-25T09:15:00Z',
+                    end: '2026-11-25T10:00:00Z',
+                    isAllDay: false,
+                    htmlLink: 'https://www.google.com/calendar/event?eid=utc1',
+                  },
+                  {
+                    id: 'evt-allday',
+                    summary: 'Nghỉ lễ công ty',
+                    start: '2026-11-26',
+                    end: '2026-11-27',
+                    isAllDay: true,
+                    htmlLink: 'https://calendar.google.com.evil.test/phish',
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: vi.fn(),
+    });
+
+    render(<ChatInterface isAuthenticated={true} />);
+
+    expect(screen.getByText('Sự kiện sắp diễn ra trên Google Calendar:')).toBeInTheDocument();
+    expect(screen.getByText('Họp Sprint')).toBeInTheDocument();
+    expect(screen.getByText('14:30 Thứ 4, 25/11')).toBeInTheDocument();
+    expect(screen.getByText('Đồng bộ thiết kế')).toBeInTheDocument();
+    expect(screen.getByText('16:15 Thứ 4, 25/11')).toBeInTheDocument();
+    expect(screen.getByText('Nghỉ lễ công ty')).toBeInTheDocument();
+    expect(screen.getByText('Cả ngày · Thứ 5, 26/11')).toBeInTheDocument();
+    expect(screen.queryByText(/07:00/)).not.toBeInTheDocument();
+
+    const calendarLinks = screen.getAllByRole('link', { name: 'Mở trên Google Calendar' });
+    expect(calendarLinks).toHaveLength(2);
+    expect(calendarLinks[0]).toHaveAttribute('href', 'https://calendar.google.com/calendar/event?eid=timed1');
+    expect(calendarLinks[0]).toHaveAttribute('target', '_blank');
+    expect(calendarLinks[0]).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(calendarLinks[1]).toHaveAttribute('href', 'https://www.google.com/calendar/event?eid=utc1');
+    expect(calendarLinks[1]).toHaveAttribute('target', '_blank');
+    expect(calendarLinks[1]).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it.each([
+    {
+      name: 'today non-mock',
+      args: { range: 'today' },
+      result: { success: true, mode: 'google', events: [] },
+      expectedHeading: 'Sự kiện hôm nay trên Google Calendar:',
+    },
+    {
+      name: 'this_week non-mock',
+      args: { range: 'this_week' },
+      result: { success: true, mode: 'google', events: [] },
+      expectedHeading: 'Sự kiện tuần này trên Google Calendar:',
+    },
+    {
+      name: 'upcoming mock',
+      args: { range: 'upcoming' },
+      result: { success: true, isMock: true, mode: 'mock', events: [] },
+      expectedHeading: 'Sự kiện sắp diễn ra (Lịch mẫu):',
+    },
+  ])('renders contextual heading for $name', ({ args, result, expectedHeading }) => {
+    mockUseChat.mockReturnValue({
+      messages: [
+        {
+          id: 'msg-heading',
+          role: 'assistant',
+          content: '',
+          toolInvocations: [
+            {
+              toolCallId: 'call-heading',
+              toolName: 'listUpcomingEvents',
+              state: 'result',
+              args,
+              result,
+            },
+          ],
+        },
+      ],
+      input: '',
+      handleInputChange: vi.fn(),
+      handleSubmit: vi.fn(),
+      isLoading: false,
+      error: undefined,
+      reload: vi.fn(),
+      setInput: vi.fn(),
+      setMessages: vi.fn(),
+    });
+
+    render(<ChatInterface isAuthenticated={true} />);
+    expect(screen.getByText(expectedHeading)).toBeInTheDocument();
+  });
+
+  it('does not crash when localStorage-restored proposeMeeting or listUpcomingEvents results are null or malformed', () => {
+    const savedSession = createNewSession(undefined, 'guest');
+    saveCurrentSession(
+      {
+        ...savedSession,
+        title: 'Phiên có toolInvocation lỗi',
+        messages: [
+          { id: 'u-bad-1', role: 'user', content: 'Đặt lịch và xem lịch giúp tôi' },
+          {
+            id: 'a-bad-1',
+            role: 'assistant',
+            content: 'Đây là thông tin lịch của bạn.',
+            toolInvocations: [
+              {
+                state: 'result',
+                toolCallId: 'call-propose-null',
+                toolName: 'proposeMeeting',
+                args: {},
+                result: null,
+              },
+              {
+                state: 'result',
+                toolCallId: 'call-propose-missing',
+                toolName: 'proposeMeeting',
+                args: {},
+                result: { summary: 'Thiếu trường bắt buộc' },
+              },
+              {
+                state: 'result',
+                toolCallId: 'call-propose-bad-attendees',
+                toolName: 'proposeMeeting',
+                args: {},
+                result: {
+                  proposalId: 'p-bad',
+                  summary: 'Sai attendees',
+                  startDateTime: '2026-11-25T09:00:00+07:00',
+                  endDateTime: '2026-11-25T10:00:00+07:00',
+                  attendees: 'not-an-array',
+                },
+              },
+              {
+                state: 'result',
+                toolCallId: 'call-upcoming-null',
+                toolName: 'listUpcomingEvents',
+                args: {},
+                result: null,
+              },
+              {
+                state: 'result',
+                toolCallId: 'call-upcoming-bad-events',
+                toolName: 'listUpcomingEvents',
+                args: {},
+                result: { success: true, events: null },
+              },
+              {
+                state: 'result',
+                toolCallId: 'call-upcoming-bad-item',
+                toolName: 'listUpcomingEvents',
+                args: {},
+                result: { success: true, events: [{ id: 'broken-only-id' }] },
+              },
+              {
+                state: 'result',
+                toolCallId: 'call-upcoming-api-error',
+                toolName: 'listUpcomingEvents',
+                args: {},
+                result: { success: false, error: 'Chưa kết nối tài khoản Google.' },
+              },
+            ],
+          },
+        ],
+      },
+      'guest'
+    );
+
+    mockUseChat.mockImplementation(() => {
+      const [messages, setMessages] = useState<Message[]>([]);
+      return {
+        messages,
+        setMessages,
+        input: '',
+        handleInputChange: vi.fn(),
+        handleSubmit: vi.fn(),
+        isLoading: false,
+        error: undefined,
+        reload: vi.fn(),
+        setInput: vi.fn(),
+        stop: vi.fn(),
+      };
+    });
+
+    render(<ChatInterface isAuthenticated={true} activeSessionId={savedSession.id} />);
+
+    expect(screen.getByText('Đặt lịch và xem lịch giúp tôi')).toBeInTheDocument();
+    expect(screen.getByText('Đây là thông tin lịch của bạn.')).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Dữ liệu bản thảo cuộc họp không hợp lệ hoặc bị thiếu.')
+    ).toHaveLength(3);
+    expect(
+      screen.getAllByText('Dữ liệu lịch trả về không hợp lệ hoặc bị thiếu.')
+    ).toHaveLength(3);
+    expect(screen.getByText('Chưa kết nối tài khoản Google.')).toBeInTheDocument();
+  });
+});
