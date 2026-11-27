@@ -480,12 +480,63 @@ describe('AI & LLM Integration Layer', () => {
     expect(prompt).toContain('TUYỆT ĐỐI KHÔNG BAO GIỜ');
     expect(prompt).toContain('Chủ động tạo thẻ xem trước');
     expect(prompt).toContain('TỰ SUY LUẬN TIÊU ĐỀ');
+    expect(prompt).toContain('60 phút');
+    expect(prompt).toContain('createMeet');
+    expect(prompt).toContain('MẶC ĐỊNH `false`');
     expect(prompt).toContain('2026-11-11T00:00:00+07:00');
     expect(prompt).toContain('2026-11-12T00:00:00+07:00');
     expect(prompt).toContain('2026-11-09T00:00:00+07:00');
     expect(prompt).toContain('2026-11-16T00:00:00+07:00');
     expect(prompt).toContain('range: "today"');
     expect(prompt).toContain('range: "this_week"');
+
+    const guestPrompt = buildSystemPrompt(undefined, new Date('2026-11-11T13:00:00Z'));
+    expect(guestPrompt).not.toContain('Email người dùng hiện tại:');
+  });
+
+  it('includes disambiguation rules for meridiem-free hours, explicit meridiem hours, and relative dates', () => {
+    const prompt = buildSystemPrompt('user@example.com', new Date('2026-11-11T13:00:00Z'));
+
+    // Giờ kèm buổi vs giờ không kèm buổi (1h, 5h, 6h, 7h, 11h, 12h + 7h sáng vs 7h tối)
+    expect(prompt).toContain('7h sáng');
+    expect(prompt).toContain('7h tối');
+    for (const hourToken of ['`1h`', '`5h`', '`6h`', '`7h`', '`11h`', '`12h`']) {
+      expect(prompt).toContain(hourToken);
+    }
+    expect(prompt).toMatch(/hỏi lại.*sáng hay tối/i);
+    expect(prompt).toMatch(/hỏi lại.*thay vì đoán/i);
+
+    // Thời gian mơ hồ: sáng/chiều/tối mai thiếu giờ, ngày thiếu tháng, tuần sau, cuối tuần, thứ 2 tuần tới
+    expect(prompt).toContain('"sáng mai", "chiều mai", "tối mai"');
+    expect(prompt).toContain('"ngày 15"');
+    expect(prompt).toContain('"tuần sau"');
+    expect(prompt).toContain('"cuối tuần"');
+    expect(prompt).toContain('"thứ 2 tuần tới"');
+  });
+
+  it('includes rules for conflict handling, unsupported edit/cancel/recurring actions, and Google reconnect guidance', () => {
+    const prompt = buildSystemPrompt('user@example.com', new Date('2026-11-11T13:00:00Z'));
+
+    // Luồng xử lý trùng lịch khớp với CalendarConflictChoices trên thẻ xem trước
+    expect(prompt).toContain('Hủy lịch cũ');
+    expect(prompt).toContain('Đổi giờ lịch cũ');
+    expect(prompt).toContain('Vẫn tạo lịch mới, giữ lịch cũ');
+
+    // Giới hạn công cụ: sửa/dời/hủy lịch đã tồn tại và lịch lặp lại chưa hỗ trợ
+    expect(prompt).toContain('dời họp sang 3h');
+    expect(prompt).toContain('hủy lịch mai');
+    expect(prompt).toContain('họp hàng tuần');
+    expect(prompt).toContain('recurrence');
+    expect(prompt).toContain('Chưa hỗ trợ qua trò chuyện');
+    expect(prompt).toMatch(/TUYỆT ĐỐI KHÔNG.*bịa ra tool/i);
+
+    // Hướng dẫn kết nối lại khi lỗi 401/403 hoặc chưa đăng nhập Google (Web & Mobile)
+    expect(prompt).toContain('google_reauthorization_required');
+    expect(prompt).toContain('SESSION_REFRESH_REQUIRED');
+    expect(prompt).toContain('google_calendar_permission_required');
+    expect(prompt).toContain('Kết nối Google');
+    expect(prompt).toContain('Lịch sắp tới');
+    expect(prompt).toContain('Cài đặt & tài khoản');
   });
 
   it('validates proposeMeeting schema correctly', () => {
