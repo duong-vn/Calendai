@@ -34,7 +34,9 @@ Calendai là ứng dụng web trợ lý lịch trình AI ưu tiên tiếng Việ
 
 ```text
 Calendai/
-├── .github/workflows/ci.yml         # Kiểm tra web và mobile trên GitHub Actions
+├── .github/
+│   ├── dependabot.yml              # Tự động kiểm tra cập nhật npm và GitHub Actions hàng tuần
+│   └── workflows/ci.yml            # Kiểm tra web và mobile trên GitHub Actions
 ├── docs/                           # Bộ 6 tài liệu thiết kế & tài liệu vận hành
 │   ├── 01-PRD.md                   # Product Requirements Document
 │   ├── 02-TRD.md                   # Technical Requirements Document
