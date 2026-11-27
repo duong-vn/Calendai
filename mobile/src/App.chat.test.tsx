@@ -167,6 +167,23 @@ async function flush(turns = 10) {
   }
 }
 
+async function waitFor(assertion: () => void, timeoutMs = 1_000, intervalMs = 15) {
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      if (Date.now() >= deadline) {
+        throw error;
+      }
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      });
+    }
+  }
+}
+
 function collectText(tree: ReactTestRenderer): string {
   return tree.root
     .findAllByType(Text)
@@ -266,11 +283,13 @@ describe('Mobile chat transport across guest and authenticated sessions', () => 
       expect(getHeader(firstChatInit?.headers, 'content-type')).toBe('application/json');
       expect(JSON.parse(String(firstChatInit?.body ?? '{}'))).not.toHaveProperty('model');
 
-      const renderedText = collectText(tree!);
-      expect(renderedText).toContain('Mình đã chuẩn bị bản thảo hẹn cà phê cho bạn.');
-      expect(renderedText).not.toContain('Vui lòng đăng nhập Google để tiếp tục.');
-      expect(tree!.root.findAllByType(ProposalCard)).toHaveLength(1);
-      expect(renderedText).toContain('Cà phê chiều thứ Sáu');
+      await waitFor(() => {
+        const renderedText = collectText(tree!);
+        expect(renderedText).toContain('Mình đã chuẩn bị bản thảo hẹn cà phê cho bạn.');
+        expect(renderedText).not.toContain('Vui lòng đăng nhập Google để tiếp tục.');
+        expect(tree!.root.findAllByType(ProposalCard)).toHaveLength(1);
+        expect(renderedText).toContain('Cà phê chiều thứ Sáu');
+      });
 
       // Guest tapping "Xác nhận tạo lịch" still requires Google login via authClient.fetch and unlocks draft
       await act(async () => {
@@ -336,7 +355,9 @@ describe('Mobile chat transport across guest and authenticated sessions', () => 
         .mock.calls.filter(([url]) => url === `${API_ORIGIN}/api/chat`);
       expect(retriedChatCalls).toHaveLength(3);
       expect(getHeader(retriedChatCalls[2][1]?.headers, 'authorization')).toBeNull();
-      expect(collectText(tree!)).toContain('Đã khôi phục phản hồi cho khách.');
+      await waitFor(() => {
+        expect(collectText(tree!)).toContain('Đã khôi phục phản hồi cho khách.');
+      });
     } finally {
       if (tree) {
         act(() => tree!.unmount());
@@ -454,7 +475,9 @@ describe('Mobile chat transport across guest and authenticated sessions', () => 
       expect(getHeader(chatCallsAfterFirstSignedIn[1][1]?.headers, 'authorization')).toBe(
         `Bearer ${signedInSession.session}`
       );
-      expect(collectText(tree!)).toContain('Xin chào tài khoản đã đăng nhập!');
+      await waitFor(() => {
+        expect(collectText(tree!)).toContain('Xin chào tài khoản đã đăng nhập!');
+      });
 
       // Signed-in user receives 401 -> clears session without ever retrying anonymously
       act(() => {
@@ -630,7 +653,9 @@ describe('Mobile chat transport across guest and authenticated sessions', () => 
             url === `${API_ORIGIN}/api/chat` && !getHeader(reqInit?.headers, 'authorization')
         );
       expect(guestChatCalls).toHaveLength(1);
-      expect(collectText(tree!)).toContain('Phản hồi khách sau khi đăng xuất');
+      await waitFor(() => {
+        expect(collectText(tree!)).toContain('Phản hồi khách sau khi đăng xuất');
+      });
     } finally {
       releaseSignedInStream?.();
       if (tree) {
